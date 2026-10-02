@@ -124,6 +124,13 @@ export async function ingestInbound(channel: Channel, msg: Inbound) {
     data: { conversationId: conv.id, direction: "IN", text: msg.text, externalId: msg.messageExternalId ?? null, attachments: msg.attachments ?? undefined, status: "RECEIVED" },
   });
 
+  // 3b. «СТОП» — отписка от рассылок
+  if (customer && /^\s*(стоп|stop|отписаться|отписка)\s*[.!]?\s*$/i.test(msg.text)) {
+    await db.user.update({ where: { id: customer.id }, data: { marketingConsent: false } });
+    await db.consent.create({ data: { userId: customer.id, type: "MARKETING", granted: false, version: "message", userAgent: `channel:${channel}` } });
+    await deliver(conv.id, "Вы отписаны от рассылок T.Rodionova. Сервисные сообщения о заказах продолжат приходить.", { system: true });
+  }
+
   // 4. Темы, номера заказов, приоритет
   const topics = detectTopics(msg.text);
   const numbers = detectOrderNumbers(msg.text);

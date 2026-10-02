@@ -136,6 +136,7 @@ export const CHANNEL: Record<Channel, { label: string; short: string; color: str
   INSTAGRAM: { label: "Instagram", short: "IG", color: "#C13584" },
   VK: { label: "ВКонтакте", short: "VK", color: "#0077FF" },
   EMAIL: { label: "Email", short: "@", color: "#6F675E" },
+  SMS: { label: "SMS", short: "SMS", color: "#8B7F71" },
   WEBSITE: { label: "Сайт", short: "TR", color: "#A89B8C" },
 };
 

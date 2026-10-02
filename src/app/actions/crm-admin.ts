@@ -142,7 +142,7 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
   return { ok: true, message: "Сохранено" };
 }
 
-const CHANNEL_NAMES: Record<Channel, string> = { TELEGRAM: "Telegram", WHATSAPP: "WhatsApp", INSTAGRAM: "Instagram", VK: "ВКонтакте", EMAIL: "Email", WEBSITE: "Сайт" };
+const CHANNEL_NAMES: Record<Channel, string> = { TELEGRAM: "Telegram", WHATSAPP: "WhatsApp", INSTAGRAM: "Instagram", VK: "ВКонтакте", EMAIL: "Email", SMS: "SMS", WEBSITE: "Сайт" };
 
 export async function saveChannelAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireSection("integrations");

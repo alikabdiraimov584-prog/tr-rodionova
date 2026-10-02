@@ -24,6 +24,7 @@ const GUIDES: Record<Exclude<Channel, "WEBSITE">, string[]> = {
   INSTAGRAM: ["Meta: provider = meta, токен страницы/IG и verify token; подпишите приложение на messages.", "Или через Wazzup24: provider = wazzup, тот же API-ключ и channelId канала Instagram."],
   VK: ["Управление сообществом → Работа с API → Callback API: вставьте URL ниже, версию 5.199, событие «Входящее сообщение».", "Скопируйте строку подтверждения и секретный ключ в поля, ключ доступа — с правом «сообщения»."],
   EMAIL: ["Входящие: в Postmark (или другом сервисе) настройте Inbound webhook на URL ниже.", "Исходящие: укажите адрес отправителя и server token Postmark."],
+  SMS: ["Только исходящие рассылки и уведомления через smsc.ru. Имя отправителя регистрируется у оператора."],
 };
 
 export default async function Channels() {

@@ -67,6 +67,8 @@ model User {
   consents          Consent[]
 
   // Атрибуция первого касания
+  campaigns     CampaignRecipient[]
+  unsubscribeToken String @unique @default(cuid())
   firstChannel  TrafficChannel?
   firstSource   String?
   firstMedium   String?
@@ -531,6 +533,7 @@ enum Channel {
   INSTAGRAM
   VK
   EMAIL
+  SMS
   WEBSITE
 }
 
@@ -750,4 +753,60 @@ model AnalyticsEvent {
 
   @@index([type, createdAt])
   @@index([sessionId])
+}
+
+// ───────────────────────────── Рассылки ─────────────────────────────
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum RecipientStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  name           String
+  channel        Channel
+  status         CampaignStatus @default(DRAFT)
+  subject        String? // для email
+  text           String
+  segment        Json           @default("{}") // фильтры аудитории
+  audienceCount  Int            @default(0)
+  trackingLinkId String? // {ссылка} в тексте → /go/<slug>
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  sentAt         DateTime?
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  skippedCount   Int            @default(0)
+  createdBy      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  recipients     CampaignRecipient[]
+
+  @@index([status, scheduledAt])
+}
+
+model CampaignRecipient {
+  id         String          @id @default(cuid())
+  campaignId String
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address    String // email, chat id, телефон
+  status     RecipientStatus @default(QUEUED)
+  error      String?
+  sentAt     DateTime?
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, status])
 }

@@ -247,6 +247,21 @@ const email = {
   },
 };
 
+// ───────────── SMS (smsc.ru, только исходящие) ─────────────
+
+const sms = {
+  async parse(): Promise<ParseResult> {
+    return { messages: [] };
+  },
+  async send(config: ChannelConfig, to: string, text: string): Promise<SendResult> {
+    if (!config.login || !config.password) return { ok: false, error: "Не заданы логин и пароль smsc.ru" };
+    const params = new URLSearchParams({ login: config.login, psw: config.password, phones: to, mes: text, sender: config.sender ?? "", fmt: "3", charset: "utf-8" });
+    const res = await fetch(`https://smsc.ru/sys/send.php?${params}`, { signal: AbortSignal.timeout(10_000) });
+    const r = (await res.json()) as { id?: number; error?: string; error_code?: number };
+    return r.id ? { ok: true, externalId: `sms_${r.id}` } : { ok: false, error: r.error ?? "Ошибка smsc.ru" };
+  },
+};
+
 type Adapter = {
   parse: (ctx: WebhookContext) => Promise<ParseResult>;
   send: (config: ChannelConfig, to: string, text: string, subject?: string | null) => Promise<SendResult>;
@@ -259,6 +274,7 @@ export const ADAPTERS: Partial<Record<Channel, Adapter>> = {
   INSTAGRAM: instagram,
   VK: vk,
   EMAIL: email,
+  SMS: sms,
 };
 
 /** Поля настройки каждого канала для админки. secret: true — не показываем значение после сохранения. */
@@ -289,5 +305,10 @@ export const CHANNEL_FIELDS: Record<Exclude<Channel, "WEBSITE">, { key: string; 
   EMAIL: [
     { key: "from", label: "Адрес отправителя", hint: "care@t-rodionova.ru" },
     { key: "postmarkToken", label: "Postmark server token", secret: true },
+  ],
+  SMS: [
+    { key: "login", label: "smsc.ru: логин" },
+    { key: "password", label: "smsc.ru: пароль", secret: true },
+    { key: "sender", label: "Имя отправителя", hint: "TRodionova" },
   ],
 };

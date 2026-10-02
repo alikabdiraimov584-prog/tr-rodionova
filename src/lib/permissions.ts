@@ -4,6 +4,7 @@ import type { Role } from "@/generated/prisma/enums";
 export const SECTIONS = {
   dashboard: ["MANAGER", "ADMIN"],
   analytics: ["MANAGER", "ADMIN"],
+  campaigns: ["MANAGER", "ADMIN"],
   support: ["SUPPORT", "MANAGER", "ADMIN"],
   orders: ["SUPPORT", "MANAGER", "ADMIN"],
   ordersEdit: ["MANAGER", "ADMIN"],
