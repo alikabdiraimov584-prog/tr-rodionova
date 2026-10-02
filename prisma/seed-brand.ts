@@ -4,7 +4,7 @@ const RUB = 100;
 
 /**
  * Вещи бренда из присланных эскизов. Фото подставляются из public/images/brand/<sku>/*.jpg,
- * если файлы есть (см. scripts/attach-brand-photos.mjs), иначе остаются заглушки.
+ * если файлы есть (см. scripts/attach-brand-photos.ts), иначе остаются заглушки.
  */
 export async function seedBrand(db: PrismaClient) {
   const cat = async (slug: string) => (await db.category.findUnique({ where: { slug } }))?.id ?? null;
