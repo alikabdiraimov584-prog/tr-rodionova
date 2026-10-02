@@ -1,0 +1,480 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Пользователи и роли ─────────────────────────────
+
+enum Role {
+  CUSTOMER
+  MANAGER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  firstName    String
+  lastName     String?
+  birthday     DateTime?
+  role         Role      @default(CUSTOMER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Лояльность
+  loyaltyTierId  String?
+  loyaltyTier    LoyaltyTier? @relation(fields: [loyaltyTierId], references: [id])
+  pointsBalance  Int          @default(0)
+  lifetimeSpent  Int          @default(0) // копейки, за всё время
+  yearSpent      Int          @default(0) // копейки, за последние 12 мес (пересчитывается)
+  referralCode   String       @unique @default(cuid())
+  referredById   String?
+  referredBy     User?        @relation("Referrals", fields: [referredById], references: [id])
+  referrals      User[]       @relation("Referrals")
+
+  // CRM
+  tags       String[] @default([])
+  source     String? // откуда пришёл клиент
+  notes      CustomerNote[]
+  tasks      CrmTask[]      @relation("TaskCustomer")
+  assigned   CrmTask[]      @relation("TaskAssignee")
+  addresses  Address[]
+  orders     Order[]
+  wishlist   WishlistItem[]
+  cart       CartItem[]
+  points     PointsTransaction[]
+  reviews    Review[]
+  auditLogs  AuditLog[]
+  promoUses  PromoUse[]
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String? // «Дом», «Работа»
+  city      String
+  street    String
+  building  String
+  apartment String?
+  postcode  String?
+  comment   String?
+  isDefault Boolean @default(false)
+  orders    Order[]
+}
+
+// ───────────────────────────── Каталог ─────────────────────────────
+
+model Category {
+  id       String     @id @default(cuid())
+  slug     String     @unique
+  name     String
+  order    Int        @default(0)
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+}
+
+model Collection {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  coverUrl    String?
+  season      String? // «SS26», «AW26»
+  isActive    Boolean   @default(true)
+  products    Product[]
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  sku          String        @unique
+  name         String
+  description  String?
+  composition  String? // «70% шерсть, 30% полиэстер»
+  care         String? // уход
+  madeIn       String?       @default("Europe")
+  price        Int // копейки
+  compareAt    Int? // старая цена
+  costPrice    Int? // себестоимость, копейки
+  status       ProductStatus @default(ACTIVE)
+  isNew        Boolean       @default(false)
+  isFeatured   Boolean       @default(false)
+  categoryId   String?
+  category     Category?     @relation(fields: [categoryId], references: [id])
+  collectionId String?
+  collection   Collection?   @relation(fields: [collectionId], references: [id])
+  images       ProductImage[]
+  variants     ProductVariant[]
+  wishlist     WishlistItem[]
+  reviews      Review[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  order     Int     @default(0)
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String      @unique
+  size       String // XS, S, M, L, 36, 38…
+  color      String?
+  colorHex   String?
+  price      Int? // переопределение цены варианта
+  stock      Int         @default(0)
+  reserved   Int         @default(0) // зарезервировано под неоплаченные заказы
+  barcode    String?
+  movements  StockMovement[]
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+}
+
+enum StockMovementType {
+  RECEIPT // приход от производства/поставщика
+  SALE // продажа
+  RETURN // возврат от клиента
+  WRITE_OFF // списание (брак, потеря)
+  ADJUSTMENT // инвентаризация
+  RESERVE
+  RELEASE
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  variantId String
+  variant   ProductVariant    @relation(fields: [variantId], references: [id])
+  type      StockMovementType
+  quantity  Int // +/-
+  unitCost  Int? // копейки
+  orderId   String?
+  order     Order?            @relation(fields: [orderId], references: [id])
+  reason    String?
+  createdBy String?
+  createdAt DateTime          @default(now())
+}
+
+model WishlistItem {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int            @default(1)
+
+  @@unique([userId, variantId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  text      String?
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────────── Заказы ─────────────────────────────
+
+enum OrderStatus {
+  NEW // создан, ожидает оплаты
+  PAID // оплачен
+  CONFIRMED // подтверждён менеджером
+  PACKING // комплектуется
+  SHIPPED // передан в доставку
+  DELIVERED // доставлен
+  COMPLETED // завершён (прошёл срок возврата)
+  CANCELLED
+  RETURNED // полный возврат
+}
+
+enum PaymentMethod {
+  CARD
+  SBP
+  INSTALLMENT // рассрочка
+  CASH_ON_DELIVERY
+  MANUAL // оплата вручную (перевод)
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum DeliveryMethod {
+  COURIER // курьер по Москве/СПб
+  CDEK
+  BOXBERRY
+  YANDEX
+  PICKUP
+}
+
+model Order {
+  id            String         @id @default(cuid())
+  number        Int            @unique @default(autoincrement())
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id])
+  status        OrderStatus    @default(NEW)
+  // Контакты (копируются на момент заказа)
+  email         String
+  phone         String
+  firstName     String
+  lastName      String?
+  // Доставка
+  deliveryMethod DeliveryMethod
+  addressId     String?
+  address       Address?       @relation(fields: [addressId], references: [id])
+  addressText   String?
+  trackingNumber String?
+  deliveryCost  Int            @default(0)
+  // Суммы в копейках
+  subtotal      Int
+  discount      Int            @default(0)
+  pointsUsed    Int            @default(0)
+  pointsEarned  Int            @default(0)
+  total         Int
+  promoCodeId   String?
+  promoCode     PromoCode?     @relation(fields: [promoCodeId], references: [id])
+  comment       String?
+  managerNote   String?
+  items         OrderItem[]
+  payments      Payment[]
+  movements     StockMovement[]
+  history       OrderEvent[]
+  pointsTx      PointsTransaction[]
+  ledger        LedgerEntry[]
+  promoUses     PromoUse[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model OrderItem {
+  id          String         @id @default(cuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+  productName String
+  size        String
+  color       String?
+  sku         String
+  price       Int // цена за единицу на момент заказа
+  costPrice   Int? // себестоимость на момент заказа
+  quantity    Int
+  returnedQty Int            @default(0)
+}
+
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus?
+  message   String
+  createdBy String?
+  createdAt DateTime    @default(now())
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  orderId    String
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method     PaymentMethod
+  status     PaymentStatus @default(PENDING)
+  amount     Int
+  externalId String? // id платежа в ЮKassa
+  payload    Json?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+// ───────────────────────────── Лояльность ─────────────────────────────
+
+model LoyaltyTier {
+  id            String  @id @default(cuid())
+  code          String  @unique // BASE, SILVER, GOLD, BLACK
+  name          String
+  threshold     Int // сумма покупок за 12 мес (копейки) для входа
+  cashbackPct   Int // % начисления баллами
+  maxPayPct     Int // макс. % чека, оплачиваемый баллами
+  perks         String[] @default([])
+  freeShipping  Boolean @default(false)
+  freeReturns   Boolean @default(false)
+  earlyAccess   Boolean @default(false)
+  stylist       Boolean @default(false)
+  birthdayBonus Int     @default(0) // баллов в подарок
+  order         Int     @default(0)
+  users         User[]
+}
+
+enum PointsType {
+  EARN_PURCHASE
+  EARN_WELCOME
+  EARN_BIRTHDAY
+  EARN_REFERRAL
+  EARN_REVIEW
+  EARN_MANUAL
+  SPEND_PURCHASE
+  REVERT // отмена начисления при возврате
+  EXPIRE
+}
+
+model PointsTransaction {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      PointsType
+  amount    Int // +/-
+  orderId   String?
+  order     Order?     @relation(fields: [orderId], references: [id])
+  comment   String?
+  expiresAt DateTime?
+  createdBy String?
+  createdAt DateTime   @default(now())
+}
+
+enum PromoType {
+  PERCENT
+  FIXED
+  FREE_SHIPPING
+}
+
+model PromoCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  type        PromoType
+  value       Int // % или копейки
+  minSubtotal Int       @default(0)
+  maxUses     Int?
+  perUser     Int       @default(1)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+  orders      Order[]
+  uses        PromoUse[]
+  createdAt   DateTime  @default(now())
+}
+
+model PromoUse {
+  id      String    @id @default(cuid())
+  promoId String
+  promo   PromoCode @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  userId  String?
+  user    User?     @relation(fields: [userId], references: [id])
+  orderId String
+  order   Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  usedAt  DateTime  @default(now())
+}
+
+// ───────────────────────────── CRM ─────────────────────────────
+
+model CustomerNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+model CrmTask {
+  id         String     @id @default(cuid())
+  title      String
+  details    String?
+  status     TaskStatus @default(OPEN)
+  dueAt      DateTime?
+  customerId String?
+  customer   User?      @relation("TaskCustomer", fields: [customerId], references: [id])
+  assigneeId String?
+  assignee   User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  payload   Json?
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────────── Финансы ─────────────────────────────
+
+enum LedgerType {
+  INCOME_SALE
+  INCOME_OTHER
+  EXPENSE_COGS // себестоимость товара
+  EXPENSE_SHIPPING
+  EXPENSE_MARKETING
+  EXPENSE_PRODUCTION
+  EXPENSE_SALARY
+  EXPENSE_RENT
+  EXPENSE_ACQUIRING
+  EXPENSE_OTHER
+  REFUND
+}
+
+model LedgerEntry {
+  id        String     @id @default(cuid())
+  type      LedgerType
+  amount    Int // копейки, всегда положительное; знак определяется типом
+  date      DateTime   @default(now())
+  orderId   String?
+  order     Order?     @relation(fields: [orderId], references: [id])
+  category  String?
+  comment   String?
+  createdBy String?
+  createdAt DateTime   @default(now())
+}
+
+model Setting {
+  key   String @id
+  value Json
+}

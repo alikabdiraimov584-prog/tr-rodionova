@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+<rect width="800" height="1000" fill="#D9C29F"/>
+<rect x="120" y="80" width="560" height="840" fill="rgba(0,0,0,0.06)"/>
+<text x="400" y="520" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="140" fill="#0E0E0E" opacity="0.55">TR</text>
+<text x="400" y="600" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" letter-spacing="6" fill="#0E0E0E" opacity="0.6">ШАРФ</text>
+</svg>
