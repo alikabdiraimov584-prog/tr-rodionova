@@ -32,7 +32,9 @@ export default async function Channels() {
   const byChannel = new Map(rows.map((r) => [r.channel, r]));
   const h = await headers();
   const base = process.env.APP_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
-  const counts = await db.conversation.groupBy({ by: ["channel"], where: { createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }, _count: true });
+  const monthAgo = new Date();
+  monthAgo.setDate(monthAgo.getDate() - 30);
+  const counts = await db.conversation.groupBy({ by: ["channel"], where: { createdAt: { gte: monthAgo } }, _count: true });
   const countBy = new Map(counts.map((c) => [c.channel, c._count]));
   return (
     <div className="space-y-6">

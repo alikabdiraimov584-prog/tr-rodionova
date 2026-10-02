@@ -10,6 +10,7 @@ import { audit } from "@/lib/audit";
 import type { ActionState } from "@/lib/action-result";
 import { homeFor } from "@/lib/permissions";
 import { recordConsent } from "@/lib/consent";
+import { trackEvent } from "@/lib/web-analytics";
 
 function safeNext(next: FormDataEntryValue | null, fallback: string) {
   const n = typeof next === "string" ? next : "";
@@ -78,6 +79,7 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
     return u;
   });
   await loginAs(user.id, user.role);
+  await trackEvent("REGISTER", { userId: user.id });
   redirect(safeNext(formData.get("next"), "/account?welcome=1"));
 }
 

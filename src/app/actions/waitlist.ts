@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser, requireUser } from "@/lib/auth";
 import type { ActionState } from "@/lib/action-result";
+import { trackEvent } from "@/lib/web-analytics";
 
 export async function subscribeStockAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const slug = String(formData.get("slug") ?? "");
@@ -18,6 +19,7 @@ export async function subscribeStockAction(_: ActionState, formData: FormData): 
     update: { notifiedAt: null },
     create: { userId: user.id, variantId },
   });
+  await trackEvent("WAITLIST", { productId: variant.productId, userId: user.id });
   revalidatePath("/account/waitlist");
   return { ok: true, message: "Мы сообщим, когда размер появится. Список — в личном кабинете." };
 }

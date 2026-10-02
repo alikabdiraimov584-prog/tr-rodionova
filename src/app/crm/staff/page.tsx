@@ -24,7 +24,9 @@ export default async function Staff() {
     include: { _count: { select: { assignedChats: { where: { status: { not: "CLOSED" } } }, assigned: { where: { status: "OPEN" } } } } },
     orderBy: [{ isActive: "desc" }, { role: "desc" }, { firstName: "asc" }],
   });
-  const replies = await db.message.groupBy({ by: ["authorId"], where: { direction: "OUT", createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } }, _count: true });
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const replies = await db.message.groupBy({ by: ["authorId"], where: { direction: "OUT", createdAt: { gte: weekAgo } }, _count: true });
   const repliesBy = new Map(replies.map((r) => [r.authorId, r._count]));
   return (
     <div className="space-y-6">

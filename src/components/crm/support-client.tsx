@@ -3,19 +3,20 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { linkCustomerAction, markReadAction, replyAction, saveTemplateAction, simulateInboundAction } from "@/app/actions/support";
 import { CHANNEL } from "@/lib/labels";
+import type { ActionState } from "@/lib/action-result";
 
 type Template = { id: string; title: string; shortcut: string | null; text: string };
 
 export function Composer({ conversationId, templates, ctx, hint }: { conversationId: string; templates: Template[]; ctx: { name?: string | null; tier?: string | null; points?: number | null; order?: number | null }; hint?: string }) {
-  const [state, action, pending] = useActionState(replyAction, undefined);
   const [text, setText] = useState("");
   const [note, setNote] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const modeRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (state?.ok && !state.error) setText("");
-  }, [state]);
+  const [state, action, pending] = useActionState(async (prev: ActionState, fd: FormData) => {
+    const r = await replyAction(prev, fd);
+    if (r?.ok && !r.error) setText("");
+    return r;
+  }, undefined);
 
   const render = (t: string) =>
     t

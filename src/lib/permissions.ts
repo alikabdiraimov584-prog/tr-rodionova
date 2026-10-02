@@ -3,6 +3,7 @@ import type { Role } from "@/generated/prisma/enums";
 /** Разделы CRM и роли, которым они доступны. */
 export const SECTIONS = {
   dashboard: ["MANAGER", "ADMIN"],
+  analytics: ["MANAGER", "ADMIN"],
   support: ["SUPPORT", "MANAGER", "ADMIN"],
   orders: ["SUPPORT", "MANAGER", "ADMIN"],
   ordersEdit: ["MANAGER", "ADMIN"],

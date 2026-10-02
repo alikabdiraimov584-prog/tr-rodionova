@@ -137,11 +137,15 @@ export async function revertOrderPoints(tx: Tx, orderId: string, createdBy?: str
     }
   }
   if (order.pointsUsed > 0) {
-    await addPoints(tx, order.userId, "EARN_MANUAL", order.pointsUsed, {
-      orderId,
-      comment: `Возврат баллов по заказу №${order.number}`,
-      createdBy,
-    });
+    const already = await tx.pointsTransaction.aggregate({ where: { orderId, type: "EARN_MANUAL", comment: { startsWith: "Возврат баллов" } }, _sum: { amount: true } });
+    const left = order.pointsUsed - (already._sum.amount ?? 0);
+    if (left > 0) {
+      await addPoints(tx, order.userId, "EARN_MANUAL", left, {
+        orderId,
+        comment: `Возврат баллов по заказу №${order.number}`,
+        createdBy,
+      });
+    }
   }
 }
 

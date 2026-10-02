@@ -65,6 +65,13 @@ model User {
   assignedChats     Conversation[] @relation("ConversationAssignee")
   supportMessages   Message[]      @relation("MessageAuthor")
   consents          Consent[]
+
+  // Атрибуция первого касания
+  firstChannel  TrafficChannel?
+  firstSource   String?
+  firstMedium   String?
+  firstCampaign String?
+  sessions      VisitorSession[]
 }
 
 model Address {
@@ -309,6 +316,13 @@ model Order {
   pointsTx      PointsTransaction[]
   ledger        LedgerEntry[]
   promoUses     PromoUse[]
+  // Атрибуция заказа (последний клик)
+  sessionId     String?
+  session       VisitorSession? @relation(fields: [sessionId], references: [id])
+  channel       TrafficChannel?
+  source        String?
+  medium        String?
+  campaign      String?
   paidAt        DateTime?
   deliveredAt   DateTime? // от этой даты считается 14-дневный срок возврата
   completedAt   DateTime? // баллы начисляются при завершении
@@ -651,4 +665,89 @@ model Consent {
   createdAt DateTime    @default(now())
 
   @@index([userId, type, createdAt])
+}
+
+// ───────────────────────────── Веб-аналитика (first-party) ─────────────────────────────
+
+enum TrafficChannel {
+  DIRECT
+  ORGANIC // поисковики
+  SOCIAL // соцсети и мессенджеры
+  PAID // платная реклама (utm_medium cpc/paid/ads)
+  EMAIL
+  REFERRAL
+  INTERNAL // переходы из рассылок и ссылок бренда (трекинговые ссылки без medium)
+}
+
+/** Трекинговая ссылка бренда: /go/<slug> → целевая страница с UTM. */
+model TrackingLink {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  targetPath String   @default("/")
+  source     String
+  medium     String
+  campaign   String?
+  content    String?
+  clicks     Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  sessions   VisitorSession[]
+}
+
+model VisitorSession {
+  id             String         @id @default(cuid())
+  visitorId      String
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id])
+  startedAt      DateTime       @default(now())
+  lastSeenAt     DateTime       @default(now())
+  pageviews      Int            @default(0)
+  landingPath    String
+  referrer       String?
+  referrerHost   String?
+  channel        TrafficChannel @default(DIRECT)
+  source         String? // utm_source или хост реферера
+  medium         String?
+  campaign       String?
+  content        String?
+  term           String?
+  trackingLinkId String?
+  trackingLink   TrackingLink?  @relation(fields: [trackingLinkId], references: [id])
+  device         String? // mobile / tablet / desktop
+  browser        String?
+  os             String?
+  events         AnalyticsEvent[]
+  orders         Order[]
+
+  @@index([startedAt])
+  @@index([visitorId, lastSeenAt])
+  @@index([channel, startedAt])
+}
+
+enum EventType {
+  PAGEVIEW
+  PRODUCT_VIEW
+  ADD_TO_CART
+  WISHLIST
+  WAITLIST
+  CHECKOUT_START
+  ORDER
+  REGISTER
+}
+
+model AnalyticsEvent {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   VisitorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type      EventType
+  path      String?
+  productId String?
+  orderId   String?
+  value     Int? // копейки для ORDER
+  createdAt DateTime       @default(now())
+
+  @@index([type, createdAt])
+  @@index([sessionId])
 }

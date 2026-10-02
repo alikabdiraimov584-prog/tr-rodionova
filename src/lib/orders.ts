@@ -6,6 +6,7 @@ import { earnForOrder, revertOrderPoints, grantReferralBonus, recalcTier, addPoi
 
 export const RETURN_WINDOW_DAYS = 14;
 import { audit } from "@/lib/audit";
+import { currentSession, trackEvent } from "@/lib/web-analytics";
 import type { Prisma } from "@/generated/prisma/client";
 import type { OrderStatus, DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 
@@ -22,6 +23,12 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   CANCELLED: [],
   RETURNED: [],
 };
+
+/** Деньги к возврату за позиции на сумму returnedValue (по ценам): пропорционально фактически оплаченной деньгами части без доставки. */
+export function refundFor(order: { subtotal: number; total: number; deliveryCost: number }, returnedValue: number) {
+  if (!order.subtotal) return 0;
+  return Math.round((returnedValue * Math.max(0, order.total - order.deliveryCost)) / order.subtotal);
+}
 
 export function canTransition(from: OrderStatus, to: OrderStatus) {
   return ORDER_TRANSITIONS[from].includes(to);
@@ -154,10 +161,16 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
   }
   if (input.deliveryMethod !== "PICKUP" && !input.addressId && !input.addressText) throw new Error("Укажите адрес доставки");
 
-  return db.$transaction(async (tx) => {
+  const session = await currentSession();
+  const order = await db.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
         userId,
+        sessionId: session?.id ?? null,
+        channel: session?.channel ?? null,
+        source: session?.source ?? null,
+        medium: session?.medium ?? null,
+        campaign: session?.campaign ?? null,
         email: input.email,
         phone: input.phone,
         firstName: input.firstName,
@@ -199,6 +212,8 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
     await audit(userId, "order.create", "Order", order.id, { total: quote.total }, tx);
     return order;
   });
+  await trackEvent("ORDER", { orderId: order.id, value: order.total, userId });
+  return order;
 }
 
 // ───────────── Оплата и статусы ─────────────
@@ -262,14 +277,17 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
     if (!canTransition(order.status, status)) throw new Error(`Переход ${order.status} → ${status} недопустим`);
     if (status === "RETURNED") {
-      const value = await returnOrderItems(
+      const alreadyReturned = order.items.reduce((s, i) => s + i.price * i.returnedQty, 0);
+      await returnOrderItems(
         tx,
         orderId,
         order.items.map((i) => ({ orderItemId: i.id, qty: i.quantity - i.returnedQty })),
         { reason: opts.note ?? "Полный возврат", createdBy: opts.createdBy },
       );
-      await tx.payment.updateMany({ where: { orderId, status: "SUCCEEDED" }, data: { status: "REFUNDED" } });
-      await tx.ledgerEntry.create({ data: { type: "REFUND", amount: value, orderId, comment: `Возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
+      // возвращаем оплаченное деньгами за товары (без доставки) за вычетом уже возвращённого ранее
+      const refund = Math.max(0, order.total - order.deliveryCost) - refundFor(order, alreadyReturned);
+      await tx.payment.updateMany({ where: { orderId, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED"] } }, data: { status: "REFUNDED" } });
+      if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
       if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
     }
     await tx.order.update({
@@ -298,17 +316,22 @@ export async function partialReturn(orderId: string, lines: { orderItemId: strin
     if (!["DELIVERED", "COMPLETED", "SHIPPED"].includes(order.status)) throw new Error("Возврат возможен только после доставки");
     const value = await returnOrderItems(tx, orderId, lines, opts);
     if (value > 0) {
-      await tx.ledgerEntry.create({ data: { type: "REFUND", amount: value, orderId, comment: `Частичный возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
+      const refund = refundFor(order, value);
+      if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Частичный возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
       await tx.payment.updateMany({ where: { orderId, status: "SUCCEEDED" }, data: { status: "PARTIALLY_REFUNDED" } });
       if (order.userId) {
-        // Пересчитываем начисленные баллы пропорционально
         const items = await tx.orderItem.findMany({ where: { orderId } });
         const allReturned = items.every((i) => i.returnedQty >= i.quantity);
         if (allReturned) {
           await revertOrderPoints(tx, orderId, opts.createdBy);
           await tx.order.update({ where: { id: orderId }, data: { status: "RETURNED" } });
           await addOrderEvent(tx, orderId, "Все позиции возвращены", "RETURNED", opts.createdBy);
-        } else if (order.pointsEarned > 0) {
+        } else {
+          // списанные баллы возвращаем пропорционально возвращённым позициям
+          const pointsBack = Math.floor((order.pointsUsed * value) / Math.max(1, order.subtotal));
+          if (pointsBack > 0) await addPoints(tx, order.userId, "EARN_MANUAL", pointsBack, { orderId, comment: `Возврат баллов за позиции заказа №${order.number}`, createdBy: opts.createdBy });
+        }
+        if (!allReturned && order.pointsEarned > 0) {
           const base = Math.max(1, order.total - order.deliveryCost);
           const revert = Math.min(order.pointsEarned, Math.floor((order.pointsEarned * value) / base));
           const user = await tx.user.findUniqueOrThrow({ where: { id: order.userId } });
@@ -318,7 +341,7 @@ export async function partialReturn(orderId: string, lines: { orderItemId: strin
         await recalcTier(tx, order.userId);
       }
     }
-    await addOrderEvent(tx, orderId, `Возврат позиций на ${Math.round(value / 100).toLocaleString("ru-RU")} ₽`, null, opts.createdBy);
+    await addOrderEvent(tx, orderId, `Возврат позиций: к выплате ${Math.round(refundFor(order, value) / 100).toLocaleString("ru-RU")} ₽`, null, opts.createdBy);
     await audit(opts.createdBy ?? null, "order.partialReturn", "Order", orderId, { lines, value }, tx);
     return value;
   });

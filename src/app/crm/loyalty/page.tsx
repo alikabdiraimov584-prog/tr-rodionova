@@ -15,15 +15,16 @@ export const metadata: Metadata = { title: "Лояльность" };
 export default async function Loyalty() {
   const me = await requireSection("loyalty");
   const editable = can(me.role, "loyaltyEdit");
-  const d30 = new Date(Date.now() - 30 * 86_400_000);
-  const in30 = new Date(Date.now() + 30 * 86_400_000);
+  const now = new Date();
+  const d30 = new Date(now.getTime() - 30 * 86_400_000);
+  const in30 = new Date(now.getTime() + 30 * 86_400_000);
   const [tiers, s, liability, byType, members, expiring, lastJob, referrals] = await Promise.all([
     db.loyaltyTier.findMany({ orderBy: { threshold: "asc" }, include: { _count: { select: { users: { where: { role: "CUSTOMER" } } } } } }),
     getSetting("loyalty"),
     db.user.aggregate({ where: { role: "CUSTOMER" }, _sum: { pointsBalance: true }, _count: true }),
     db.pointsTransaction.groupBy({ by: ["type"], where: { createdAt: { gte: d30 } }, _sum: { amount: true } }),
     db.user.count({ where: { role: "CUSTOMER", orders: { some: { status: { in: ["PAID", "CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] } } } } }),
-    db.pointsTransaction.aggregate({ where: { amount: { gt: 0 }, expiresAt: { gte: new Date(), lt: in30 } }, _sum: { amount: true } }),
+    db.pointsTransaction.aggregate({ where: { amount: { gt: 0 }, expiresAt: { gte: now, lt: in30 } }, _sum: { amount: true } }),
     db.auditLog.findFirst({ where: { action: "jobs.daily" }, orderBy: { createdAt: "desc" } }),
     db.user.count({ where: { referredById: { not: null } } }),
   ]);

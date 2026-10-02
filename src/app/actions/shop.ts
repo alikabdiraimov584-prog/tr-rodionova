@@ -8,6 +8,7 @@ import { getCurrentUser, requireUser } from "@/lib/auth";
 import { createOrderFromCart, cancelOrder, markOrderPaid } from "@/lib/orders";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
+import { trackEvent } from "@/lib/web-analytics";
 
 export async function addToCartAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
@@ -25,6 +26,7 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
     update: { quantity: want },
     create: { userId: user.id, variantId, quantity: 1 },
   });
+  await trackEvent("ADD_TO_CART", { productId: variant.productId, userId: user.id });
   revalidatePath("/", "layout");
   return { ok: true, message: "Добавлено в корзину" };
 }
@@ -50,7 +52,10 @@ export async function toggleWishlistAction(formData: FormData) {
   if (!user) redirect(`/login?next=${encodeURIComponent(back)}`);
   const existing = await db.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId } } });
   if (existing) await db.wishlistItem.delete({ where: { userId_productId: { userId: user.id, productId } } });
-  else await db.wishlistItem.create({ data: { userId: user.id, productId } });
+  else {
+    await db.wishlistItem.create({ data: { userId: user.id, productId } });
+    await trackEvent("WISHLIST", { productId, userId: user.id });
+  }
   revalidatePath("/", "layout");
 }
 

@@ -46,7 +46,7 @@ export async function saveLoyaltySettingsAction(_: ActionState, formData: FormDa
   return { ok: true, message: "Сохранено" };
 }
 
-export async function runJobsAction(_: ActionState): Promise<ActionState> {
+export async function runJobsAction(): Promise<ActionState> {
   const me = await requireSection("loyalty");
   try {
     const r = await runDailyJobs(me.id);

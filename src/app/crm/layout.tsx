@@ -20,6 +20,7 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
   ]);
   const all: { href: string; label: string; badge?: number; section: Section }[] = [
     { href: "/crm", label: "Дашборд", section: "dashboard" },
+    { href: "/crm/analytics", label: "Аналитика", section: "analytics" },
     { href: "/crm/support", label: "Поддержка", badge: openChats, section: "support" },
     { href: "/crm/orders", label: "Заказы", badge: newOrders, section: "orders" },
     { href: "/crm/customers", label: "Клиенты", section: "customers" },

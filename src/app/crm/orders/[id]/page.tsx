@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { ORDER_TRANSITIONS } from "@/lib/orders";
 import { formatDate, formatMoney } from "@/lib/money";
-import { DELIVERY_METHOD, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, STOCK_MOVEMENT, LEDGER_TYPE } from "@/lib/labels";
+import { DELIVERY_METHOD, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, STOCK_MOVEMENT, LEDGER_TYPE, TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle } from "@/components/ui";
 import { StatusForm, ReturnForm } from "@/components/crm/order-forms";
 import { SubmitButton } from "@/components/form";
@@ -85,6 +85,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
                   Карточка клиента · {order.user.loyaltyTier?.name} · {order.user.pointsBalance.toLocaleString("ru-RU")} баллов
                 </Link>
               )}
+              {order.channel && <div className="mt-2 text-xs text-muted">Источник заказа: {TRAFFIC_CHANNEL[order.channel]}{order.source ? ` · ${order.source}` : ""}{order.campaign ? ` · ${order.campaign}` : ""}</div>}
               {order.comment && <p className="mt-3 border-t border-line pt-3">💬 {order.comment}</p>}
             </div>
             <div className="card p-5 text-sm">

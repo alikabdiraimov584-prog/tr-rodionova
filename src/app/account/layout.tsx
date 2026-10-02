@@ -2,6 +2,8 @@ import { ShopHeader, ShopFooter } from "@/components/shop/header";
 import { AccountNav } from "@/components/account/nav";
 import { requireUser } from "@/lib/auth";
 import { logoutAction } from "@/app/actions/auth";
+import { Suspense } from "react";
+import { Analytics } from "@/components/analytics";
 
 export default async function AccountLayout({ children }: LayoutProps<"/account">) {
   const user = await requireUser("/account");
@@ -24,6 +26,9 @@ export default async function AccountLayout({ children }: LayoutProps<"/account"
         </div>
       </main>
       <ShopFooter />
+      <Suspense fallback={null}>
+        <Analytics />
+      </Suspense>
     </>
   );
 }

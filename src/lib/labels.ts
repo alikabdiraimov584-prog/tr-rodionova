@@ -111,6 +111,16 @@ export const PRODUCT_STATUS: Record<ProductStatus, { label: string; tone: Tone }
   ARCHIVED: { label: "Архив", tone: "danger" },
 };
 
+export const TRAFFIC_CHANNEL: Record<string, string> = {
+  DIRECT: "Прямые заходы",
+  ORGANIC: "Поиск",
+  SOCIAL: "Соцсети и мессенджеры",
+  PAID: "Реклама",
+  EMAIL: "Рассылки",
+  REFERRAL: "Переходы с сайтов",
+  INTERNAL: "Ссылки бренда",
+};
+
 export const TIER_TONE: Record<string, Tone> = {
   BASE: "neutral",
   SILVER: "info",

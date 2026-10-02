@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# T.Rodionova — сайт, личный кабинет, программа лояльности, CRM и склад
 
-## Getting Started
+Единая платформа премиального бренда женской одежды: витрина, личный кабинет с программой лояльности **T.Rodionova Circle**, собственная CRM с клиентами, заказами, складом, финансами, веб-аналитикой и единым центром поддержки, куда стекаются чаты из Telegram, WhatsApp, Instagram, ВКонтакте, почты и с сайта.
 
-First, run the development server:
+Документы проекта:
+
+- `docs/01-market-research.md` — исследование рынка и конкурентов, обоснование решений
+- `docs/BACKLOG.md` — доска задач в формате Jira
+- `docs/legal/` — публичная оферта и политика ПДн (Markdown, DOCX, PDF)
+
+## Запуск
+
+Требуется Node.js 22 и PostgreSQL 16.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env            # заполните DATABASE_URL и AUTH_SECRET
+npx prisma migrate deploy        # схема базы
+npx prisma db seed               # каталог, уровни Circle, демо-данные (SEED_DEMO=0 — без демо)
+npm run dev                      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Демо-доступы после сида:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Роль | Email | Пароль | Куда попадает |
+|---|---|---|---|
+| Администратор | admin@t-rodionova.ru | admin12345 | /crm |
+| Менеджер | manager@t-rodionova.ru | manager12345 | /crm |
+| Поддержка | support@t-rodionova.ru | support12345 | /crm/support |
+| Клиентка | anna@example.com | anna12345 | /account |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Ежедневные задачи лояльности (завершение заказов и начисление баллов, подарки ко дню рождения, сгорание, пересчёт уровней) запускаются планировщиком:
 
-## Learn More
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron
+```
 
-To learn more about Next.js, take a look at the following resources:
+или вручную кнопкой в CRM → Лояльность.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Переменные окружения
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Переменная | Назначение |
+|---|---|
+| `DATABASE_URL` | PostgreSQL |
+| `AUTH_SECRET` | ключ подписи сессий (32+ символа) |
+| `CRON_SECRET` | токен для `/api/cron` |
+| `APP_URL` | публичный адрес сайта — для URL вебхуков и трекинговых ссылок |
 
-## Deploy on Vercel
+Токены мессенджеров хранятся в базе и настраиваются администратором в CRM → Настройки → Каналы.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Архитектура
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js 16 (App Router, Server Components, Server Actions), Prisma 7, PostgreSQL, Tailwind CSS 4. Внешних сервисов нет: авторизация, аналитика и процессинг баллов — свои.
+
+```
+src/
+  app/(shop)/        витрина: главная, каталог, товар, корзина, оформление, Circle, оферта, политика
+  app/(auth)/        вход и регистрация
+  app/account/       личный кабинет: обзор, заказы, баллы, избранное, лист ожидания, профиль, служба заботы
+  app/crm/           CRM: дашборд, аналитика, поддержка, заказы, клиенты, задачи, товары, склад,
+                     лояльность, промокоды, отзывы, финансы, сотрудники, настройки, журнал
+  app/api/           cron, вебхуки каналов, счётчик аналитики
+  app/go/[slug]      трекинговые ссылки
+  app/actions/       server actions (все проверяют права)
+  lib/               бизнес-логика: orders, loyalty, stock, jobs, finance, rfm, web-analytics,
+                     support/channels (адаптеры), support/inbox (маршрутизация)
+  proxy.ts           защита маршрутов по cookie-сессии
+prisma/              схема, миграции, сид
+```
+
+### Деньги и баллы
+
+Все суммы — целые копейки. 1 балл = 1 ₽. Баллы начисляются при переходе заказа в «Завершён» — через 14 дней после доставки, когда закончился срок возврата. Уровень Circle считается по покупкам за скользящие 12 месяцев и пересчитывается после каждой оплаты, возврата и ежедневной задачей.
+
+### Заказ
+
+`NEW → PAID → CONFIRMED → PACKING → SHIPPED → DELIVERED → COMPLETED`, из любого этапа до отправки — `CANCELLED`, после доставки — `RETURNED` или частичный возврат. Создание заказа резервирует товар, оплата списывает резерв в продажу и создаёт проводки выручки, себестоимости и эквайринга. Возврат возвращает товар на склад, деньги — пропорционально фактически оплаченному, баллы — списанные обратно, начисленные отзываются.
+
+### Поддержка
+
+Вебхук `/api/webhooks/<канал>/<секрет>` принимает сообщения, адаптер канала приводит их к единому виду, `support/inbox.ts` находит или создаёт диалог, связывает собеседника с клиентом по телефону или email, определяет темы и номера заказов, выставляет приоритет (Privé, жалобы), назначает наименее загруженного сотрудника (клиентке — того же, что раньше) и в нерабочее время шлёт автоответ. Ответ сотрудника уходит в тот же канал.
+
+### Роли
+
+`CUSTOMER` — сайт и кабинет. `SUPPORT` — поддержка, задачи, просмотр заказов и клиентов, отзывы. `MANAGER` — плюс заказы, склад, товары, лояльность, промокоды, аналитика. `ADMIN` — плюс финансы, сотрудники, настройки, каналы, журнал. Матрица — в `src/lib/permissions.ts` и на странице CRM → Сотрудники.
+
+## Проверка
+
+```bash
+npx tsc --noEmit && npm run lint && npm run build
+```

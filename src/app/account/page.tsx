@@ -13,12 +13,13 @@ export const metadata: Metadata = { title: "Личный кабинет" };
 export default async function AccountHome({ searchParams }: PageProps<"/account">) {
   const sp = await searchParams;
   const user = await requireUser("/account");
+  const now = new Date();
   const [tiers, orders, pending, expiring, wishCount] = await Promise.all([
     db.loyaltyTier.findMany({ orderBy: { threshold: "asc" } }),
     db.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 3, include: { items: true } }),
     pendingPoints(user.id),
     db.pointsTransaction.findMany({
-      where: { userId: user.id, amount: { gt: 0 }, expiresAt: { gt: new Date(), lt: new Date(Date.now() + 30 * 86_400_000) } },
+      where: { userId: user.id, amount: { gt: 0 }, expiresAt: { gt: now, lt: new Date(now.getTime() + 30 * 86_400_000) } },
       orderBy: { expiresAt: "asc" },
       take: 1,
     }),

@@ -5,7 +5,7 @@ import { requireSection } from "@/lib/auth";
 import { pendingPoints, tierProgress } from "@/lib/loyalty";
 import { rfmSegment, daysSince } from "@/lib/rfm";
 import { formatDate, formatMoney } from "@/lib/money";
-import { ORDER_STATUS, POINTS_TYPE, TASK_STATUS } from "@/lib/labels";
+import { ORDER_STATUS, POINTS_TYPE, TASK_STATUS, TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
 import { CustomerEditForm, PointsForm, TaskForm } from "@/components/crm/customer-forms";
 import { SubmitButton } from "@/components/form";
@@ -58,7 +58,7 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
           </>
         }
       >
-        {c.email} · {c.phone ?? "без телефона"} {c.birthday && `· ДР ${c.birthday.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`} · {c.marketingConsent ? "согласна на рассылки" : "без согласия на рассылки"}
+        {c.email} · {c.phone ?? "без телефона"}{c.firstChannel && ` · пришла из: ${TRAFFIC_CHANNEL[c.firstChannel]}${c.firstSource ? ` (${c.firstSource}${c.firstCampaign ? `, ${c.firstCampaign}` : ""})` : ""}`} {c.birthday && `· ДР ${c.birthday.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`} · {c.marketingConsent ? "согласна на рассылки" : "без согласия на рассылки"}
       </PageTitle>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
