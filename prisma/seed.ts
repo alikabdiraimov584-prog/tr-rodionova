@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { seedA } from "./seed-a";
 import { seedB } from "./seed-b";
+import { seedBrand } from "./seed-brand";
 
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -473,6 +474,8 @@ async function main() {
   for (const [i, [title, shortcut, text]] of templates.entries()) {
     await db.replyTemplate.upsert({ where: { shortcut }, update: {}, create: { title, shortcut, text, order: i } });
   }
+
+  await seedBrand(db);
 
   if (process.env.SEED_DEMO !== "0") {
     await seedDemo(base.id);

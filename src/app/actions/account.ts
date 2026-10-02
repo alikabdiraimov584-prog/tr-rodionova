@@ -7,6 +7,12 @@ import { requireUser, hashPassword, verifyPassword } from "@/lib/auth";
 import type { ActionState } from "@/lib/action-result";
 import { recordConsent } from "@/lib/consent";
 
+/** Мерки в см: пусто — не указано, иначе целое 50–250. */
+const measure = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+  z.coerce.number().int("Мерки — целое число в сантиметрах").min(50, "Мерки указываются в сантиметрах: от 50 до 250").max(250, "Мерки указываются в сантиметрах: от 50 до 250").nullable().optional(),
+);
+
 const ProfileSchema = z.object({
   firstName: z.string().trim().min(1, "Введите имя"),
   lastName: z.string().trim().optional(),
@@ -14,6 +20,10 @@ const ProfileSchema = z.object({
   birthday: z.string().optional(),
   preferredSize: z.string().trim().max(10).optional(),
   marketingConsent: z.string().optional(),
+  height: measure,
+  bust: measure,
+  waist: measure,
+  hips: measure,
 });
 
 export async function updateProfileAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -36,6 +46,10 @@ export async function updateProfileAction(_: ActionState, formData: FormData): P
       birthday,
       preferredSize: d.preferredSize || null,
       marketingConsent: marketing,
+      height: d.height ?? null,
+      bust: d.bust ?? null,
+      waist: d.waist ?? null,
+      hips: d.hips ?? null,
     },
   });
   revalidatePath("/account", "layout");

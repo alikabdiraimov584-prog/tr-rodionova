@@ -9,7 +9,28 @@ function Msg({ state }: { state: { error?: string; message?: string } | undefine
   return null;
 }
 
-export function ProfileForm({ user }: { user: { firstName: string; lastName: string | null; phone: string | null; email: string; birthday: string | null; preferredSize: string | null; marketingConsent: boolean } }) {
+type ProfileUser = {
+  firstName: string;
+  lastName: string | null;
+  phone: string | null;
+  email: string;
+  birthday: string | null;
+  preferredSize: string | null;
+  marketingConsent: boolean;
+  height: number | null;
+  bust: number | null;
+  waist: number | null;
+  hips: number | null;
+};
+
+const MEASURES: { name: "height" | "bust" | "waist" | "hips"; label: string }[] = [
+  { name: "height", label: "Рост, см" },
+  { name: "bust", label: "Грудь, см" },
+  { name: "waist", label: "Талия, см" },
+  { name: "hips", label: "Бёдра, см" },
+];
+
+export function ProfileForm({ user }: { user: ProfileUser }) {
   const [state, action, pending] = useActionState(updateProfileAction, undefined);
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-2">
@@ -29,6 +50,18 @@ export function ProfileForm({ user }: { user: { firstName: string; lastName: str
           {["XS", "S", "M", "L", "XL"].map((s) => <option key={s}>{s}</option>)}
         </select>
       </label>
+      <div className="sm:col-span-2">
+        <span className="label">Мерки</span>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {MEASURES.map((m) => (
+            <label key={m.name}>
+              <span className="mb-1 block text-xs text-muted">{m.label}</span>
+              <input name={m.name} type="number" min={50} max={250} inputMode="numeric" defaultValue={user[m.name] ?? ""} className="input" />
+            </label>
+          ))}
+        </div>
+        <span className="mt-1 block text-xs text-muted">По меркам подскажем размер на странице каждой вещи. <a href="/sizes" className="underline">Как снять мерки</a></span>
+      </div>
       <label className="flex gap-2 text-sm sm:col-span-2">
         <input type="checkbox" name="marketingConsent" defaultChecked={user.marketingConsent} className="accent-black" />
         Получать новости о коллекциях, закрытых показах и предпродажах

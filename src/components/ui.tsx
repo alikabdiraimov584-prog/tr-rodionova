@@ -4,7 +4,7 @@ import type { Tone } from "@/lib/labels";
 
 export function Logo({ className = "", href = "/" }: { className?: string; href?: string }) {
   return (
-    <Link href={href} className={`serif text-2xl leading-none tracking-tight ${className}`}>
+    <Link href={href} className={`text-[0.95rem] font-medium uppercase leading-none tracking-[0.22em] ${className}`}>
       T.Rodionova
     </Link>
   );
@@ -31,12 +31,12 @@ export function Star({ className = "" }: { className?: string }) {
 }
 
 const toneClass: Record<Tone, string> = {
-  neutral: "border-line bg-ivory text-muted",
-  info: "border-taupe/40 bg-taupe/10 text-taupe-dark",
-  success: "border-success/30 bg-success/10 text-success",
-  warning: "border-warning/30 bg-warning/10 text-warning",
-  danger: "border-danger/30 bg-danger/10 text-danger",
-  gold: "border-champagne-dark/50 bg-champagne/30 text-champagne-dark",
+  neutral: "border-line bg-sand text-muted",
+  info: "border-info/20 bg-info/10 text-info",
+  success: "border-success/20 bg-success/10 text-success",
+  warning: "border-warning/20 bg-warning/10 text-warning",
+  danger: "border-danger/20 bg-danger/10 text-danger",
+  gold: "border-champagne-dark/40 bg-champagne/30 text-champagne-dark",
 };
 
 export function Badge({ tone = "neutral", children, className = "" }: { tone?: Tone; children: ReactNode; className?: string }) {
@@ -47,7 +47,7 @@ export function Stat({ label, value, hint, tone }: { label: string; value: React
   return (
     <div className="card p-5">
       <div className="eyebrow">{label}</div>
-      <div className={`serif mt-2 text-2xl ${tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : ""}`}>{value}</div>
+      <div className={`serif mt-2 text-xl ${tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : ""}`}>{value}</div>
       {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
     </div>
   );
@@ -57,7 +57,7 @@ export function Empty({ title, children, action }: { title: string; children?: R
   return (
     <div className="card flex flex-col items-center px-6 py-16 text-center">
       <Monogram className="text-5xl opacity-40" />
-      <h3 className="serif mt-4 text-xl">{title}</h3>
+      <h3 className="mt-4">{title}</h3>
       {children && <p className="mt-2 max-w-md text-sm text-muted">{children}</p>}
       {action && <div className="mt-6">{action}</div>}
     </div>
@@ -73,7 +73,7 @@ export function PageTitle({ eyebrow, title, children, actions }: { eyebrow?: str
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="mt-1 text-3xl md:text-4xl">{title}</h1>
+        <h1 className="mt-1">{title}</h1>
         {children && <p className="mt-2 max-w-2xl text-sm text-muted">{children}</p>}
       </div>
       {actions && <div className="flex gap-2">{actions}</div>}

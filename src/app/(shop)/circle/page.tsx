@@ -7,14 +7,17 @@ import { Eyebrow, Monogram, Star } from "@/components/ui";
 
 export const metadata: Metadata = { title: "T.Rodionova Circle — программа лояльности" };
 
-export default async function CirclePage() {
+export default async function CirclePage({ searchParams }: PageProps<"/circle">) {
+  const sp = await searchParams;
   const [tiers, s] = await Promise.all([db.loyaltyTier.findMany({ orderBy: { order: "asc" } }), getSetting("loyalty")]);
+  const early = typeof sp.early === "string";
   return (
     <div>
-      <section className="border-b border-line bg-white py-20 text-center">
-        <Monogram className="text-7xl" />
+      <section className="border-b border-line bg-white py-14 text-center">
+        {early && <p className="mx-auto mb-6 max-w-lg border border-champagne bg-champagne/20 px-4 py-3 text-sm">Эта вещь пока доступна только участницам уровней Maison и Privé в рамках раннего доступа. Вступите в Circle: уровень растёт с покупками.</p>}
+        <Monogram className="text-6xl" />
         <Eyebrow className="mt-6">Программа лояльности</Eyebrow>
-        <h1 className="mt-3 text-5xl">T.Rodionova Circle</h1>
+        <h1 className="mt-3 text-3xl">T.Rodionova Circle</h1>
         <p className="mx-auto mt-5 max-w-xl px-4 text-sm text-muted">
           Баллы с каждой покупки, подарки ко дню рождения и привилегии, которые растут вместе с вами. 1 балл = 1 ₽.
         </p>
@@ -28,8 +31,8 @@ export default async function CirclePage() {
               <div className={`eyebrow ${t.code === "PRIVE" ? "text-champagne" : ""}`}>
                 {t.threshold ? `от ${formatMoney(t.threshold)} за 12 месяцев` : "с первой покупки"}
               </div>
-              <h2 className="mt-4 text-4xl">{t.name}</h2>
-              <div className={`serif mt-6 text-6xl ${t.code === "PRIVE" ? "text-champagne" : "text-taupe-dark"}`}>{t.cashbackPct}%</div>
+              <h2 className="mt-4 text-2xl">{t.name}</h2>
+              <div className={`mt-6 text-5xl ${t.code === "PRIVE" ? "text-champagne" : "text-taupe-dark"}`}>{t.cashbackPct}%</div>
               <div className="text-xs opacity-70">возвращается баллами</div>
               <ul className="mt-8 space-y-3 text-sm">
                 {t.perks.map((p) => (

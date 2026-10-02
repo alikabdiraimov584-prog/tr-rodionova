@@ -7,6 +7,9 @@ import { Eyebrow, PageTitle } from "@/components/ui";
 import { ProductForm, VariantForm } from "@/components/crm/catalog-forms";
 import { SubmitButton } from "@/components/form";
 import { updateVariantAction } from "@/app/actions/crm-catalog";
+import { ImageUpload } from "@/components/crm/image-upload";
+import { moveProductImageAction, removeProductImageAction } from "@/app/actions/crm-upload";
+import Image from "next/image";
 
 export default async function ProductEdit({ params }: PageProps<"/crm/products/[id]">) {
   await requireSection("products");
@@ -26,6 +29,23 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
           collections={collections}
           p={{ ...p, images: p.images.map((i) => i.url) }}
         />
+      </div>
+      <div className="card p-5">
+        <Eyebrow>Фотографии</Eyebrow>
+        <p className="mt-1 text-xs text-muted">Первая — главная в каталоге, вторая показывается при наведении. Рекомендуем 3:4, от 1600 px по высоте, JPG до 12 МБ.</p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          {p.images.map((img, i) => (
+            <div key={img.id} className="w-28">
+              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-sand"><Image src={img.url} alt="" fill unoptimized className="object-cover" /></div>
+              <div className="mt-1 flex justify-between text-[0.65rem] text-muted">
+                <form action={moveProductImageAction}><input type="hidden" name="id" value={img.id} /><input type="hidden" name="dir" value="up" /><button disabled={i === 0} className="disabled:opacity-30">←</button></form>
+                <form action={removeProductImageAction}><input type="hidden" name="id" value={img.id} /><button className="hover:text-danger">удалить</button></form>
+                <form action={moveProductImageAction}><input type="hidden" name="id" value={img.id} /><input type="hidden" name="dir" value="down" /><button disabled={i === p.images.length - 1} className="disabled:opacity-30">→</button></form>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4"><ImageUpload productId={p.id} /></div>
       </div>
       <div className="card overflow-x-auto">
         <div className="p-5 pb-2"><Eyebrow>Варианты (размер × цвет)</Eyebrow></div>

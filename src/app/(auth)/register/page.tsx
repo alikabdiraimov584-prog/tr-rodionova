@@ -11,7 +11,7 @@ export default async function RegisterPage({ searchParams }: PageProps<"/registe
   const referrer = ref ? await db.user.findUnique({ where: { referralCode: ref }, select: { firstName: true } }) : null;
   return (
     <>
-      <h1 className="text-4xl">Регистрация</h1>
+      <h1 className="text-xl">Регистрация</h1>
       <p className="mb-8 mt-2 text-sm text-muted">2 000 приветственных баллов — сразу после регистрации</p>
       <RegisterForm next={next} refCode={referrer ? ref : undefined} referrerName={referrer?.firstName} />
     </>

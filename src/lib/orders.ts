@@ -104,6 +104,26 @@ export async function deliveryCost(method: DeliveryMethod, subtotalAfterDiscount
   return map[method];
 }
 
+export type GiftResult =
+  | { ok: true; card: { id: string; code: string; balance: number } }
+  | { ok: false; error: string };
+
+export function normalizeGiftCode(code: string) {
+  return code.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+/** Проверка подарочного сертификата: активен, с остатком, не истёк. */
+export async function evaluateGift(code: string | null | undefined, client: Tx | typeof db = db): Promise<GiftResult | null> {
+  if (!code || !code.trim()) return null;
+  const card = await client.giftCard.findUnique({ where: { code: normalizeGiftCode(code) } });
+  if (!card) return { ok: false, error: "Сертификат не найден" };
+  if (card.status === "PENDING") return { ok: false, error: "Сертификат ещё не оплачен" };
+  if (card.status === "CANCELLED") return { ok: false, error: "Сертификат отменён" };
+  if (card.status === "EXPIRED" || card.expiresAt < new Date()) return { ok: false, error: "Срок действия сертификата истёк" };
+  if (card.status === "USED" || card.balance <= 0) return { ok: false, error: "Сертификат уже использован полностью" };
+  return { ok: true, card: { id: card.id, code: card.code, balance: card.balance } };
+}
+
 export type Quote = {
   lines: CartLine[];
   subtotal: number;
@@ -115,11 +135,17 @@ export type Quote = {
   delivery: number;
   total: number;
   freeShippingByTier: boolean;
+  /** Код сертификата, если он прошёл проверку */
+  giftCode?: string | null;
+  giftCardId?: string | null;
+  /** Сколько списано с сертификата, копейки */
+  giftApplied: number;
+  giftError: string | null;
 };
 
 export async function quoteCart(
   userId: string,
-  input: { promoCode?: string | null; pointsToUse?: number; deliveryMethod: DeliveryMethod },
+  input: { promoCode?: string | null; pointsToUse?: number; deliveryMethod: DeliveryMethod; giftCode?: string | null },
 ): Promise<Quote> {
   const lines = await loadCart(userId);
   const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
@@ -133,8 +159,27 @@ export async function quoteCart(
   const pointsValue = pointsUsed * s.pointValueKopecks;
   const freeShippingByTier = !!user.loyaltyTier?.freeShipping;
   const delivery = await deliveryCost(input.deliveryMethod, afterDiscount, { freeShipping: freeShippingByTier || (promo?.ok && promo.freeShipping) });
-  const total = Math.max(0, afterDiscount - pointsValue) + delivery;
-  return { lines, subtotal, discount, promo, pointsMax, pointsUsed, pointsValue, delivery, total, freeShippingByTier };
+  // к оплате после промокода и баллов, включая доставку — именно это покрывает сертификат
+  const toPay = Math.max(0, afterDiscount - pointsValue) + delivery;
+  const gift = await evaluateGift(input.giftCode);
+  const giftApplied = gift?.ok ? Math.min(gift.card.balance, toPay) : 0;
+  const total = toPay - giftApplied;
+  return {
+    lines,
+    subtotal,
+    discount,
+    promo,
+    pointsMax,
+    pointsUsed,
+    pointsValue,
+    delivery,
+    total,
+    freeShippingByTier,
+    giftCode: gift?.ok ? gift.card.code : null,
+    giftCardId: gift?.ok ? gift.card.id : null,
+    giftApplied,
+    giftError: gift && !gift.ok ? gift.error : null,
+  };
 }
 
 // ───────────── Создание заказа ─────────────
@@ -151,6 +196,7 @@ export type CheckoutInput = {
   comment?: string | null;
   promoCode?: string | null;
   pointsToUse?: number;
+  giftCode?: string | null;
 };
 
 export async function createOrderFromCart(userId: string, input: CheckoutInput) {
@@ -160,9 +206,20 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
     if (l.available < l.quantity) throw new Error(`«${l.productName}», размер ${l.size}: доступно ${Math.max(0, l.available)} шт.`);
   }
   if (input.deliveryMethod !== "PICKUP" && !input.addressId && !input.addressText) throw new Error("Укажите адрес доставки");
+  if (input.giftCode && quote.giftError) throw new Error(quote.giftError);
 
   const session = await currentSession();
   const order = await db.$transaction(async (tx) => {
+    // Сертификат перепроверяем внутри транзакции: остаток мог измениться
+    let giftUsed = 0;
+    let giftCardId: string | null = null;
+    if (quote.giftCardId && quote.giftApplied > 0) {
+      const gift = await evaluateGift(quote.giftCode, tx);
+      if (!gift || !gift.ok) throw new Error(gift && !gift.ok ? gift.error : "Сертификат недоступен");
+      if (gift.card.balance < quote.giftApplied) throw new Error("Остаток сертификата изменился, обновите страницу");
+      giftUsed = quote.giftApplied;
+      giftCardId = gift.card.id;
+    }
     const order = await tx.order.create({
       data: {
         userId,
@@ -182,6 +239,7 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
         subtotal: quote.subtotal,
         discount: quote.discount + quote.pointsValue,
         pointsUsed: quote.pointsUsed,
+        giftUsed,
         total: quote.total,
         promoCodeId: quote.promo?.ok ? quote.promo.promo.id : null,
         comment: input.comment ?? null,
@@ -207,9 +265,15 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
     if (quote.promo?.ok) {
       await tx.promoUse.create({ data: { promoId: quote.promo.promo.id, userId, orderId: order.id } });
     }
+    if (giftCardId && giftUsed > 0) {
+      const card = await tx.giftCard.update({ where: { id: giftCardId }, data: { balance: { decrement: giftUsed } } });
+      await tx.giftRedemption.create({ data: { giftCardId, orderId: order.id, amount: giftUsed } });
+      if (card.balance <= 0) await tx.giftCard.update({ where: { id: giftCardId }, data: { balance: 0, status: "USED" } });
+      await audit(userId, "giftcard.redeem", "GiftCard", giftCardId, { orderId: order.id, amount: giftUsed }, tx);
+    }
     await tx.cartItem.deleteMany({ where: { userId } });
-    await addOrderEvent(tx, order.id, "Заказ создан", "NEW", userId);
-    await audit(userId, "order.create", "Order", order.id, { total: quote.total }, tx);
+    await addOrderEvent(tx, order.id, giftUsed > 0 ? `Заказ создан, сертификатом оплачено ${Math.round(giftUsed / 100).toLocaleString("ru-RU")} ₽` : "Заказ создан", "NEW", userId);
+    await audit(userId, "order.create", "Order", order.id, { total: quote.total, giftUsed }, tx);
     return order;
   });
   await trackEvent("ORDER", { orderId: order.id, value: order.total, userId });
@@ -244,6 +308,22 @@ export async function markOrderPaid(orderId: string, opts: { createdBy?: string 
   });
 }
 
+/** Возвращает на сертификат всё, что было списано по заказу (при отмене). */
+async function restoreGiftForOrder(tx: Tx, orderId: string, createdBy?: string | null) {
+  const redemptions = await tx.giftRedemption.findMany({ where: { orderId, amount: { gt: 0 } }, include: { giftCard: true } });
+  for (const r of redemptions) {
+    const card = r.giftCard;
+    const reactivate = card.status === "USED" && card.expiresAt > new Date();
+    await tx.giftCard.update({
+      where: { id: card.id },
+      data: { balance: { increment: r.amount }, ...(reactivate ? { status: "ACTIVE" } : {}) },
+    });
+    // помечаем возврат отдельной записью с отрицательной суммой, чтобы история списаний сохранилась
+    await tx.giftRedemption.create({ data: { giftCardId: card.id, orderId, amount: -r.amount } });
+    await audit(createdBy ?? null, "giftcard.restore", "GiftCard", card.id, { orderId, amount: r.amount }, tx);
+  }
+}
+
 export async function cancelOrder(orderId: string, opts: { reason?: string; createdBy?: string | null } = {}) {
   return db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
@@ -263,6 +343,7 @@ export async function cancelOrder(orderId: string, opts: { reason?: string; crea
       await tx.ledgerEntry.create({ data: { type: "REFUND", amount: order.total, orderId, comment: `Отмена заказа №${order.number}`, createdBy: opts.createdBy } });
     }
     if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
+    await restoreGiftForOrder(tx, orderId, opts.createdBy);
     await tx.order.update({ where: { id: orderId }, data: { status: "CANCELLED" } });
     if (order.userId) await recalcTier(tx, order.userId);
     await addOrderEvent(tx, orderId, opts.reason ? `Заказ отменён: ${opts.reason}` : "Заказ отменён", "CANCELLED", opts.createdBy);

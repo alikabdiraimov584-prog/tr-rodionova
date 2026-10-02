@@ -8,7 +8,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = typeof sp.next === "string" ? sp.next : undefined;
   return (
     <>
-      <h1 className="text-4xl">Вход</h1>
+      <h1 className="text-xl">Вход</h1>
       <p className="mb-8 mt-2 text-sm text-muted">Личный кабинет и программа T.Rodionova Circle</p>
       <LoginForm next={next} />
       {process.env.NODE_ENV !== "production" && (

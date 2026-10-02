@@ -71,6 +71,7 @@ const CheckoutSchema = z.object({
   comment: z.string().trim().max(500).optional(),
   promoCode: z.string().trim().optional(),
   pointsToUse: z.coerce.number().int().min(0).optional(),
+  giftCode: z.string().trim().max(32).optional(),
 });
 
 export async function checkoutAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -87,6 +88,7 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
       addressId: d.addressId || null,
       addressText: d.addressText || null,
       promoCode: d.promoCode || null,
+      giftCode: d.giftCode || null,
     });
     orderId = order.id;
   } catch (e) {
@@ -151,9 +153,12 @@ export type QuoteView = {
   delivery: number;
   total: number;
   earn: number;
+  giftCode: string | null;
+  giftApplied: number;
+  giftError: string | null;
 };
 
-export async function quoteAction(input: { promoCode?: string; pointsToUse?: number; deliveryMethod: DeliveryMethod }): Promise<QuoteView> {
+export async function quoteAction(input: { promoCode?: string; pointsToUse?: number; deliveryMethod: DeliveryMethod; giftCode?: string }): Promise<QuoteView> {
   const user = await requireUser("/checkout");
   const { quoteCart } = await import("@/lib/orders");
   const q = await quoteCart(user.id, input);
@@ -169,5 +174,8 @@ export async function quoteAction(input: { promoCode?: string; pointsToUse?: num
     delivery: q.delivery,
     total: q.total,
     earn: Math.floor((Math.max(0, q.total - q.delivery) * pct) / 100 / 100),
+    giftCode: q.giftCode ?? null,
+    giftApplied: q.giftApplied,
+    giftError: q.giftError,
   };
 }

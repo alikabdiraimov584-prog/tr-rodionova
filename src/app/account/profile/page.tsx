@@ -12,7 +12,7 @@ export default async function ProfilePage() {
   const addresses = await db.address.findMany({ where: { userId: user.id, NOT: { label: "Архив" } }, orderBy: { isDefault: "desc" } });
   return (
     <div className="space-y-12">
-      <PageTitle title="Профиль" />
+      <PageTitle title="Профиль и мерки" />
       <section>
         <h2 className="mb-4 text-xl">Личные данные</h2>
         <ProfileForm
@@ -24,6 +24,10 @@ export default async function ProfilePage() {
             birthday: user.birthday ? user.birthday.toISOString().slice(0, 10) : null,
             preferredSize: user.preferredSize,
             marketingConsent: user.marketingConsent,
+            height: user.height,
+            bust: user.bust,
+            waist: user.waist,
+            hips: user.hips,
           }}
         />
       </section>

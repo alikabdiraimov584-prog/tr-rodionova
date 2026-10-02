@@ -16,16 +16,18 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
   const [addressId, setAddressId] = useState(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? "");
   const [promo, setPromo] = useState("");
   const [appliedPromo, setAppliedPromo] = useState("");
+  const [gift, setGift] = useState("");
+  const [appliedGift, setAppliedGift] = useState("");
   const [points, setPoints] = useState(0);
   const [quote, setQuote] = useState(initialQuote);
   const [quoting, startQuote] = useTransition();
 
   useEffect(() => {
     startQuote(async () => {
-      const q = await quoteAction({ deliveryMethod: delivery, promoCode: appliedPromo || undefined, pointsToUse: points });
+      const q = await quoteAction({ deliveryMethod: delivery, promoCode: appliedPromo || undefined, pointsToUse: points, giftCode: appliedGift || undefined });
       setQuote(q);
     });
-  }, [delivery, appliedPromo, points]);
+  }, [delivery, appliedPromo, points, appliedGift]);
 
   return (
     <form action={action} className="grid gap-10 md:grid-cols-[1fr_380px]">
@@ -109,6 +111,16 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
           {quote.promoApplied && <p className="mt-1 text-xs text-success">Промокод {quote.promoApplied} применён</p>}
         </div>
         <div>
+          <span className="label">Подарочный сертификат</span>
+          <div className="flex gap-2">
+            <input value={gift} onChange={(e) => setGift(e.target.value.toUpperCase())} className="input font-mono" placeholder="TR-XXXX-XXXX-XXXX-XXXX" />
+            <button type="button" className="btn-outline btn-sm" onClick={() => setAppliedGift(gift.trim())}>Применить</button>
+          </div>
+          <input type="hidden" name="giftCode" value={quote.giftApplied > 0 && quote.giftCode ? quote.giftCode : ""} />
+          {quote.giftError && appliedGift && <p className="mt-1 text-xs text-danger">{quote.giftError}</p>}
+          {quote.giftCode && quote.giftApplied > 0 && <p className="mt-1 text-xs text-success">Сертификат {quote.giftCode} применён: −{formatMoney(quote.giftApplied)}</p>}
+        </div>
+        <div>
           <span className="label">Оплатить баллами · баланс {profile.pointsBalance.toLocaleString("ru-RU")}</span>
           <div className="flex items-center gap-3">
             <input type="range" min={0} max={quote.pointsMax} step={100} value={Math.min(points, quote.pointsMax)} onChange={(e) => setPoints(Number(e.target.value))} className="flex-1 accent-black" disabled={quote.pointsMax === 0} />
@@ -122,6 +134,7 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
           {quote.discount > 0 && <div className="flex justify-between text-success"><dt>Скидка по промокоду</dt><dd>−{formatMoney(quote.discount)}</dd></div>}
           {quote.pointsValue > 0 && <div className="flex justify-between text-success"><dt>Баллами</dt><dd>−{formatMoney(quote.pointsValue)}</dd></div>}
           <div className="flex justify-between"><dt>Доставка</dt><dd>{quote.delivery ? formatMoney(quote.delivery) : "бесплатно"}</dd></div>
+          {quote.giftApplied > 0 && <div className="flex justify-between text-success"><dt>Сертификатом</dt><dd>−{formatMoney(quote.giftApplied)}</dd></div>}
           <div className="flex justify-between border-t border-line pt-3 text-lg"><dt className="serif">Итого</dt><dd>{formatMoney(quote.total)}</dd></div>
           <div className="text-xs text-taupe-dark">+{quote.earn.toLocaleString("ru-RU")} баллов через 14 дней после получения</div>
         </dl>

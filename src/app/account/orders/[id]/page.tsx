@@ -5,9 +5,11 @@ import { db } from "@/lib/db";
 import { formatDate, formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD, ORDER_STATUS, PAYMENT_METHOD } from "@/lib/labels";
 import { Alert, Badge, PageTitle } from "@/components/ui";
-import { ConfirmButton, SubmitButton } from "@/components/form";
+import { ConfirmButton } from "@/components/form";
 import { ReviewForm } from "@/components/account/review-form";
-import { cancelOwnOrderAction, payOrderDemoAction } from "@/app/actions/shop";
+import { cancelOwnOrderAction } from "@/app/actions/shop";
+import { PayButton } from "@/components/account/pay-button";
+import { syncOrderPayment, yookassaEnabled } from "@/lib/payments/yookassa";
 
 const STEPS = ["NEW", "PAID", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
 
@@ -15,6 +17,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireUser(`/account/orders/${id}`);
+  if (sp.paid) await syncOrderPayment(id);
   const order = await db.order.findUnique({
     where: { id },
     include: { items: { include: { variant: { include: { product: true } } } }, payments: true, history: { orderBy: { createdAt: "asc" } }, address: true },
@@ -34,13 +37,10 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
         <div className="card flex flex-wrap items-center justify-between gap-4 p-5">
           <div>
             <div className="text-sm">Ожидает оплаты: {formatMoney(order.total)}</div>
-            <div className="text-xs text-muted">{payment ? PAYMENT_METHOD[payment.method] : ""} · резерв действует 24 часа</div>
+            <div className="text-xs text-muted">{payment ? PAYMENT_METHOD[payment.method] : ""} · резерв действует 24 часа{order.isPreorder ? " · предзаказ" : ""}</div>
           </div>
           <div className="flex gap-2">
-            <form action={payOrderDemoAction}>
-              <input type="hidden" name="orderId" value={order.id} />
-              <SubmitButton>Оплатить (демо)</SubmitButton>
-            </form>
+            <PayButton orderId={order.id} live={yookassaEnabled()} />
             <form action={cancelOwnOrderAction}>
               <input type="hidden" name="orderId" value={order.id} />
               <ConfirmButton message="Отменить заказ? Списанные баллы вернутся на счёт.">Отменить</ConfirmButton>

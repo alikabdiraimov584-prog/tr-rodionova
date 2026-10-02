@@ -24,15 +24,15 @@ export function TierCard({
 }) {
   const dark = code === "PRIVE";
   return (
-    <div className={`relative overflow-hidden p-7 ${dark ? "bg-ink text-ivory" : code === "MAISON" ? "bg-champagne/60" : "bg-taupe text-ivory"}`}>
+    <div className={`relative overflow-hidden border border-line p-6 ${dark ? "bg-ink text-ivory" : code === "MAISON" ? "bg-champagne/40" : "bg-white"}`}>
       <Monogram className={`absolute -right-4 -top-6 text-[9rem] leading-none ${dark ? "text-champagne/15" : "text-ivory/25"}`} />
       <div className="relative">
         <div className="flex items-center justify-between">
           <span className="text-[0.62rem] uppercase tracking-[0.3em] opacity-80">T.Rodionova Circle</span>
-          <span className="serif text-xl">{name}</span>
+          <span className="text-base uppercase tracking-[0.14em]">{name}</span>
         </div>
         <div className="mt-8 text-[0.62rem] uppercase tracking-[0.25em] opacity-70">Баланс</div>
-        <div className="serif text-4xl">{formatPoints(points)}</div>
+        <div className="text-3xl">{formatPoints(points)}</div>
         {pending > 0 && <div className="mt-1 text-xs opacity-80">+{formatPoints(pending)} ожидают начисления</div>}
         <div className="mt-6">
           <div className="flex justify-between text-xs opacity-80">
