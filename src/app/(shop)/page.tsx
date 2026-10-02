@@ -19,7 +19,7 @@ export default async function Home() {
       <section className="mt-1 grid gap-1 md:grid-cols-2">
         {hero.map((p, i) => (
           <Link key={p.id} href={`/product/${p.slug}`} className="relative block aspect-[4/5] overflow-hidden bg-sand md:aspect-[3/4]">
-            {p.images[i % p.images.length] && <Image src={p.images[i % p.images.length].url} alt={p.name} fill unoptimized priority className="object-cover" sizes="50vw" />}
+            {p.images[i % p.images.length] && <Image src={p.images[i % p.images.length].url} alt={p.name} fill unoptimized priority className="object-cover object-top" sizes="50vw" />}
             <span className="absolute bottom-4 left-4 bg-ivory px-2.5 py-1.5 text-[0.68rem] uppercase tracking-[0.1em]">{p.name} · {formatMoney(p.price)}</span>
           </Link>
         ))}
