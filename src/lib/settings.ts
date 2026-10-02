@@ -33,7 +33,7 @@ export type SupportSettings = {
   reopenDays: number; // новое сообщение в закрытый диалог моложе N дней переоткрывает его
 };
 
-const defaults = {
+const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings } = {
   support: {
     workFrom: 10,
     workTo: 21,
@@ -42,22 +42,22 @@ const defaults = {
     autoReplyText: "Здравствуйте! Спасибо за сообщение. Мы на связи ежедневно с 10:00 до 21:00 по Москве и ответим в начале рабочего дня. — Команда T.Rodionova",
     slaMinutes: 15,
     reopenDays: 3,
-  } satisfies SupportSettings,
+  },
   loyalty: {
     welcomePoints: 2000,
     referralPoints: 2000,
     reviewPoints: 300,
     pointsExpireDays: 365,
     pointValueKopecks: 100,
-  } satisfies LoyaltySettings,
-  delivery: { freeFrom: 1_500_000, courier: 50_000, cdek: 35_000, boxberry: 30_000, yandex: 45_000 } satisfies DeliverySettings,
+  },
+  delivery: { freeFrom: 1_500_000, courier: 50_000, cdek: 35_000, boxberry: 30_000, yandex: 45_000 },
   brand: {
     name: "T.Rodionova",
     tagline: "Premium womenswear",
     phone: "+7 (495) 000-00-00",
     email: "care@t-rodionova.ru",
     telegram: "https://t.me/trodionova",
-  } satisfies BrandSettings,
+  },
 };
 
 type SettingsMap = typeof defaults;

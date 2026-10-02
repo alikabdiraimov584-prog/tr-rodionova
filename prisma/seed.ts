@@ -443,7 +443,39 @@ async function main() {
     create: { code: "CIRCLE", type: "FREE_SHIPPING", value: 0, perUser: 3 },
   });
 
-  if (process.env.SEED_DEMO !== "0") await seedDemo(base.id);
+  // ── Поддержка: сотрудник, каналы, шаблоны ──
+  await db.user.upsert({
+    where: { email: "support@t-rodionova.ru" },
+    update: {},
+    create: { email: "support@t-rodionova.ru", passwordHash: await bcrypt.hash("support12345", 10), firstName: "Ольга", lastName: "Белова", role: "SUPPORT" },
+  });
+  const channels = [
+    ["TELEGRAM", "Telegram"],
+    ["WHATSAPP", "WhatsApp"],
+    ["INSTAGRAM", "Instagram"],
+    ["VK", "ВКонтакте"],
+    ["EMAIL", "Email"],
+  ] as const;
+  for (const [channel, name] of channels) {
+    await db.channelIntegration.upsert({ where: { channel }, update: {}, create: { channel, name, enabled: false, config: channel === "WHATSAPP" || channel === "INSTAGRAM" ? { provider: "wazzup" } : {} } });
+  }
+  const templates = [
+    ["Приветствие", "/привет", "{имя}, здравствуйте! Это T.Rodionova. С радостью помогу."],
+    ["Где заказ", "/заказ", "{имя}, заказ {заказ} уже в пути. Трек-номер и статус — в личном кабинете в разделе «Заказы». Если что-то не так — напишите, разберёмся."],
+    ["Доставка", "/доставка", "Доставляем курьером по Москве и Петербургу с примеркой за 1–2 дня, по России — СДЭК 2–7 дней. Бесплатно от 15 000 ₽ и для уровней Maison и Privé."],
+    ["Размер", "/размер", "Подскажите, пожалуйста, ваш рост и обхваты груди, талии и бёдер — подберу размер. Наши модели садятся по размерной сетке, жакеты Aurora чуть свободнее."],
+    ["Возврат", "/возврат", "{имя}, вернуть вещь можно в течение 14 дней после получения, если сохранены ярлыки. Оформите возврат в личном кабинете или пришлите номер заказа — я всё сделаю за вас. Деньги вернутся в течение 10 дней."],
+    ["Баллы", "/баллы", "{имя}, у вас {баллы} баллов, уровень {уровень}. Баллами можно оплатить до 30% заказа, 1 балл = 1 ₽."],
+    ["Стилист", "/стилист", "Запишу вас к стилисту в шоурум на Большой Никитской или на примерку дома. Какие дата и время удобны?"],
+  ] as const;
+  for (const [i, [title, shortcut, text]] of templates.entries()) {
+    await db.replyTemplate.upsert({ where: { shortcut }, update: {}, create: { title, shortcut, text, order: i } });
+  }
+
+  if (process.env.SEED_DEMO !== "0") {
+    await seedDemo(base.id);
+    await seedSupportDemo();
+  }
 
   console.log("Seed complete");
 }
@@ -701,6 +733,54 @@ async function seedDemo(baseTierId: string) {
   for (const [i, v] of outOfStock.entries()) {
     const u = someCustomers[i + 2];
     if (u) await db.stockSubscription.upsert({ where: { userId_variantId: { userId: u.id, variantId: v.id } }, update: {}, create: { userId: u.id, variantId: v.id } });
+  }
+}
+
+async function seedSupportDemo() {
+  if ((await db.conversation.count()) > 0) return;
+  const support = await db.user.findUniqueOrThrow({ where: { email: "support@t-rodionova.ru" } });
+  const manager = await db.user.findUniqueOrThrow({ where: { email: "manager@t-rodionova.ru" } });
+  const customers = await db.user.findMany({ where: { role: "CUSTOMER", orders: { some: {} } }, include: { orders: { orderBy: { createdAt: "desc" }, take: 1 }, loyaltyTier: true }, orderBy: { lifetimeSpent: "desc" }, take: 6 });
+  const min = 60_000;
+  const now = Date.now();
+  type Script = { channel: "TELEGRAM" | "WHATSAPP" | "INSTAGRAM" | "VK" | "EMAIL" | "WEBSITE"; who: (typeof customers)[number] | null; name: string; ext: string; status: "OPEN" | "PENDING" | "CLOSED"; assignee: string | null; tags: string[]; priority?: "HIGH"; msgs: [("IN" | "OUT" | "NOTE"), string, number][] };
+  const c = customers;
+  const scripts: Script[] = [
+    { channel: "TELEGRAM", who: c[0], name: `${c[0].firstName} ${c[0].lastName ?? ""}`, ext: "100200300", status: "OPEN", assignee: support.id, tags: ["доставка", "privé"], priority: "HIGH", msgs: [["IN", `Добрый день! Подскажите, когда приедет заказ №${c[0].orders[0]?.number}?`, 22]] },
+    { channel: "WHATSAPP", who: c[1], name: c[1].firstName, ext: (c[1].phone ?? "79160000000").replace(/\D/g, ""), status: "OPEN", assignee: support.id, tags: ["размер"], msgs: [["IN", "Здравствуйте, пальто Claire большемерит? Рост 168, обычно ношу S", 6]] },
+    { channel: "INSTAGRAM", who: null, name: "kate.minimal", ext: "ig_558812", status: "OPEN", assignee: null, tags: ["наличие"], msgs: [["IN", "Привет! Будет ли джемпер Elsa в чёрном размер M?", 3]] },
+    { channel: "VK", who: null, name: "Дарья Левина", ext: "2000000017", status: "PENDING", assignee: manager.id, tags: ["оплата"], msgs: [["IN", "Можно ли оплатить в рассрочку?", 180], ["OUT", "Здравствуйте, Дарья! Да, при оформлении выберите «Рассрочка» — оформление онлайн за пару минут, без переплаты на 4 месяца.", 170]] },
+    { channel: "EMAIL", who: c[2], name: `${c[2].firstName} ${c[2].lastName ?? ""}`, ext: c[2].email, status: "OPEN", assignee: support.id, tags: ["возврат"], msgs: [["IN", `Здравствуйте. Хочу вернуть брюки из заказа №${c[2].orders[0]?.number} — не подошёл размер. Как это сделать?`, 40], ["NOTE", "Клиентка Maison — предложить обмен на размер больше, курьер заберёт бесплатно", 35]] },
+    { channel: "WEBSITE", who: c[3], name: `${c[3].firstName} ${c[3].lastName ?? ""}`, ext: c[3].id, status: "CLOSED", assignee: support.id, tags: ["баллы"], msgs: [["IN", "Почему баллы за последний заказ ещё не начислены?", 2 * 24 * 60], ["OUT", `${c[3].firstName}, баллы начисляются через 14 дней после получения — когда закончится срок возврата. Ваши баллы придут автоматически.`, 2 * 24 * 60 - 9], ["IN", "Поняла, спасибо!", 2 * 24 * 60 - 20]] },
+  ];
+  for (const sc of scripts) {
+    const contact = await db.contact.create({ data: { channel: sc.channel, externalId: sc.ext, name: sc.name, email: sc.channel === "EMAIL" ? sc.ext : null, phone: sc.channel === "WHATSAPP" ? sc.ext : null, username: sc.channel === "INSTAGRAM" ? `@${sc.name}` : null, userId: sc.who?.id ?? null } });
+    const first = sc.msgs[0][2];
+    const last = sc.msgs[sc.msgs.length - 1][2];
+    const lastIn = [...sc.msgs].reverse().find((m) => m[0] === "IN")?.[2] ?? first;
+    const firstOut = sc.msgs.find((m) => m[0] === "OUT")?.[2];
+    const conv = await db.conversation.create({
+      data: {
+        channel: sc.channel,
+        contactId: contact.id,
+        customerId: sc.who?.id ?? null,
+        assigneeId: sc.assignee,
+        status: sc.status,
+        priority: sc.priority ?? "NORMAL",
+        tags: sc.tags,
+        orderNumbers: sc.who?.orders[0] && /№/.test(sc.msgs[0][1]) ? [sc.who.orders[0].number] : [],
+        unread: sc.status === "OPEN" ? sc.msgs.filter((m) => m[0] === "IN").length : 0,
+        createdAt: new Date(now - first * min),
+        lastMessageAt: new Date(now - last * min),
+        lastInboundAt: new Date(now - lastIn * min),
+        waitingSince: sc.status === "OPEN" ? new Date(now - first * min) : null,
+        firstResponseAt: firstOut !== undefined ? new Date(now - firstOut * min) : null,
+        closedAt: sc.status === "CLOSED" ? new Date(now - last * min) : null,
+      },
+    });
+    for (const [dir, text, ago] of sc.msgs) {
+      await db.message.create({ data: { conversationId: conv.id, direction: dir, text, authorId: dir === "IN" ? null : sc.assignee ?? support.id, status: dir === "IN" ? "RECEIVED" : "SENT", createdAt: new Date(now - ago * min) } });
+    }
   }
 }
 
