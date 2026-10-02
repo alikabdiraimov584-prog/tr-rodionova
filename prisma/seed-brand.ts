@@ -24,6 +24,7 @@ export async function seedBrand(db: PrismaClient) {
       sizes: ["XS", "S", "M", "L"],
       colors: [["Чёрный", "#0E0E0E"]],
       image: "skirt",
+      preorder: false,
     },
     {
       slug: "zhaket-tr-noir",
@@ -40,6 +41,7 @@ export async function seedBrand(db: PrismaClient) {
       colors: [["Чёрный", "#0E0E0E"]],
       image: "jacket",
       featured: true,
+      preorder: false,
     },
     {
       slug: "plate-tr-halter",
@@ -56,12 +58,13 @@ export async function seedBrand(db: PrismaClient) {
       colors: [["Айвори", "#F8F5EE"]],
       image: "dress",
       featured: true,
+      preorder: true,
     },
   ];
   for (const it of items) {
     const product = await db.product.upsert({
       where: { slug: it.slug },
-      update: { name: it.name, price: it.price * RUB, costPrice: it.cost * RUB, description: it.description, composition: it.composition, material: it.material, sizeChart: it.sizeChart },
+      update: { name: it.name, price: it.price * RUB, costPrice: it.cost * RUB, description: it.description, composition: it.composition, material: it.material, sizeChart: it.sizeChart, isPreorder: !!it.preorder, preorderShipAt: it.preorder ? new Date(Date.now() + 35 * 86_400_000) : null },
       create: {
         slug: it.slug,
         sku: it.sku,
@@ -75,6 +78,8 @@ export async function seedBrand(db: PrismaClient) {
         costPrice: it.cost * RUB,
         isNew: true,
         isFeatured: it.featured ?? false,
+        isPreorder: !!it.preorder,
+        preorderShipAt: it.preorder ? new Date(Date.now() + 35 * 86_400_000) : null,
         categoryId: await cat(it.category),
         collectionId: collection?.id ?? null,
         images: { create: [{ url: `/images/placeholder/${it.image}.svg`, alt: it.name, order: 0 }, { url: `/images/placeholder/${it.image}-2.svg`, alt: `${it.name} — деталь`, order: 1 }] },

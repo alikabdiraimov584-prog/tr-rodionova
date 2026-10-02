@@ -77,6 +77,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
           <div className="flex justify-between"><span>Товары</span><span>{formatMoney(order.subtotal)}</span></div>
           {order.discount - order.pointsUsed * 100 > 0 && <div className="flex justify-between text-success"><span>Скидка</span><span>−{formatMoney(order.discount - order.pointsUsed * 100)}</span></div>}
           {order.pointsUsed > 0 && <div className="flex justify-between text-success"><span>Баллами</span><span>−{formatMoney(order.pointsUsed * 100)}</span></div>}
+          {order.giftUsed > 0 && <div className="flex justify-between text-success"><span>Сертификатом</span><span>−{formatMoney(order.giftUsed)}</span></div>}
           <div className="flex justify-between"><span>Доставка</span><span>{order.deliveryCost ? formatMoney(order.deliveryCost) : "бесплатно"}</span></div>
           <div className="flex justify-between border-t border-line pt-2 text-base"><span className="serif">Итого</span><span>{formatMoney(order.total)}</span></div>
           <div className="pt-2 text-xs text-taupe-dark">

@@ -20,7 +20,7 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
   if (!variant || variant.product.status !== "ACTIVE") return { error: "Товар недоступен" };
   const inCart = await db.cartItem.findUnique({ where: { userId_variantId: { userId: user.id, variantId } } });
   const want = (inCart?.quantity ?? 0) + 1;
-  if (variant.stock - variant.reserved < want) return { error: "Этого размера больше нет в наличии" };
+  if (!variant.product.isPreorder && variant.stock - variant.reserved < want) return { error: "Этого размера больше нет в наличии" };
   await db.cartItem.upsert({
     where: { userId_variantId: { userId: user.id, variantId } },
     update: { quantity: want },
@@ -38,8 +38,8 @@ export async function updateCartAction(formData: FormData) {
   if (!Number.isFinite(qty) || qty <= 0) {
     await db.cartItem.deleteMany({ where: { userId: user.id, variantId } });
   } else {
-    const v = await db.productVariant.findUniqueOrThrow({ where: { id: variantId } });
-    const capped = Math.min(Math.floor(qty), Math.max(1, v.stock - v.reserved));
+    const v = await db.productVariant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
+    const capped = v.product.isPreorder ? Math.min(Math.floor(qty), 5) : Math.min(Math.floor(qty), Math.max(1, v.stock - v.reserved));
     await db.cartItem.updateMany({ where: { userId: user.id, variantId }, data: { quantity: capped } });
   }
   revalidatePath("/", "layout");

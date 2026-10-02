@@ -21,6 +21,7 @@ export async function releaseStock(tx: Tx, variantId: string, qty: number, order
 export async function commitSale(tx: Tx, orderId: string, createdBy?: string | null) {
   const items = await tx.orderItem.findMany({ where: { orderId }, include: { variant: true } });
   for (const it of items) {
+    if (it.isPreorder) continue; // предзаказ: вещь отшивается под заказ, склад не затрагивается
     await tx.productVariant.update({
       where: { id: it.variantId },
       data: { stock: { decrement: it.quantity }, reserved: { decrement: it.quantity } },
@@ -90,6 +91,10 @@ export async function returnOrderItems(
     if (item.orderId !== orderId) throw new Error("Позиция не относится к заказу");
     if (item.returnedQty + line.qty > item.quantity) throw new Error("Количество возврата превышает купленное");
     await tx.orderItem.update({ where: { id: item.id }, data: { returnedQty: { increment: line.qty } } });
+    if (item.isPreorder) {
+      returnedValue += item.price * line.qty;
+      continue;
+    }
     if (opts.restock !== false) {
       await tx.productVariant.update({ where: { id: item.variantId }, data: { stock: { increment: line.qty } } });
     }

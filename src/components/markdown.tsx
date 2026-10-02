@@ -16,7 +16,8 @@ const ANCHORS: [RegExp, string][] = [
 function anchor(title: string) {
   for (const [re, id] of ANCHORS) if (re.test(title)) return id;
   const m = title.match(/^(\d+)\./);
-  return m ? `section-${m[1]}` : undefined;
+  if (m) return `section-${m[1]}`;
+  return "h-" + title.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 60);
 }
 
 export function Markdown({ source }: { source: string }) {

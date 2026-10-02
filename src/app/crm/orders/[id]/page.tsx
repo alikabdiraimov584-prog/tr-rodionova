@@ -48,7 +48,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               <tbody>
                 {order.items.map((i) => (
                   <tr key={i.id}>
-                    <td>{i.productName}<div className="text-xs text-muted">{i.color}</div></td>
+                    <td>{i.productName}{i.isPreorder && <span className="ml-2 text-[0.6rem] uppercase text-warning">предзаказ</span>}<div className="text-xs text-muted">{i.color}</div></td>
                     <td className="text-muted">{i.sku}</td>
                     <td>{i.size}</td>
                     <td>{i.quantity}</td>
@@ -64,6 +64,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
                 <div className="flex justify-between"><span className="text-muted">Товары</span><span>{formatMoney(order.subtotal)}</span></div>
                 <div className="flex justify-between"><span className="text-muted">Скидка {order.promoCode ? `(${order.promoCode.code})` : ""}</span><span>−{formatMoney(order.discount - order.pointsUsed * 100)}</span></div>
                 <div className="flex justify-between"><span className="text-muted">Баллами</span><span>−{formatMoney(order.pointsUsed * 100)}</span></div>
+                {order.giftUsed > 0 && <div className="flex justify-between"><span className="text-muted">Сертификатом</span><span>−{formatMoney(order.giftUsed)}</span></div>}
                 <div className="flex justify-between"><span className="text-muted">Доставка</span><span>{formatMoney(order.deliveryCost)}</span></div>
                 <div className="flex justify-between border-t border-line pt-1"><span>Итого</span><span>{formatMoney(order.total)}</span></div>
               </div>

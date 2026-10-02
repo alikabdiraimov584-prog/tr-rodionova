@@ -50,6 +50,7 @@ export type CartLine = {
   color: string | null;
   sku: string;
   available: number;
+  isPreorder: boolean;
 };
 
 export async function loadCart(userId: string): Promise<CartLine[]> {
@@ -69,7 +70,8 @@ export async function loadCart(userId: string): Promise<CartLine[]> {
       size: i.variant.size,
       color: i.variant.color,
       sku: i.variant.sku,
-      available: i.variant.stock - i.variant.reserved,
+      available: i.variant.product.isPreorder ? 999 : i.variant.stock - i.variant.reserved,
+      isPreorder: i.variant.product.isPreorder,
     }));
 }
 
@@ -223,6 +225,7 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
     const order = await tx.order.create({
       data: {
         userId,
+        isPreorder: quote.lines.some((l) => l.isPreorder),
         sessionId: session?.id ?? null,
         channel: session?.channel ?? null,
         source: session?.source ?? null,
@@ -253,12 +256,13 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
             price: l.price,
             costPrice: l.costPrice,
             quantity: l.quantity,
+            isPreorder: l.isPreorder,
           })),
         },
         payments: { create: { method: input.paymentMethod, amount: quote.total, status: "PENDING" } },
       },
     });
-    for (const l of quote.lines) await reserveStock(tx, l.variantId, l.quantity, order.id);
+    for (const l of quote.lines) if (!l.isPreorder) await reserveStock(tx, l.variantId, l.quantity, order.id);
     if (quote.pointsUsed > 0) {
       await addPoints(tx, userId, "SPEND_PURCHASE", -quote.pointsUsed, { orderId: order.id, comment: `Оплата заказа №${order.number}`, expiresAt: null });
     }
@@ -277,6 +281,7 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
     return order;
   });
   await trackEvent("ORDER", { orderId: order.id, value: order.total, userId });
+  if (order.total === 0) await markOrderPaid(order.id, { externalId: "gift" });
   return order;
 }
 
@@ -329,7 +334,7 @@ export async function cancelOrder(orderId: string, opts: { reason?: string; crea
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
     if (!canTransition(order.status, "CANCELLED")) throw new Error("Заказ нельзя отменить на этом этапе");
     if (order.status === "NEW") {
-      for (const it of order.items) await releaseStock(tx, it.variantId, it.quantity, orderId, opts.createdBy);
+      for (const it of order.items) if (!it.isPreorder) await releaseStock(tx, it.variantId, it.quantity, orderId, opts.createdBy);
       await tx.payment.updateMany({ where: { orderId, status: "PENDING" }, data: { status: "FAILED" } });
     } else {
       // Оплаченный заказ — товар возвращается на склад, деньги — клиенту

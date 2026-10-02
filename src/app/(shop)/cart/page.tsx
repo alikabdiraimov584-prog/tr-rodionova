@@ -39,7 +39,7 @@ export default async function CartPage() {
           <div className="divide-y divide-line border-y border-line">
             {items.map((i) => {
               const price = i.variant.price ?? i.variant.product.price;
-              const available = i.variant.stock - i.variant.reserved;
+              const available = i.variant.product.isPreorder ? 5 : i.variant.stock - i.variant.reserved;
               return (
                 <div key={i.id} className="flex gap-5 py-5">
                   <Link href={`/product/${i.variant.product.slug}`} className="relative h-32 w-24 shrink-0 bg-sand">
@@ -49,7 +49,7 @@ export default async function CartPage() {
                     <div className="flex justify-between gap-4">
                       <div>
                         <Link href={`/product/${i.variant.product.slug}`}>{i.variant.product.name}</Link>
-                        <div className="mt-1 text-xs text-muted">{i.variant.color} · {i.variant.size}</div>
+                        <div className="mt-1 text-xs text-muted">{i.variant.color} · {i.variant.size}{i.variant.product.isPreorder ? " · предзаказ" : ""}</div>
                         {available < i.quantity && <div className="mt-1 text-xs text-danger">Доступно только {Math.max(0, available)} шт.</div>}
                       </div>
                       <div className="text-sm">{formatMoney(price * i.quantity)}</div>
