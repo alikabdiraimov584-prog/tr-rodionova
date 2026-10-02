@@ -94,6 +94,7 @@ export const TASK_STATUS: Record<TaskStatus, { label: string; tone: Tone }> = {
 
 export const ROLE: Record<Role, string> = {
   CUSTOMER: "Клиент",
+  SUPPORT: "Поддержка",
   MANAGER: "Менеджер",
   ADMIN: "Администратор",
 };
@@ -115,4 +116,21 @@ export const TIER_TONE: Record<string, Tone> = {
   SILVER: "info",
   GOLD: "gold",
   BLACK: "danger",
+};
+
+import type { Channel, ConversationStatus } from "@/generated/prisma/enums";
+
+export const CHANNEL: Record<Channel, { label: string; short: string; color: string }> = {
+  TELEGRAM: { label: "Telegram", short: "TG", color: "#2AABEE" },
+  WHATSAPP: { label: "WhatsApp", short: "WA", color: "#25D366" },
+  INSTAGRAM: { label: "Instagram", short: "IG", color: "#C13584" },
+  VK: { label: "ВКонтакте", short: "VK", color: "#0077FF" },
+  EMAIL: { label: "Email", short: "@", color: "#6F675E" },
+  WEBSITE: { label: "Сайт", short: "TR", color: "#A89B8C" },
+};
+
+export const CONVERSATION_STATUS: Record<ConversationStatus, { label: string; tone: Tone }> = {
+  OPEN: { label: "Ждёт ответа", tone: "warning" },
+  PENDING: { label: "Ждём клиента", tone: "info" },
+  CLOSED: { label: "Закрыт", tone: "neutral" },
 };

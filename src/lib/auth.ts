@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { getSession, createSession, deleteSession } from "@/lib/session";
 import type { Role } from "@/generated/prisma/enums";
+import { can, homeFor, type Section } from "@/lib/permissions";
 
 export const getCurrentUser = cache(async () => {
   const session = await getSession();
@@ -13,6 +14,7 @@ export const getCurrentUser = cache(async () => {
     where: { id: session.userId },
     include: { loyaltyTier: true },
   });
+  if (!user || !user.isActive) return null;
   return user;
 });
 
@@ -25,9 +27,10 @@ export async function requireUser(next?: string): Promise<CurrentUser> {
 }
 
 export function isStaff(role: Role | undefined | null): boolean {
-  return role === "MANAGER" || role === "ADMIN";
+  return role === "SUPPORT" || role === "MANAGER" || role === "ADMIN";
 }
 
+/** Любой сотрудник. Для конкретного раздела используйте requireSection. */
 export async function requireStaff(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/crm");
@@ -35,10 +38,15 @@ export async function requireStaff(): Promise<CurrentUser> {
   return user;
 }
 
-export async function requireAdmin(): Promise<CurrentUser> {
+/** Проверка доступа к разделу CRM: на страницах — редирект, в server actions — тоже редирект (POST не пройдёт). */
+export async function requireSection(section: Section): Promise<CurrentUser> {
   const user = await requireStaff();
-  if (user.role !== "ADMIN") redirect("/crm");
+  if (!can(user.role, section)) redirect(homeFor(user.role));
   return user;
+}
+
+export async function requireAdmin(): Promise<CurrentUser> {
+  return requireSection("settings");
 }
 
 export async function verifyPassword(password: string, hash: string) {

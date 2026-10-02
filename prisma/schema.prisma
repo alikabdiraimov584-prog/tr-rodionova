@@ -11,6 +11,7 @@ datasource db {
 
 enum Role {
   CUSTOMER
+  SUPPORT // менеджер поддержки: единый inbox, клиенты, заказы (просмотр)
   MANAGER
   ADMIN
 }
@@ -24,6 +25,8 @@ model User {
   lastName     String?
   birthday     DateTime?
   role         Role      @default(CUSTOMER)
+  isActive     Boolean   @default(true) // отключённый сотрудник/клиент не может войти
+  lastSeenAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -55,6 +58,13 @@ model User {
   reviews    Review[]
   auditLogs  AuditLog[]
   promoUses  PromoUse[]
+
+  // Поддержка
+  contacts          Contact[]
+  conversations     Conversation[] @relation("ConversationCustomer")
+  assignedChats     Conversation[] @relation("ConversationAssignee")
+  supportMessages   Message[]      @relation("MessageAuthor")
+  consents          Consent[]
 }
 
 model Address {
@@ -497,4 +507,148 @@ model LedgerEntry {
 model Setting {
   key   String @id
   value Json
+}
+
+// ───────────────────────────── Поддержка: единый inbox ─────────────────────────────
+
+enum Channel {
+  TELEGRAM
+  WHATSAPP
+  INSTAGRAM
+  VK
+  EMAIL
+  WEBSITE
+}
+
+/** Подключение канала. Токены доступны только администратору. */
+model ChannelIntegration {
+  id            String   @id @default(cuid())
+  channel       Channel  @unique
+  name          String
+  enabled       Boolean  @default(false)
+  config        Json     @default("{}") // токены и идентификаторы провайдера
+  webhookSecret String   @default(cuid()) // часть URL вебхука + проверка подписи
+  lastEventAt   DateTime?
+  lastError     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/** Собеседник во внешнем канале. Связывается с клиентом по телефону/email или вручную. */
+model Contact {
+  id         String         @id @default(cuid())
+  channel    Channel
+  externalId String // chat_id, номер WhatsApp, PSID, peer_id, email
+  name       String?
+  username   String?
+  phone      String?
+  email      String?
+  userId     String?
+  user       User?          @relation(fields: [userId], references: [id])
+  createdAt  DateTime       @default(now())
+  conversations Conversation[]
+
+  @@unique([channel, externalId])
+}
+
+enum ConversationStatus {
+  OPEN // ждёт ответа сотрудника
+  PENDING // ответили, ждём клиента
+  CLOSED
+}
+
+enum Priority {
+  NORMAL
+  HIGH
+}
+
+model Conversation {
+  id              String             @id @default(cuid())
+  channel         Channel
+  contactId       String
+  contact         Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  customerId      String?
+  customer        User?              @relation("ConversationCustomer", fields: [customerId], references: [id])
+  assigneeId      String?
+  assignee        User?              @relation("ConversationAssignee", fields: [assigneeId], references: [id])
+  status          ConversationStatus @default(OPEN)
+  priority        Priority           @default(NORMAL)
+  subject         String?
+  tags            String[]           @default([])
+  orderNumbers    Int[]              @default([]) // номера заказов, найденные в переписке
+  unread          Int                @default(0)
+  lastMessageAt   DateTime           @default(now())
+  lastInboundAt   DateTime?
+  waitingSince    DateTime? // с какого момента клиент ждёт ответа (для SLA)
+  firstResponseAt DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime           @default(now())
+  messages        Message[]
+
+  @@index([status, lastMessageAt])
+  @@index([assigneeId, status])
+}
+
+enum MessageDirection {
+  IN
+  OUT
+  NOTE // внутренняя заметка, клиент не видит
+  SYSTEM
+}
+
+enum MessageStatus {
+  RECEIVED
+  QUEUED
+  SENT
+  FAILED
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      MessageDirection
+  text           String
+  attachments    Json?
+  authorId       String?
+  author         User?            @relation("MessageAuthor", fields: [authorId], references: [id])
+  externalId     String?
+  status         MessageStatus    @default(RECEIVED)
+  error          String?
+  createdAt      DateTime         @default(now())
+
+  @@unique([conversationId, externalId])
+  @@index([conversationId, createdAt])
+}
+
+model ReplyTemplate {
+  id        String   @id @default(cuid())
+  title     String
+  shortcut  String?  @unique // например «/доставка»
+  text      String // поддерживает {имя}, {уровень}, {баллы}, {заказ}
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────────── Согласия (152-ФЗ, 38-ФЗ) ─────────────────────────────
+
+enum ConsentType {
+  PERSONAL_DATA // согласие на обработку ПДн
+  OFFER // принятие оферты и правил Circle
+  MARKETING // рекламные рассылки
+}
+
+/** Журнал согласий: каждое предоставление и отзыв — отдельная запись (доказательство для РКН). */
+model Consent {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ConsentType
+  granted   Boolean
+  version   String // редакция документа, например «2026-10-02»
+  ip        String?
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  @@index([userId, type, createdAt])
 }

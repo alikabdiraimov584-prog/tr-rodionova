@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Logo, Monogram } from "@/components/ui";
 
 export default function AuthLayout({ children }: LayoutProps<"/">) {
@@ -13,7 +12,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         <div className="text-[0.62rem] uppercase tracking-[0.3em] text-ivory/70">Premium womenswear</div>
       </div>
       <div className="flex flex-col items-center justify-center px-6 py-12">
-        <Link href="/" className="mb-10 md:hidden"><Logo /></Link>
+        <div className="mb-10 md:hidden"><Logo /></div>
         <div className="w-full max-w-sm">{children}</div>
       </div>
     </div>

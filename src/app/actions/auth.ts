@@ -8,6 +8,8 @@ import { addPoints, recalcTier } from "@/lib/loyalty";
 import { getSetting } from "@/lib/settings";
 import { audit } from "@/lib/audit";
 import type { ActionState } from "@/lib/action-result";
+import { homeFor } from "@/lib/permissions";
+import { recordConsent } from "@/lib/consent";
 
 function safeNext(next: FormDataEntryValue | null, fallback: string) {
   const n = typeof next === "string" ? next : "";
@@ -26,9 +28,11 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
     return { error: "Неверный email или пароль" };
   }
+  if (!user.isActive) return { error: "Аккаунт отключён. Обратитесь к администратору." };
   await loginAs(user.id, user.role);
+  await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login", "User", user.id);
-  redirect(safeNext(formData.get("next"), user.role === "CUSTOMER" ? "/account" : "/crm"));
+  redirect(safeNext(formData.get("next"), homeFor(user.role)));
 }
 
 const RegisterSchema = z.object({
@@ -40,6 +44,7 @@ const RegisterSchema = z.object({
   birthday: z.string().optional(),
   ref: z.string().trim().optional(),
   consent: z.literal("on", { message: "Нужно согласие на обработку персональных данных" }),
+  offer: z.literal("on", { message: "Нужно принять условия оферты и правила программы Circle" }),
   marketingConsent: z.string().optional(),
 });
 
@@ -64,6 +69,9 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
         marketingConsent: formData.get("marketingConsent") === "on",
       },
     });
+    await recordConsent(tx, u.id, "PERSONAL_DATA", true);
+    await recordConsent(tx, u.id, "OFFER", true);
+    if (formData.get("marketingConsent") === "on") await recordConsent(tx, u.id, "MARKETING", true);
     await recalcTier(tx, u.id);
     await addPoints(tx, u.id, "EARN_WELCOME", s.welcomePoints, { comment: "Добро пожаловать в T.Rodionova Circle" });
     await audit(u.id, "auth.register", "User", u.id, { referrer: referrer?.id ?? null }, tx);

@@ -3,15 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Item = { href: string; label: string; badge?: number; admin?: boolean };
+type Item = { href: string; label: string; badge?: number };
 
-export function CrmNav({ items, isAdmin }: { items: Item[]; isAdmin: boolean }) {
+export function CrmNav({ items }: { items: Item[] }) {
   const path = usePathname();
   return (
     <nav className="flex flex-col gap-0.5">
-      {items
-        .filter((i) => !i.admin || isAdmin)
-        .map((i) => {
+      {items.map((i) => {
           const active = i.href === "/crm" ? path === "/crm" : path.startsWith(i.href);
           return (
             <Link

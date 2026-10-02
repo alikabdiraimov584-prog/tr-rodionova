@@ -164,22 +164,36 @@ export async function grantReferralBonus(tx: Tx, orderId: string) {
   });
 }
 
-/** Сжечь просроченные баллы. Возвращает число обработанных начислений. */
-export async function expirePoints(tx: Tx) {
-  const now = new Date();
-  const due = await tx.pointsTransaction.findMany({
+/**
+ * Сжечь просроченные баллы по принципу FIFO: списания (покупки, отмены, прошлые сгорания)
+ * сначала гасят начисления с ближайшим сроком действия, сгорает только неизрасходованный остаток.
+ * Идемпотентно: повторный запуск ничего не спишет повторно.
+ */
+export async function expirePoints(tx: Tx, now = new Date()) {
+  const users = await tx.pointsTransaction.findMany({
     where: { amount: { gt: 0 }, expiresAt: { lt: now } },
+    distinct: ["userId"],
+    select: { userId: true },
   });
   let n = 0;
-  for (const t of due) {
-    const already = await tx.pointsTransaction.findFirst({
-      where: { userId: t.userId, type: "EXPIRE", comment: { contains: t.id } },
-    });
-    if (already) continue;
-    const user = await tx.user.findUniqueOrThrow({ where: { id: t.userId } });
-    const burn = Math.min(t.amount, user.pointsBalance);
-    if (burn > 0) {
-      await addPoints(tx, t.userId, "EXPIRE", -burn, { comment: `Срок действия истёк (#${t.id})`, expiresAt: null });
+  for (const { userId } of users) {
+    const all = await tx.pointsTransaction.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+    const batches = all
+      .filter((t) => t.amount > 0)
+      .map((t) => ({ expiresAt: t.expiresAt, left: t.amount }))
+      .sort((x, y) => (x.expiresAt?.getTime() ?? Infinity) - (y.expiresAt?.getTime() ?? Infinity));
+    let spent = -all.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+    for (const b of batches) {
+      const take = Math.min(b.left, spent);
+      b.left -= take;
+      spent -= take;
+      if (spent <= 0) break;
+    }
+    const burn = batches.filter((b) => b.expiresAt && b.expiresAt < now).reduce((s, b) => s + b.left, 0);
+    const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { pointsBalance: true } });
+    const amount = Math.min(burn, user.pointsBalance);
+    if (amount > 0) {
+      await addPoints(tx, userId, "EXPIRE", -amount, { comment: "Срок действия баллов истёк", expiresAt: null });
       n++;
     }
   }

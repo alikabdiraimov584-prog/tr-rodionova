@@ -323,3 +323,85 @@ export async function partialReturn(orderId: string, lines: { orderItemId: strin
     return value;
   });
 }
+
+// ───────────── Продажа в шоуруме (из CRM) ─────────────
+
+export type ManualOrderInput = {
+  userId: string | null;
+  firstName: string;
+  lastName?: string | null;
+  email: string;
+  phone: string;
+  lines: { variantId: string; quantity: number; price?: number | null }[];
+  paymentMethod: PaymentMethod;
+  deliveryMethod: DeliveryMethod;
+  addressText?: string | null;
+  pointsToUse?: number;
+  discount?: number;
+  comment?: string | null;
+  markPaid: boolean;
+  createdBy: string;
+};
+
+export async function createManualOrder(input: ManualOrderInput) {
+  const lines = input.lines.filter((l) => l.variantId && l.quantity > 0);
+  if (lines.length === 0) throw new Error("Добавьте хотя бы одну позицию");
+  const variants = await db.productVariant.findMany({ where: { id: { in: lines.map((l) => l.variantId) } }, include: { product: true } });
+  const byId = new Map(variants.map((v) => [v.id, v]));
+  const items = lines.map((l) => {
+    const v = byId.get(l.variantId);
+    if (!v) throw new Error("Вариант товара не найден");
+    if (v.stock - v.reserved < l.quantity) throw new Error(`«${v.product.name}» ${v.size}: свободно ${v.stock - v.reserved} шт.`);
+    return { v, quantity: l.quantity, price: l.price && l.price > 0 ? l.price : (v.price ?? v.product.price) };
+  });
+  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const discount = Math.min(subtotal, Math.max(0, input.discount ?? 0));
+  let pointsUsed = 0;
+  if (input.userId && input.pointsToUse) {
+    const max = await maxPointsForOrder(input.userId, subtotal - discount);
+    pointsUsed = Math.min(max, Math.floor(input.pointsToUse));
+  }
+  const s = await getSetting("loyalty");
+  const total = Math.max(0, subtotal - discount - pointsUsed * s.pointValueKopecks);
+  const order = await db.$transaction(async (tx) => {
+    const o = await tx.order.create({
+      data: {
+        userId: input.userId,
+        email: input.email,
+        phone: input.phone,
+        firstName: input.firstName,
+        lastName: input.lastName ?? null,
+        deliveryMethod: input.deliveryMethod,
+        addressText: input.addressText ?? null,
+        subtotal,
+        discount: discount + pointsUsed * s.pointValueKopecks,
+        pointsUsed,
+        total,
+        comment: input.comment ?? null,
+        managerNote: "Создан в CRM",
+        items: {
+          create: items.map((i) => ({
+            variantId: i.v.id,
+            productName: i.v.product.name,
+            size: i.v.size,
+            color: i.v.color,
+            sku: i.v.sku,
+            price: i.price,
+            costPrice: i.v.product.costPrice,
+            quantity: i.quantity,
+          })),
+        },
+        payments: { create: { method: input.paymentMethod, amount: total, status: "PENDING" } },
+      },
+    });
+    for (const i of items) await reserveStock(tx, i.v.id, i.quantity, o.id);
+    if (pointsUsed > 0 && input.userId) {
+      await addPoints(tx, input.userId, "SPEND_PURCHASE", -pointsUsed, { orderId: o.id, comment: `Оплата заказа №${o.number}`, createdBy: input.createdBy, expiresAt: null });
+    }
+    await addOrderEvent(tx, o.id, "Заказ создан менеджером", "NEW", input.createdBy);
+    await audit(input.createdBy, "order.createManual", "Order", o.id, { total }, tx);
+    return o;
+  });
+  if (input.markPaid) await markOrderPaid(order.id, { createdBy: input.createdBy, externalId: "pos" });
+  return order;
+}

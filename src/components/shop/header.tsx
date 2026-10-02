@@ -28,7 +28,7 @@ export async function ShopHeader() {
         </div>
         <nav className="flex justify-end gap-5 text-[0.68rem] uppercase tracking-[0.2em]">
           {user && isStaff(user.role) && (
-            <Link href="/crm" className="hidden text-taupe-dark hover:text-ink sm:inline">CRM</Link>
+            <Link href={user.role === "SUPPORT" ? "/crm/support" : "/crm"} className="hidden text-taupe-dark hover:text-ink sm:inline">CRM</Link>
           )}
           <Link href={user ? "/account" : "/login"} className="hover:text-taupe-dark">
             {user ? user.firstName : "Войти"}
@@ -70,6 +70,8 @@ export function ShopFooter() {
             <li>Доставка по России и примерка курьером</li>
             <li>Возврат в течение 14 дней</li>
             <li>Персональный стилист для Privé</li>
+            <li><Link href="/offer">Публичная оферта</Link></li>
+            <li><Link href="/privacy">Политика конфиденциальности</Link></li>
           </ul>
         </div>
         <div className="text-sm">

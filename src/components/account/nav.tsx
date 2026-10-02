@@ -10,6 +10,7 @@ const items = [
   ["/account/wishlist", "Избранное"],
   ["/account/waitlist", "Лист ожидания"],
   ["/account/profile", "Профиль и адреса"],
+  ["/account/support", "Служба заботы"],
 ] as const;
 
 export function AccountNav() {

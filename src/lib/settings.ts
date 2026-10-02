@@ -23,10 +23,29 @@ export type BrandSettings = {
   telegram: string;
 };
 
+export type SupportSettings = {
+  workFrom: number; // час начала работы, МСК
+  workTo: number;
+  workDays: number[]; // 1 = пн … 7 = вс
+  autoReply: boolean;
+  autoReplyText: string;
+  slaMinutes: number; // целевое время первого ответа
+  reopenDays: number; // новое сообщение в закрытый диалог моложе N дней переоткрывает его
+};
+
 const defaults = {
+  support: {
+    workFrom: 10,
+    workTo: 21,
+    workDays: [1, 2, 3, 4, 5, 6, 7],
+    autoReply: true,
+    autoReplyText: "Здравствуйте! Спасибо за сообщение. Мы на связи ежедневно с 10:00 до 21:00 по Москве и ответим в начале рабочего дня. — Команда T.Rodionova",
+    slaMinutes: 15,
+    reopenDays: 3,
+  } satisfies SupportSettings,
   loyalty: {
-    welcomePoints: 1000,
-    referralPoints: 1500,
+    welcomePoints: 2000,
+    referralPoints: 2000,
     reviewPoints: 300,
     pointsExpireDays: 365,
     pointValueKopecks: 100,

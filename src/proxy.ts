@@ -8,7 +8,7 @@ async function readSession(req: NextRequest) {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET ?? ""), { algorithms: ["HS256"] });
-    return payload as { userId: string; role: "CUSTOMER" | "MANAGER" | "ADMIN" };
+    return payload as { userId: string; role: "CUSTOMER" | "SUPPORT" | "MANAGER" | "ADMIN" };
   } catch {
     return null;
   }
@@ -26,7 +26,8 @@ export async function proxy(req: NextRequest) {
     if (!session) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url));
   }
   if ((pathname === "/login" || pathname === "/register") && session) {
-    return NextResponse.redirect(new URL(session.role === "CUSTOMER" ? "/account" : "/crm", req.url));
+    const home = session.role === "CUSTOMER" ? "/account" : session.role === "SUPPORT" ? "/crm/support" : "/crm";
+    return NextResponse.redirect(new URL(home, req.url));
   }
   return NextResponse.next();
 }

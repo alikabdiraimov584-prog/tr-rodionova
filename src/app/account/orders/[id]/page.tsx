@@ -88,7 +88,12 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             {order.address && <div>{[order.address.city, order.address.street, order.address.building, order.address.apartment && `кв. ${order.address.apartment}`].filter(Boolean).join(", ")}</div>}
             {order.addressText && <div>{order.addressText}</div>}
             {order.trackingNumber && <div className="mt-1 text-ink">Трек-номер: {order.trackingNumber}</div>}
-            {returnUntil && order.status === "DELIVERED" && <div className="mt-1">Возврат возможен до {formatDate(returnUntil)}</div>}
+            {returnUntil && order.status === "DELIVERED" && returnUntil > new Date() && (
+              <div className="mt-2">
+                Возврат возможен до {formatDate(returnUntil)}.{" "}
+                <Link href={`/account/support?topic=return&order=${order.number}`} className="text-ink underline">Оформить возврат</Link>
+              </div>
+            )}
           </div>
         </aside>
       </div>
@@ -101,7 +106,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
           ))}
         </ul>
       </section>
-      <p className="text-xs text-muted">Вопрос по заказу? Напишите на care@t-rodionova.ru или позвоните +7 (495) 000-00-00.</p>
+      <p className="text-xs text-muted">Вопрос по заказу? <Link href={`/account/support?order=${order.number}`} className="underline">Напишите в службу заботы</Link> или позвоните +7 (495) 000-00-00.</p>
     </div>
   );
 }

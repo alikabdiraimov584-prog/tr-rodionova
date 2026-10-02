@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser, hashPassword, verifyPassword } from "@/lib/auth";
 import type { ActionState } from "@/lib/action-result";
+import { recordConsent } from "@/lib/consent";
 
 const ProfileSchema = z.object({
   firstName: z.string().trim().min(1, "Введите имя"),
@@ -22,6 +23,10 @@ export async function updateProfileAction(_: ActionState, formData: FormData): P
   const d = parsed.data;
   // День рождения можно указать один раз — защита от злоупотребления подарочными баллами
   const birthday = user.birthday ?? (d.birthday ? new Date(d.birthday) : null);
+  const marketing = d.marketingConsent === "on";
+  if (marketing !== user.marketingConsent) {
+    await db.$transaction((tx) => recordConsent(tx, user.id, "MARKETING", marketing));
+  }
   await db.user.update({
     where: { id: user.id },
     data: {
@@ -30,7 +35,7 @@ export async function updateProfileAction(_: ActionState, formData: FormData): P
       phone: d.phone,
       birthday,
       preferredSize: d.preferredSize || null,
-      marketingConsent: d.marketingConsent === "on",
+      marketingConsent: marketing,
     },
   });
   revalidatePath("/account", "layout");
