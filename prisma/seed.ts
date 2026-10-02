@@ -2,6 +2,8 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { seedA } from "./seed-a";
+import { seedB } from "./seed-b";
 
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -475,6 +477,8 @@ async function main() {
   if (process.env.SEED_DEMO !== "0") {
     await seedDemo(base.id);
     await seedSupportDemo();
+    await seedA(db);
+    await seedB(db);
   }
 
   console.log("Seed complete");

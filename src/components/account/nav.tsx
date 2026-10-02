@@ -9,7 +9,10 @@ const items = [
   ["/account/loyalty", "Circle и баллы"],
   ["/account/wishlist", "Избранное"],
   ["/account/waitlist", "Лист ожидания"],
-  ["/account/profile", "Профиль и адреса"],
+  ["/account/stylist", "Мой стилист"],
+  ["/account/resale", "Выкуп вещей"],
+  ["/account/giftcards", "Сертификаты"],
+  ["/account/profile", "Профиль и мерки"],
   ["/account/support", "Служба заботы"],
 ] as const;
 

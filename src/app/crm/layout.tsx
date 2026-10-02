@@ -11,18 +11,23 @@ export const metadata: Metadata = { title: { default: "CRM", template: "%s — C
 
 export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
   const user = await requireStaff();
-  const [openChats, newOrders, openTasks, pendingReviews, lowStock] = await Promise.all([
+  const [openChats, newOrders, openTasks, pendingReviews, lowStock, resaleOpen] = await Promise.all([
     db.conversation.count({ where: { status: "OPEN", OR: [{ assigneeId: user.id }, { assigneeId: null }] } }),
     db.order.count({ where: { status: { in: ["NEW", "PAID"] } } }),
     db.crmTask.count({ where: { status: "OPEN", OR: [{ assigneeId: user.id }, { assigneeId: null }] } }),
     db.review.count({ where: { isPublic: false } }),
     db.$queryRaw<{ n: bigint }[]>`SELECT count(*)::bigint AS n FROM "ProductVariant" v JOIN "Product" p ON p.id = v."productId" WHERE p.status = 'ACTIVE' AND v.stock - v.reserved <= 1`.then((r) => Number(r[0]?.n ?? 0)),
+    db.resaleRequest.count({ where: { status: { in: ["REQUESTED", "ACCEPTED"] } } }),
   ]);
   const all: { href: string; label: string; badge?: number; section: Section }[] = [
     { href: "/crm", label: "Дашборд", section: "dashboard" },
     { href: "/crm/analytics", label: "Аналитика", section: "analytics" },
     { href: "/crm/support", label: "Поддержка", badge: openChats, section: "support" },
     { href: "/crm/campaigns", label: "Рассылки", section: "campaigns" },
+    { href: "/crm/stylist", label: "Стилист", section: "stylist" },
+    { href: "/crm/resale", label: "Выкуп", badge: resaleOpen, section: "resale" },
+    { href: "/crm/giftcards", label: "Сертификаты", section: "giftcards" },
+    { href: "/crm/content", label: "Лукбук и журнал", section: "content" },
     { href: "/crm/orders", label: "Заказы", badge: newOrders, section: "orders" },
     { href: "/crm/customers", label: "Клиенты", section: "customers" },
     { href: "/crm/tasks", label: "Задачи", badge: openTasks, section: "tasks" },

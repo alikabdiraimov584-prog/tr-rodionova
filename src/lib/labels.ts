@@ -121,6 +121,34 @@ export const TRAFFIC_CHANNEL: Record<string, string> = {
   INTERNAL: "Ссылки бренда",
 };
 
+import type { GiftCardStatus, ResaleStatus, SelectionStatus } from "@/generated/prisma/enums";
+
+export const GIFT_STATUS: Record<GiftCardStatus, { label: string; tone: Tone }> = {
+  PENDING: { label: "Ожидает оплаты", tone: "warning" },
+  ACTIVE: { label: "Активен", tone: "success" },
+  USED: { label: "Использован", tone: "neutral" },
+  EXPIRED: { label: "Истёк", tone: "danger" },
+  CANCELLED: { label: "Отменён", tone: "danger" },
+};
+
+export const RESALE_STATUS: Record<ResaleStatus, { label: string; tone: Tone }> = {
+  REQUESTED: { label: "Заявка", tone: "warning" },
+  OFFERED: { label: "Предложение сделано", tone: "info" },
+  ACCEPTED: { label: "Ждём вещь", tone: "info" },
+  RECEIVED: { label: "Получена, баллы начислены", tone: "success" },
+  LISTED: { label: "На витрине", tone: "gold" },
+  SOLD: { label: "Продана", tone: "success" },
+  DECLINED: { label: "Отклонена", tone: "danger" },
+  CANCELLED: { label: "Отменена", tone: "neutral" },
+};
+
+export const SELECTION_STATUS: Record<SelectionStatus, { label: string; tone: Tone }> = {
+  DRAFT: { label: "Черновик", tone: "neutral" },
+  SENT: { label: "Отправлена", tone: "info" },
+  VIEWED: { label: "Просмотрена", tone: "success" },
+  ARCHIVED: { label: "В архиве", tone: "neutral" },
+};
+
 export const TIER_TONE: Record<string, Tone> = {
   BASE: "neutral",
   SILVER: "info",

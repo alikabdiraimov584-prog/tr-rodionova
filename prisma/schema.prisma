@@ -45,6 +45,10 @@ model User {
   tags       String[] @default([])
   source     String? // откуда пришёл клиент
   preferredSize    String? // размер клиента — для стилиста и снижения возвратов
+  height           Int? // см
+  bust             Int?
+  waist            Int?
+  hips             Int?
   marketingConsent Boolean  @default(false)
   stockAlerts      StockSubscription[]
   notes      CustomerNote[]
@@ -68,6 +72,10 @@ model User {
 
   // Атрибуция первого касания
   campaigns     CampaignRecipient[]
+  giftCards     GiftCard[]      @relation("GiftPurchaser")
+  resales       ResaleRequest[]
+  selections    Selection[]     @relation("SelectionCustomer")
+  styled        Selection[]     @relation("SelectionStylist")
   unsubscribeToken String @unique @default(cuid())
   firstChannel  TrafficChannel?
   firstSource   String?
@@ -136,6 +144,17 @@ model Product {
   status       ProductStatus @default(ACTIVE)
   isNew        Boolean       @default(false)
   isFeatured   Boolean       @default(false)
+  isPreorder   Boolean       @default(false) // можно заказать без остатка, отшив к дате
+  preorderShipAt DateTime?
+  earlyAccessUntil DateTime? // до этой даты виден только Maison и Privé
+  isPreloved   Boolean       @default(false) // витрина pre-loved
+  condition    String? // состояние pre-loved вещи
+  material     String? // «шерсть», «кашемир», «шёлк» — фильтр каталога
+  sizeChart    String? // ключ таблицы размеров: outer / knit / dress / trousers
+  lookItems    LookItem[]
+  articles     Article[]     @relation("ArticleProducts")
+  resales      ResaleRequest[] @relation("ResaleProduct")
+  selectionItems SelectionItem[]
   categoryId   String?
   category     Category?     @relation(fields: [categoryId], references: [id])
   collectionId String?
@@ -318,6 +337,10 @@ model Order {
   pointsTx      PointsTransaction[]
   ledger        LedgerEntry[]
   promoUses     PromoUse[]
+  giftRedemptions GiftRedemption[]
+  giftUsed      Int            @default(0) // оплачено сертификатом, копейки
+  isPreorder    Boolean        @default(false)
+  paymentUrl    String? // ссылка на оплату у провайдера
   // Атрибуция заказа (последний клик)
   sessionId     String?
   session       VisitorSession? @relation(fields: [sessionId], references: [id])
@@ -346,6 +369,8 @@ model OrderItem {
   costPrice   Int? // себестоимость на момент заказа
   quantity    Int
   returnedQty Int            @default(0)
+  isPreorder  Boolean        @default(false)
+  resales     ResaleRequest[]
 }
 
 model OrderEvent {
@@ -809,4 +834,155 @@ model CampaignRecipient {
 
   @@unique([campaignId, userId])
   @@index([campaignId, status])
+}
+
+// ───────────────────────────── Лукбук ─────────────────────────────
+
+model Look {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String
+  season      String? // «AW26»
+  description String?
+  coverUrl    String?
+  order       Int        @default(0)
+  isPublished Boolean    @default(true)
+  items       LookItem[]
+  createdAt   DateTime   @default(now())
+}
+
+model LookItem {
+  id        String  @id @default(cuid())
+  lookId    String
+  look      Look    @relation(fields: [lookId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order     Int     @default(0)
+  note      String?
+
+  @@unique([lookId, productId])
+}
+
+// ───────────────────────────── Журнал ─────────────────────────────
+
+model Article {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String?
+  body        String // Markdown
+  coverUrl    String?
+  category    String? // «Уход», «Ткани», «Ателье», «Интервью»
+  publishedAt DateTime?
+  authorId    String?
+  products    Product[] @relation("ArticleProducts")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ───────────────────────────── Подарочные сертификаты ─────────────────────────────
+
+enum GiftCardStatus {
+  PENDING // создан, ожидает оплаты
+  ACTIVE
+  USED
+  EXPIRED
+  CANCELLED
+}
+
+model GiftCard {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  amount         Int // номинал, копейки
+  balance        Int
+  status         GiftCardStatus @default(PENDING)
+  purchaserId    String?
+  purchaser      User?          @relation("GiftPurchaser", fields: [purchaserId], references: [id])
+  recipientName  String?
+  recipientEmail String?
+  message        String?
+  paymentId      String? // id платежа за сертификат
+  expiresAt      DateTime
+  createdAt      DateTime       @default(now())
+  redemptions    GiftRedemption[]
+}
+
+model GiftRedemption {
+  id         String   @id @default(cuid())
+  giftCardId String
+  giftCard   GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount     Int
+  createdAt  DateTime @default(now())
+}
+
+// ───────────────────────────── Выкуп и ресейл ─────────────────────────────
+
+enum ResaleStatus {
+  REQUESTED // клиентка подала заявку
+  OFFERED // бренд предложил сумму баллами
+  ACCEPTED // клиентка согласилась, ждём вещь
+  RECEIVED // вещь получена, баллы начислены
+  LISTED // выставлена на витрину pre-loved
+  SOLD
+  DECLINED
+  CANCELLED
+}
+
+model ResaleRequest {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItemId  String?
+  orderItem    OrderItem?   @relation(fields: [orderItemId], references: [id])
+  productId    String?
+  product      Product?     @relation("ResaleProduct", fields: [productId], references: [id])
+  description  String // состояние, носилась ли, дефекты
+  condition    String? // «как новое», «хорошее», «со следами носки»
+  photos       String[]     @default([])
+  status       ResaleStatus @default(REQUESTED)
+  offerPoints  Int? // предложение бренда
+  managerNote  String?
+  listedProductId String? // товар на витрине pre-loved
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ───────────────────────────── Стилист: персональные подборки ─────────────────────────────
+
+enum SelectionStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ARCHIVED
+}
+
+model Selection {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation("SelectionCustomer", fields: [userId], references: [id], onDelete: Cascade)
+  stylistId String?
+  stylist   User?           @relation("SelectionStylist", fields: [stylistId], references: [id])
+  title     String
+  note      String?
+  status    SelectionStatus @default(DRAFT)
+  items     SelectionItem[]
+  sentAt    DateTime?
+  viewedAt  DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model SelectionItem {
+  id          String    @id @default(cuid())
+  selectionId String
+  selection   Selection @relation(fields: [selectionId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String? // рекомендованный размер
+  comment     String?
+  order       Int       @default(0)
+
+  @@unique([selectionId, productId])
 }

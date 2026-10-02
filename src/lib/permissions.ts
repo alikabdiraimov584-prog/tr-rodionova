@@ -5,6 +5,10 @@ export const SECTIONS = {
   dashboard: ["MANAGER", "ADMIN"],
   analytics: ["MANAGER", "ADMIN"],
   campaigns: ["MANAGER", "ADMIN"],
+  content: ["MANAGER", "ADMIN"], // лукбук, журнал
+  giftcards: ["SUPPORT", "MANAGER", "ADMIN"],
+  resale: ["MANAGER", "ADMIN"],
+  stylist: ["SUPPORT", "MANAGER", "ADMIN"],
   support: ["SUPPORT", "MANAGER", "ADMIN"],
   orders: ["SUPPORT", "MANAGER", "ADMIN"],
   ordersEdit: ["MANAGER", "ADMIN"],
