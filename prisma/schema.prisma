@@ -41,6 +41,9 @@ model User {
   // CRM
   tags       String[] @default([])
   source     String? // откуда пришёл клиент
+  preferredSize    String? // размер клиента — для стилиста и снижения возвратов
+  marketingConsent Boolean  @default(false)
+  stockAlerts      StockSubscription[]
   notes      CustomerNote[]
   tasks      CrmTask[]      @relation("TaskCustomer")
   assigned   CrmTask[]      @relation("TaskAssignee")
@@ -150,6 +153,20 @@ model ProductVariant {
   movements  StockMovement[]
   orderItems OrderItem[]
   cartItems  CartItem[]
+  alerts     StockSubscription[]
+}
+
+// Лист ожидания: «Сообщить о поступлении»
+model StockSubscription {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId  String
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  createdAt  DateTime       @default(now())
+  notifiedAt DateTime?
+
+  @@unique([userId, variantId])
 }
 
 enum StockMovementType {
@@ -282,6 +299,9 @@ model Order {
   pointsTx      PointsTransaction[]
   ledger        LedgerEntry[]
   promoUses     PromoUse[]
+  paidAt        DateTime?
+  deliveredAt   DateTime? // от этой даты считается 14-дневный срок возврата
+  completedAt   DateTime? // баллы начисляются при завершении
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }

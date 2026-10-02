@@ -1,26 +1,139 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --taupe: #a89b8c;
+  --taupe-dark: #8b7f71;
+  --ivory: #f8f5ee;
+  --ivory-dark: #efe9dd;
+  --black: #0e0e0e;
+  --champagne: #d9c29f;
+  --champagne-dark: #c4a97d;
+  --sand: #e8dfd0;
+  --muted: #6f675e;
+  --line: #e2dbcf;
+  --success: #4f7a5a;
+  --danger: #a8453d;
+  --warning: #b5862c;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-taupe: var(--taupe);
+  --color-taupe-dark: var(--taupe-dark);
+  --color-ivory: var(--ivory);
+  --color-ivory-dark: var(--ivory-dark);
+  --color-ink: var(--black);
+  --color-champagne: var(--champagne);
+  --color-champagne-dark: var(--champagne-dark);
+  --color-sand: var(--sand);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --font-serif: var(--font-dm-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ivory);
+  color: var(--black);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.serif {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.monogram {
+  font-family: var(--font-serif);
+  letter-spacing: -0.08em;
+  color: var(--taupe-dark);
+}
+
+@utility btn {
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 px-6 py-3 text-[0.72rem] uppercase tracking-[0.22em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@layer components {
+  .btn-primary {
+    @apply btn bg-ink text-ivory hover:bg-taupe-dark;
+  }
+  .btn-outline {
+    @apply btn border border-ink text-ink hover:bg-ink hover:text-ivory;
+  }
+  .btn-ghost {
+    @apply btn text-ink hover:bg-sand;
+  }
+  .btn-sm {
+    @apply px-4 py-2 text-[0.65rem];
+  }
+
+  .input {
+    @apply w-full border border-line bg-white px-4 py-3 text-sm font-light outline-none placeholder:text-muted/70 focus:border-ink;
+  }
+  .label {
+    @apply mb-1.5 block text-[0.68rem] uppercase tracking-[0.2em] text-muted;
+  }
+  .card {
+    @apply border border-line bg-white;
+  }
+
+  .table {
+    @apply w-full text-sm;
+  }
+  .table th {
+    @apply border-b border-line px-3 py-2 text-left text-[0.65rem] font-normal uppercase tracking-[0.18em] text-muted;
+  }
+  .table td {
+    @apply border-b border-line/60 px-3 py-2.5 align-middle;
+  }
+  .table tr:hover td {
+    @apply bg-ivory/60;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.65rem] uppercase tracking-[0.12em];
+  }
+
+  .divider-star {
+    @apply flex items-center gap-3 text-taupe;
+  }
+  .divider-star::before,
+  .divider-star::after {
+    content: "";
+    @apply h-px flex-1 bg-line;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.5s ease-out both;
 }
