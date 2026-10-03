@@ -577,6 +577,31 @@ model ChannelIntegration {
   updatedAt     DateTime @updatedAt
 }
 
+enum NotificationStatus {
+  SENT
+  FAILED
+  SKIPPED // канал не подключён или нет адреса
+}
+
+/** Сервисные уведомления клиентке: статусы заказа, баллы. Отправляются без согласия на рассылки. */
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String?
+  orderId   String?
+  event     String // ORDER_CREATED, ORDER_PAID, ORDER_SHIPPED, …
+  channel   Channel
+  address   String
+  subject   String?
+  text      String
+  status    NotificationStatus
+  error     String?
+  createdAt DateTime           @default(now())
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@index([event, createdAt])
+}
+
 /** Собеседник во внешнем канале. Связывается с клиентом по телефону/email или вручную. */
 model Contact {
   id         String         @id @default(cuid())

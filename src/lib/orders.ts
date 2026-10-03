@@ -7,6 +7,7 @@ import { earnForOrder, revertOrderPoints, grantReferralBonus, recalcTier, addPoi
 export const RETURN_WINDOW_DAYS = 14;
 import { audit } from "@/lib/audit";
 import { currentSession, trackEvent } from "@/lib/web-analytics";
+import { notifyOrder } from "@/lib/notifications";
 import type { Prisma } from "@/generated/prisma/client";
 import type { OrderStatus, DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 
@@ -299,13 +300,14 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
   });
   await trackEvent("ORDER", { orderId: order.id, value: order.total, userId });
   if (order.total === 0) await markOrderPaid(order.id, { externalId: "gift" });
+  else void notifyOrder(order.id, "ORDER_CREATED");
   return order;
 }
 
 // ───────────── Оплата и статусы ─────────────
 
 export async function markOrderPaid(orderId: string, opts: { createdBy?: string | null; externalId?: string | null } = {}) {
-  return db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
     if (order.status !== "NEW") throw new Error("Заказ уже оплачен или отменён");
     await tx.order.update({ where: { id: orderId }, data: { status: "PAID", paidAt: new Date() } });
@@ -328,6 +330,7 @@ export async function markOrderPaid(orderId: string, opts: { createdBy?: string 
     await addOrderEvent(tx, orderId, "Оплата получена", "PAID", opts.createdBy);
     await audit(opts.createdBy ?? null, "order.paid", "Order", orderId, undefined, tx);
   });
+  void notifyOrder(orderId, "ORDER_PAID");
 }
 
 /** Сторно себестоимости за позиции, вернувшиеся на склад: иначе P&L занижает маржу. */
@@ -353,7 +356,7 @@ async function restoreGiftForOrder(tx: Tx, orderId: string, createdBy?: string |
 }
 
 export async function cancelOrder(orderId: string, opts: { reason?: string; createdBy?: string | null } = {}) {
-  return db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
     if (!canTransition(order.status, "CANCELLED")) throw new Error("Заказ нельзя отменить на этом этапе");
     if (order.status === "NEW") {
@@ -378,12 +381,13 @@ export async function cancelOrder(orderId: string, opts: { reason?: string; crea
     await addOrderEvent(tx, orderId, opts.reason ? `Заказ отменён: ${opts.reason}` : "Заказ отменён", "CANCELLED", opts.createdBy);
     await audit(opts.createdBy ?? null, "order.cancel", "Order", orderId, { reason: opts.reason ?? null }, tx);
   });
+  void notifyOrder(orderId, "ORDER_CANCELLED");
 }
 
 export async function setOrderStatus(orderId: string, status: OrderStatus, opts: { createdBy?: string | null; trackingNumber?: string | null; note?: string } = {}) {
   if (status === "CANCELLED") return cancelOrder(orderId, { createdBy: opts.createdBy, reason: opts.note });
   if (status === "PAID") return markOrderPaid(orderId, { createdBy: opts.createdBy });
-  return db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
     if (!canTransition(order.status, status)) throw new Error(`Переход ${order.status} → ${status} недопустим`);
     if (status === "RETURNED") {
@@ -418,6 +422,8 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
     await addOrderEvent(tx, orderId, opts.note ?? `Статус изменён`, status, opts.createdBy);
     await audit(opts.createdBy ?? null, "order.status", "Order", orderId, { status }, tx);
   });
+  const notifyFor: Partial<Record<OrderStatus, Parameters<typeof notifyOrder>[1]>> = { SHIPPED: "ORDER_SHIPPED", DELIVERED: "ORDER_DELIVERED", COMPLETED: "ORDER_COMPLETED" };
+  if (notifyFor[status]) void notifyOrder(orderId, notifyFor[status]);
 }
 
 /** Частичный возврат отдельных позиций (из CRM). */

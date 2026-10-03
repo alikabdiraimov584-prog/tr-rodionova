@@ -4,6 +4,7 @@ import { addPoints, expirePoints, recalcTier } from "@/lib/loyalty";
 import { setOrderStatus, RETURN_WINDOW_DAYS } from "@/lib/orders";
 import { audit } from "@/lib/audit";
 import { runDueCampaigns } from "@/lib/campaigns";
+import { notifyExpiringPoints, notifyPoints } from "@/lib/notifications";
 
 /** Завершить заказы, у которых прошёл срок возврата. При завершении начисляются баллы. */
 export async function completeDeliveredOrders(now = new Date()) {
@@ -38,6 +39,7 @@ export async function grantBirthdayBonuses(now = new Date()) {
         expiresAt: new Date(now.getTime() + 30 * 86_400_000),
       });
     });
+    await notifyPoints(id, "POINTS_BIRTHDAY", { points: bonus });
     n++;
   }
   return n;
@@ -56,7 +58,8 @@ export async function runDailyJobs(actorId: string | null = null) {
   const expired = await db.$transaction((tx) => expirePoints(tx), { timeout: 60_000 });
   const tiers = await recalcAllTiers();
   const campaigns = await runDueCampaigns(process.env.APP_URL ?? "https://t-rodionova.ru");
-  const result = { completed, birthdays, expired, tiers, campaigns };
+  const expiringNotified = await notifyExpiringPoints(7);
+  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified };
   await audit(actorId, "jobs.daily", "System", null, result);
   return result;
 }
