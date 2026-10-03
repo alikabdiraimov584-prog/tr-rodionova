@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentUser, isStaff } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Logo } from "@/components/ui";
 
@@ -31,7 +31,6 @@ export async function ShopHeader() {
         <Logo />
         <nav className="flex justify-end gap-5 text-[0.68rem] uppercase tracking-[0.1em]">
           <Link href="/catalog?q=" className="hidden sm:inline hover:underline underline-offset-4">Поиск</Link>
-          {user && isStaff(user.role) && <Link href={user.role === "SUPPORT" ? "/crm/support" : "/crm"} className="hidden sm:inline hover:underline underline-offset-4">CRM</Link>}
           <Link href={user ? "/account" : "/login"} className="hover:underline underline-offset-4">{user ? "Кабинет" : "Войти"}</Link>
           <Link href="/cart" className="hover:underline underline-offset-4">Корзина {cartCount || 0}</Link>
         </nav>
