@@ -44,7 +44,9 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron
 | `DATABASE_URL` | PostgreSQL |
 | `AUTH_SECRET` | ключ подписи сессий (32+ символа) |
 | `CRON_SECRET` | токен для `/api/cron` |
-| `APP_URL` | публичный адрес сайта — для URL вебхуков и трекинговых ссылок |
+| `APP_URL` | публичный адрес сайта — для URL вебхуков, трекинговых ссылок, sitemap и Open Graph (обязателен в проде) |
+| `SEED_ON_START` | `1` — засеять демо-данные с известными паролями при пустой базе (только стенд); по умолчанию `0` |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | первый администратор в проде (создаётся, если администраторов нет; пароль 12+ символов) |
 | `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY` | ЮKassa; без них в продакшене оплата недоступна |
 | `ALLOW_DEMO_PAYMENTS` | `1` — разрешить демо-оплату без ЮKassa (только для стенда) |
 
@@ -85,6 +87,10 @@ prisma/              схема, миграции, сид
 ### Роли
 
 `CUSTOMER` — сайт и кабинет. `SUPPORT` — поддержка, задачи, просмотр заказов и клиентов, отзывы. `MANAGER` — плюс заказы, склад, товары, лояльность, промокоды, аналитика. `ADMIN` — плюс финансы, сотрудники, настройки, каналы, журнал. Матрица — в `src/lib/permissions.ts` и на странице CRM → Сотрудники.
+
+## SEO
+
+`/sitemap.xml`, `/robots.txt`, RSS журнала `/journal/feed.xml`, Open Graph и JSON-LD (Organization, Product, Article). У статей в CRM есть поля title/description/ключевые слова.
 
 ## Проверка
 

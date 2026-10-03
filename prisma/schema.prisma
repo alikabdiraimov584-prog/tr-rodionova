@@ -26,6 +26,8 @@ model User {
   birthday     DateTime?
   role         Role      @default(CUSTOMER)
   isActive     Boolean   @default(true) // отключённый сотрудник/клиент не может войти
+  sessionVersion Int     @default(0) // растёт при смене пароля/блокировке: старые сессии перестают действовать
+  anonymizedAt DateTime? // клиент обезличен по запросу (152-ФЗ)
   lastSeenAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -575,6 +577,14 @@ model ChannelIntegration {
   lastError     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+/** Счётчик попыток для защиты от перебора (вход, регистрация, проверка кодов). */
+model RateLimit {
+  key         String   @id // например login:ip:1.2.3.4 или login:email:a@b.c
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+  lockedUntil DateTime?
 }
 
 enum NotificationStatus {

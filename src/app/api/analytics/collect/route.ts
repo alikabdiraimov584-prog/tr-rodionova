@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
   const out = new NextResponse(null, { status: 204 });
   if (res) {
     const secure = process.env.NODE_ENV === "production";
-    out.cookies.set(VISITOR_COOKIE, res.visitorId, { maxAge: YEAR, sameSite: "lax", secure, path: "/" });
-    out.cookies.set(SESSION_COOKIE_A, res.sessionId, { maxAge: 30 * 60, sameSite: "lax", secure, path: "/" });
+    out.cookies.set(VISITOR_COOKIE, res.visitorId, { maxAge: YEAR, sameSite: "lax", secure, httpOnly: true, path: "/" });
+    out.cookies.set(SESSION_COOKIE_A, res.sessionId, { maxAge: 30 * 60, sameSite: "lax", secure, httpOnly: true, path: "/" });
     if (req.cookies.get("tr_link")) out.cookies.delete("tr_link");
   }
   return out;

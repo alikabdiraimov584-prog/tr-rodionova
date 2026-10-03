@@ -70,7 +70,7 @@ export async function createStaffAction(_: ActionState, formData: FormData): Pro
   if (existing) return { error: "Этот email принадлежит клиенту. Используйте рабочий адрес сотрудника." };
   const password = tempPassword();
   const u = await db.user.create({ data: { ...d, lastName: d.lastName || null, phone: d.phone || null, role: d.role as Role, passwordHash: await hashPassword(password) } });
-  await audit(me.id, "staff.create", "User", u.id, { role: d.role, email: d.email });
+  await audit(me.id, "staff.create", "User", u.id, { role: d.role });
   revalidatePath("/crm/staff");
   return { ok: true, message: `Аккаунт создан. Временный пароль: ${password} — передайте сотруднику, он виден один раз.` };
 }
@@ -84,11 +84,13 @@ export async function updateStaffAction(formData: FormData) {
     const role = String(formData.get("role")) as Role;
     if (id === me.id && role !== "ADMIN") throw new Error("Нельзя снять с себя права администратора");
     if (!["SUPPORT", "MANAGER", "ADMIN"].includes(role)) throw new Error("Недопустимая роль");
-    await db.user.update({ where: { id }, data: { role } });
+    const r = await db.user.updateMany({ where: { id, role: { not: "CUSTOMER" } }, data: { role, sessionVersion: { increment: 1 } } });
+    if (r.count === 0) throw new Error("Сотрудник не найден");
     await audit(me.id, "staff.role", "User", id, { role });
   } else if (op === "toggle") {
     const u = await db.user.findUniqueOrThrow({ where: { id } });
-    await db.user.update({ where: { id }, data: { isActive: !u.isActive } });
+    if (u.role === "CUSTOMER") throw new Error("Это клиент, а не сотрудник");
+    await db.user.update({ where: { id }, data: { isActive: !u.isActive, sessionVersion: { increment: 1 } } });
     if (u.isActive) {
       // открытые диалоги отключённого сотрудника возвращаются в общую очередь
       await db.conversation.updateMany({ where: { assigneeId: id, status: { not: "CLOSED" } }, data: { assigneeId: null } });
@@ -102,7 +104,8 @@ export async function resetStaffPasswordAction(_: ActionState, formData: FormDat
   const me = await requireSection("staff");
   const id = String(formData.get("id"));
   const password = tempPassword();
-  await db.user.update({ where: { id }, data: { passwordHash: await hashPassword(password) } });
+  const r = await db.user.updateMany({ where: { id, role: { not: "CUSTOMER" } }, data: { passwordHash: await hashPassword(password), sessionVersion: { increment: 1 } } });
+  if (r.count === 0) return { error: "Сотрудник не найден" };
   await audit(me.id, "staff.resetPassword", "User", id);
   return { ok: true, message: `Новый пароль: ${password}` };
 }

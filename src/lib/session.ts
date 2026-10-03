@@ -4,25 +4,32 @@ import { cookies } from "next/headers";
 import type { Role } from "@/generated/prisma/enums";
 
 export const SESSION_COOKIE = "tr_session";
-const SESSION_DAYS = 30;
+const CUSTOMER_SESSION_DAYS = 30;
+const STAFF_SESSION_DAYS = 7;
 
 export type SessionPayload = {
   userId: string;
   role: Role;
+  /** версия сессии пользователя: при смене пароля или блокировке старые токены перестают действовать */
+  sv: number;
   expiresAt: string;
 };
 
 function secret() {
   const s = process.env.AUTH_SECRET;
-  if (!s || s.length < 16) throw new Error("AUTH_SECRET не задан или слишком короткий");
+  if (!s || s.length < 32) throw new Error("AUTH_SECRET не задан или короче 32 символов");
   return new TextEncoder().encode(s);
 }
 
-export async function encrypt(payload: SessionPayload): Promise<string> {
+export function sessionDays(role: Role) {
+  return role === "CUSTOMER" ? CUSTOMER_SESSION_DAYS : STAFF_SESSION_DAYS;
+}
+
+export async function encrypt(payload: SessionPayload, days: number): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(`${SESSION_DAYS}d`)
+    .setExpirationTime(`${days}d`)
     .sign(secret());
 }
 
@@ -36,9 +43,10 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
   }
 }
 
-export async function createSession(userId: string, role: Role) {
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-  const token = await encrypt({ userId, role, expiresAt: expiresAt.toISOString() });
+export async function createSession(userId: string, role: Role, sv: number) {
+  const days = sessionDays(role);
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const token = await encrypt({ userId, role, sv, expiresAt: expiresAt.toISOString() }, days);
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,

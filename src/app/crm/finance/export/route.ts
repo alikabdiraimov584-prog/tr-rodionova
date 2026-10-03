@@ -14,7 +14,8 @@ export async function GET(request: Request) {
   from.setMonth(from.getMonth() - (months - 1));
   const rows = await db.ledgerEntry.findMany({ where: { date: { gte: from } }, include: { order: { select: { number: true } } }, orderBy: { date: "asc" } });
   const esc = (v: unknown) => {
-    const s = v === null || v === undefined ? "" : String(v);
+    let s = v === null || v === undefined ? "" : String(v);
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = ["Дата;Статья;Знак;Сумма, ₽;Категория;Заказ;Комментарий"];

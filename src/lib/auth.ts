@@ -15,6 +15,8 @@ export const getCurrentUser = cache(async () => {
     include: { loyaltyTier: true },
   });
   if (!user || !user.isActive) return null;
+  // токен, выданный до смены пароля или блокировки, больше не действует
+  if ((session.sv ?? 0) !== user.sessionVersion) return null;
   return user;
 });
 
@@ -54,11 +56,22 @@ export async function verifyPassword(password: string, hash: string) {
 }
 
 export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, 12);
 }
 
-export async function loginAs(userId: string, role: Role) {
-  await createSession(userId, role);
+/** Фиктивный хеш: сравнение с ним занимает столько же времени, сколько с настоящим, и не выдаёт, есть ли email в базе. */
+const DUMMY_HASH = "$2a$12$CwTycUXWue0Thq9StjUM0uJ8m4N3ZbQ8k1hQxYfD2kz1VY8XAv7Ue";
+export async function verifyPasswordOrDummy(password: string, hash: string | null | undefined) {
+  return bcrypt.compare(password, hash ?? DUMMY_HASH).then((ok) => ok && !!hash);
+}
+
+export async function loginAs(userId: string, role: Role, sessionVersion: number) {
+  await createSession(userId, role, sessionVersion);
+}
+
+/** Завершить все сессии пользователя (смена пароля, блокировка, сброс пароля). */
+export async function revokeSessions(userId: string) {
+  await db.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
 }
 
 export async function logout() {

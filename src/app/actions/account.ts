@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser, hashPassword, verifyPassword } from "@/lib/auth";
+import { requireUser, hashPassword, verifyPassword, loginAs } from "@/lib/auth";
 import type { ActionState } from "@/lib/action-result";
 import { recordConsent } from "@/lib/consent";
 
@@ -66,8 +66,11 @@ export async function changePasswordAction(_: ActionState, formData: FormData): 
   const parsed = PasswordSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (!(await verifyPassword(parsed.data.current, user.passwordHash))) return { error: "Текущий пароль неверен" };
-  await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.next) } });
-  return { ok: true, message: "Пароль изменён" };
+  await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.next), sessionVersion: { increment: 1 } } });
+  // текущая сессия остаётся: выдаём новый токен с новой версией
+  const fresh = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { sessionVersion: true } });
+  await loginAs(user.id, user.role, fresh.sessionVersion);
+  return { ok: true, message: "Пароль изменён, остальные устройства вышли из аккаунта" };
 }
 
 const AddressSchema = z.object({

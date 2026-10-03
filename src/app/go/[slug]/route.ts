@@ -13,6 +13,6 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/go/[slug]">) {
   if (link.campaign) url.searchParams.set("utm_campaign", link.campaign);
   if (link.content) url.searchParams.set("utm_content", link.content);
   const res = NextResponse.redirect(url);
-  res.cookies.set("tr_link", link.id, { maxAge: 600, sameSite: "lax", path: "/" });
+  res.cookies.set("tr_link", link.id, { maxAge: 600, sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production", path: "/" });
   return res;
 }

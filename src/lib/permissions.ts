@@ -14,6 +14,7 @@ export const SECTIONS = {
   ordersEdit: ["MANAGER", "ADMIN"],
   customers: ["SUPPORT", "MANAGER", "ADMIN"],
   customersEdit: ["MANAGER", "ADMIN"],
+  customersExport: ["ADMIN"], // выгрузка ПДн всей базы — только администратор
   points: ["MANAGER", "ADMIN"],
   tasks: ["SUPPORT", "MANAGER", "ADMIN"],
   products: ["MANAGER", "ADMIN"],

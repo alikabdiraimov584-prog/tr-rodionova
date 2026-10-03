@@ -10,6 +10,7 @@ import { audit } from "@/lib/audit";
 import { formatDate, formatMoney, toKopecks, RUB } from "@/lib/money";
 import { normalizeGiftCode } from "@/lib/orders";
 import { activateGiftCard } from "@/lib/gift-payment";
+import { checkRate } from "@/lib/ratelimit";
 import { createGiftCardPayment, demoPaymentsAllowed, yookassaEnabled } from "@/lib/payments/yookassa";
 import { GIFT_MAX_RUB, GIFT_MIN_RUB, GIFT_VALIDITY_MONTHS, generateGiftCode } from "@/lib/gift";
 import { errorMessage, type ActionState } from "@/lib/action-result";
@@ -61,7 +62,7 @@ export async function buyGiftCardAction(_: ActionState, formData: FormData): Pro
   } catch (e) {
     return { error: errorMessage(e) };
   }
-  await audit(user.id, "giftcard.create", "GiftCard", id, { amount, recipientEmail: d.recipientEmail || null });
+  await audit(user.id, "giftcard.create", "GiftCard", id, { amount, hasRecipient: !!d.recipientEmail });
   revalidatePath("/account/giftcards");
   redirect(`/account/giftcards/${id}`);
 }
@@ -109,7 +110,9 @@ export async function payGiftCardAction(_: ActionState, formData: FormData): Pro
 
 /** «Проверить баланс по коду» в кабинете: показывает статус и остаток любого сертификата. */
 export async function checkGiftBalanceAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  await requireUser("/account/giftcards");
+  const user = await requireUser("/account/giftcards");
+  const rl = await checkRate(`gift:check:${user.id}`, { limit: 10, windowSec: 600, lockSec: 1800 });
+  if (!rl.ok) return { error: "Слишком много проверок. Попробуйте позже." };
   const code = normalizeGiftCode(String(formData.get("code") ?? ""));
   if (!code) return { error: "Введите код сертификата" };
   const card = await db.giftCard.findUnique({ where: { code } });

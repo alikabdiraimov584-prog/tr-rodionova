@@ -6,13 +6,15 @@ import { rfmSegment } from "@/lib/rfm";
 import { audit } from "@/lib/audit";
 
 function csv(v: unknown) {
-  const s = v === null || v === undefined ? "" : String(v);
+  let s = v === null || v === undefined ? "" : String(v);
+  // значение, начинающееся с = + - @ или табуляции, Excel выполнит как формулу — экранируем апострофом
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || !can(user.role, "customersEdit")) return new Response("Forbidden", { status: 403 });
+  if (!user || !can(user.role, "customersExport")) return new Response("Forbidden", { status: 403 });
   const url = new URL(request.url);
   const tier = url.searchParams.get("tier");
   const segment = url.searchParams.get("segment");

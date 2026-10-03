@@ -17,7 +17,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireUser(`/account/orders/${id}`);
-  if (sp.paid) await syncOrderPayment(id);
+  // статус у ЮKassa запрашиваем только для своего заказа
+  if (sp.paid && (await db.order.count({ where: { id, userId: user.id } }))) await syncOrderPayment(id);
   const order = await db.order.findUnique({
     where: { id },
     include: { items: { include: { variant: { include: { product: true } } } }, payments: true, history: { orderBy: { createdAt: "asc" } }, address: true },

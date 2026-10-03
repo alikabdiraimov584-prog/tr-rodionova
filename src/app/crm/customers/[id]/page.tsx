@@ -10,7 +10,8 @@ import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
 import { CustomerEditForm, PointsForm, TaskForm } from "@/components/crm/customer-forms";
 import { SubmitButton } from "@/components/form";
 import { can } from "@/lib/permissions";
-import { addNoteAction, deleteNoteAction, recalcCustomerTierAction, setTaskStatusAction } from "@/app/actions/crm-customers";
+import { addNoteAction, anonymizeCustomerAction, deleteNoteAction, recalcCustomerTierAction, setTaskStatusAction } from "@/app/actions/crm-customers";
+import { ConfirmButton } from "@/components/form";
 
 export default async function CustomerCard({ params }: PageProps<"/crm/customers/[id]">) {
   const me = await requireSection("customers");
@@ -172,6 +173,12 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
             <Eyebrow>Начислить / списать баллы</Eyebrow>
             <PointsForm userId={c.id} />
             <form action={recalcCustomerTierAction}><input type="hidden" name="userId" value={c.id} /><SubmitButton className="text-xs text-muted underline">Пересчитать уровень</SubmitButton></form>
+            {can(me.role, "customersEdit") && !c.anonymizedAt && (
+              <form action={anonymizeCustomerAction}>
+                <input type="hidden" name="userId" value={c.id} />
+                <ConfirmButton className="text-xs text-danger underline" message="Обезличить клиента? Имя, контакты, мерки и адреса будут стёрты, заказы останутся. Действие необратимо.">Обезличить по запросу клиента</ConfirmButton>
+              </form>
+            )}
           </div>}
           {can(me.role, "customersEdit") && <div className="card p-5">
             <Eyebrow>Профиль</Eyebrow>
