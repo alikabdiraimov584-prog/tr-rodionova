@@ -13,6 +13,7 @@ export function LoginForm({ next }: { next?: string }) {
       <label className="block"><span className="label">Пароль</span><input name="password" type="password" required autoComplete="current-password" className="input" /></label>
       {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       <button className="btn-primary w-full" disabled={pending}>{pending ? "Входим…" : "Войти"}</button>
+      <p className="text-center text-xs text-muted"><Link href="/forgot" className="underline">Забыли пароль?</Link></p>
       <p className="text-center text-sm text-muted">
         Нет аккаунта? <Link href={`/register${next ? `?next=${encodeURIComponent(next)}` : ""}`} className="text-ink underline">Регистрация</Link>
       </p>

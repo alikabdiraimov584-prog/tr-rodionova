@@ -107,6 +107,11 @@ model Category {
   id       String     @id @default(cuid())
   slug     String     @unique
   name     String
+  // SEO-текст категории и вопросы-ответы для страницы каталога
+  seoTitle       String?
+  seoDescription String?
+  seoText        String? // Markdown
+  faq            Json? // [{ q, a }]
   order    Int        @default(0)
   parentId String?
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
@@ -331,6 +336,7 @@ model Order {
   promoCodeId   String?
   promoCode     PromoCode?     @relation(fields: [promoCodeId], references: [id])
   comment       String?
+  fittingRequested Boolean    @default(false) // примерка курьером перед покупкой
   managerNote   String?
   items         OrderItem[]
   payments      Payment[]
@@ -577,6 +583,18 @@ model ChannelIntegration {
   lastError     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+/** Одноразовая ссылка для восстановления пароля (хранится хеш токена). */
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /** Счётчик попыток для защиты от перебора (вход, регистрация, проверка кодов). */

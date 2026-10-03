@@ -21,7 +21,7 @@ function siteUrl() {
   return process.env.APP_URL ?? "https://t-rodionova.ru";
 }
 
-async function sendVia(channel: Channel, address: string, text: string, subject: string | null): Promise<{ status: "SENT" | "FAILED" | "SKIPPED"; error?: string }> {
+export async function sendVia(channel: Channel, address: string, text: string, subject: string | null): Promise<{ status: "SENT" | "FAILED" | "SKIPPED"; error?: string }> {
   const integration = await db.channelIntegration.findUnique({ where: { channel } });
   const adapter = ADAPTERS[channel];
   if (!integration?.enabled || !adapter) return { status: "SKIPPED", error: "Канал не подключён" };

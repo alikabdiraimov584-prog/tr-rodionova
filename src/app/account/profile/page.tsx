@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -57,6 +58,18 @@ export default async function ProfilePage() {
       <section>
         <h2 className="mb-4 text-xl">Пароль</h2>
         <PasswordForm />
+      </section>
+      <section className="border-t border-line pt-8">
+        <h2 className="mb-2 text-xl">Ваши данные</h2>
+        <p className="mb-4 max-w-xl text-sm text-muted">
+          По закону о персональных данных вы можете получить копию всего, что мы храним, или попросить удалить аккаунт. Заказы и чеки сохраняются
+          в обезличенном виде, как того требует бухгалтерский учёт.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <a href="/account/data-export" className="btn-outline btn-sm">Скачать мои данные (JSON)</a>
+          <Link href="/account/support?topic=delete" className="btn-ghost btn-sm text-muted">Запросить удаление аккаунта</Link>
+          <Link href="/privacy" className="btn-ghost btn-sm text-muted">Политика обработки ПДн</Link>
+        </div>
       </section>
     </div>
   );
