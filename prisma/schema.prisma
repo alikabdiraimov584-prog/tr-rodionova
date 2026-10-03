@@ -11,6 +11,7 @@ datasource db {
 
 enum Role {
   CUSTOMER
+  SUPPORT // менеджер поддержки: единый inbox, клиенты, заказы (просмотр)
   MANAGER
   ADMIN
 }
@@ -24,6 +25,8 @@ model User {
   lastName     String?
   birthday     DateTime?
   role         Role      @default(CUSTOMER)
+  isActive     Boolean   @default(true) // отключённый сотрудник/клиент не может войти
+  lastSeenAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -41,6 +44,13 @@ model User {
   // CRM
   tags       String[] @default([])
   source     String? // откуда пришёл клиент
+  preferredSize    String? // размер клиента — для стилиста и снижения возвратов
+  height           Int? // см
+  bust             Int?
+  waist            Int?
+  hips             Int?
+  marketingConsent Boolean  @default(false)
+  stockAlerts      StockSubscription[]
   notes      CustomerNote[]
   tasks      CrmTask[]      @relation("TaskCustomer")
   assigned   CrmTask[]      @relation("TaskAssignee")
@@ -52,6 +62,26 @@ model User {
   reviews    Review[]
   auditLogs  AuditLog[]
   promoUses  PromoUse[]
+
+  // Поддержка
+  contacts          Contact[]
+  conversations     Conversation[] @relation("ConversationCustomer")
+  assignedChats     Conversation[] @relation("ConversationAssignee")
+  supportMessages   Message[]      @relation("MessageAuthor")
+  consents          Consent[]
+
+  // Атрибуция первого касания
+  campaigns     CampaignRecipient[]
+  giftCards     GiftCard[]      @relation("GiftPurchaser")
+  resales       ResaleRequest[]
+  selections    Selection[]     @relation("SelectionCustomer")
+  styled        Selection[]     @relation("SelectionStylist")
+  unsubscribeToken String @unique @default(cuid())
+  firstChannel  TrafficChannel?
+  firstSource   String?
+  firstMedium   String?
+  firstCampaign String?
+  sessions      VisitorSession[]
 }
 
 model Address {
@@ -114,6 +144,17 @@ model Product {
   status       ProductStatus @default(ACTIVE)
   isNew        Boolean       @default(false)
   isFeatured   Boolean       @default(false)
+  isPreorder   Boolean       @default(false) // можно заказать без остатка, отшив к дате
+  preorderShipAt DateTime?
+  earlyAccessUntil DateTime? // до этой даты виден только Maison и Privé
+  isPreloved   Boolean       @default(false) // витрина pre-loved
+  condition    String? // состояние pre-loved вещи
+  material     String? // «шерсть», «кашемир», «шёлк» — фильтр каталога
+  sizeChart    String? // ключ таблицы размеров: outer / knit / dress / trousers
+  lookItems    LookItem[]
+  articles     Article[]     @relation("ArticleProducts")
+  resales      ResaleRequest[] @relation("ResaleProduct")
+  selectionItems SelectionItem[]
   categoryId   String?
   category     Category?     @relation(fields: [categoryId], references: [id])
   collectionId String?
@@ -150,6 +191,20 @@ model ProductVariant {
   movements  StockMovement[]
   orderItems OrderItem[]
   cartItems  CartItem[]
+  alerts     StockSubscription[]
+}
+
+// Лист ожидания: «Сообщить о поступлении»
+model StockSubscription {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId  String
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  createdAt  DateTime       @default(now())
+  notifiedAt DateTime?
+
+  @@unique([userId, variantId])
 }
 
 enum StockMovementType {
@@ -282,6 +337,20 @@ model Order {
   pointsTx      PointsTransaction[]
   ledger        LedgerEntry[]
   promoUses     PromoUse[]
+  giftRedemptions GiftRedemption[]
+  giftUsed      Int            @default(0) // оплачено сертификатом, копейки
+  isPreorder    Boolean        @default(false)
+  paymentUrl    String? // ссылка на оплату у провайдера
+  // Атрибуция заказа (последний клик)
+  sessionId     String?
+  session       VisitorSession? @relation(fields: [sessionId], references: [id])
+  channel       TrafficChannel?
+  source        String?
+  medium        String?
+  campaign      String?
+  paidAt        DateTime?
+  deliveredAt   DateTime? // от этой даты считается 14-дневный срок возврата
+  completedAt   DateTime? // баллы начисляются при завершении
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -300,6 +369,8 @@ model OrderItem {
   costPrice   Int? // себестоимость на момент заказа
   quantity    Int
   returnedQty Int            @default(0)
+  isPreorder  Boolean        @default(false)
+  resales     ResaleRequest[]
 }
 
 model OrderEvent {
@@ -477,4 +548,441 @@ model LedgerEntry {
 model Setting {
   key   String @id
   value Json
+}
+
+// ───────────────────────────── Поддержка: единый inbox ─────────────────────────────
+
+enum Channel {
+  TELEGRAM
+  WHATSAPP
+  INSTAGRAM
+  VK
+  EMAIL
+  SMS
+  WEBSITE
+}
+
+/** Подключение канала. Токены доступны только администратору. */
+model ChannelIntegration {
+  id            String   @id @default(cuid())
+  channel       Channel  @unique
+  name          String
+  enabled       Boolean  @default(false)
+  config        Json     @default("{}") // токены и идентификаторы провайдера
+  webhookSecret String   @default(cuid()) // часть URL вебхука + проверка подписи
+  lastEventAt   DateTime?
+  lastError     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/** Собеседник во внешнем канале. Связывается с клиентом по телефону/email или вручную. */
+model Contact {
+  id         String         @id @default(cuid())
+  channel    Channel
+  externalId String // chat_id, номер WhatsApp, PSID, peer_id, email
+  name       String?
+  username   String?
+  phone      String?
+  email      String?
+  userId     String?
+  user       User?          @relation(fields: [userId], references: [id])
+  createdAt  DateTime       @default(now())
+  conversations Conversation[]
+
+  @@unique([channel, externalId])
+}
+
+enum ConversationStatus {
+  OPEN // ждёт ответа сотрудника
+  PENDING // ответили, ждём клиента
+  CLOSED
+}
+
+enum Priority {
+  NORMAL
+  HIGH
+}
+
+model Conversation {
+  id              String             @id @default(cuid())
+  channel         Channel
+  contactId       String
+  contact         Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  customerId      String?
+  customer        User?              @relation("ConversationCustomer", fields: [customerId], references: [id])
+  assigneeId      String?
+  assignee        User?              @relation("ConversationAssignee", fields: [assigneeId], references: [id])
+  status          ConversationStatus @default(OPEN)
+  priority        Priority           @default(NORMAL)
+  subject         String?
+  tags            String[]           @default([])
+  orderNumbers    Int[]              @default([]) // номера заказов, найденные в переписке
+  unread          Int                @default(0)
+  lastMessageAt   DateTime           @default(now())
+  lastInboundAt   DateTime?
+  waitingSince    DateTime? // с какого момента клиент ждёт ответа (для SLA)
+  firstResponseAt DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime           @default(now())
+  messages        Message[]
+
+  @@index([status, lastMessageAt])
+  @@index([assigneeId, status])
+}
+
+enum MessageDirection {
+  IN
+  OUT
+  NOTE // внутренняя заметка, клиент не видит
+  SYSTEM
+}
+
+enum MessageStatus {
+  RECEIVED
+  QUEUED
+  SENT
+  FAILED
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      MessageDirection
+  text           String
+  attachments    Json?
+  authorId       String?
+  author         User?            @relation("MessageAuthor", fields: [authorId], references: [id])
+  externalId     String?
+  status         MessageStatus    @default(RECEIVED)
+  error          String?
+  createdAt      DateTime         @default(now())
+
+  @@unique([conversationId, externalId])
+  @@index([conversationId, createdAt])
+}
+
+model ReplyTemplate {
+  id        String   @id @default(cuid())
+  title     String
+  shortcut  String?  @unique // например «/доставка»
+  text      String // поддерживает {имя}, {уровень}, {баллы}, {заказ}
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────────── Согласия (152-ФЗ, 38-ФЗ) ─────────────────────────────
+
+enum ConsentType {
+  PERSONAL_DATA // согласие на обработку ПДн
+  OFFER // принятие оферты и правил Circle
+  MARKETING // рекламные рассылки
+}
+
+/** Журнал согласий: каждое предоставление и отзыв — отдельная запись (доказательство для РКН). */
+model Consent {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ConsentType
+  granted   Boolean
+  version   String // редакция документа, например «2026-10-02»
+  ip        String?
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  @@index([userId, type, createdAt])
+}
+
+// ───────────────────────────── Веб-аналитика (first-party) ─────────────────────────────
+
+enum TrafficChannel {
+  DIRECT
+  ORGANIC // поисковики
+  SOCIAL // соцсети и мессенджеры
+  PAID // платная реклама (utm_medium cpc/paid/ads)
+  EMAIL
+  REFERRAL
+  INTERNAL // переходы из рассылок и ссылок бренда (трекинговые ссылки без medium)
+}
+
+/** Трекинговая ссылка бренда: /go/<slug> → целевая страница с UTM. */
+model TrackingLink {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  targetPath String   @default("/")
+  source     String
+  medium     String
+  campaign   String?
+  content    String?
+  clicks     Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  sessions   VisitorSession[]
+}
+
+model VisitorSession {
+  id             String         @id @default(cuid())
+  visitorId      String
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id])
+  startedAt      DateTime       @default(now())
+  lastSeenAt     DateTime       @default(now())
+  pageviews      Int            @default(0)
+  landingPath    String
+  referrer       String?
+  referrerHost   String?
+  channel        TrafficChannel @default(DIRECT)
+  source         String? // utm_source или хост реферера
+  medium         String?
+  campaign       String?
+  content        String?
+  term           String?
+  trackingLinkId String?
+  trackingLink   TrackingLink?  @relation(fields: [trackingLinkId], references: [id])
+  device         String? // mobile / tablet / desktop
+  browser        String?
+  os             String?
+  events         AnalyticsEvent[]
+  orders         Order[]
+
+  @@index([startedAt])
+  @@index([visitorId, lastSeenAt])
+  @@index([channel, startedAt])
+}
+
+enum EventType {
+  PAGEVIEW
+  PRODUCT_VIEW
+  ADD_TO_CART
+  WISHLIST
+  WAITLIST
+  CHECKOUT_START
+  ORDER
+  REGISTER
+}
+
+model AnalyticsEvent {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   VisitorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type      EventType
+  path      String?
+  productId String?
+  orderId   String?
+  value     Int? // копейки для ORDER
+  createdAt DateTime       @default(now())
+
+  @@index([type, createdAt])
+  @@index([sessionId])
+}
+
+// ───────────────────────────── Рассылки ─────────────────────────────
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum RecipientStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  name           String
+  channel        Channel
+  status         CampaignStatus @default(DRAFT)
+  subject        String? // для email
+  text           String
+  segment        Json           @default("{}") // фильтры аудитории
+  audienceCount  Int            @default(0)
+  trackingLinkId String? // {ссылка} в тексте → /go/<slug>
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  sentAt         DateTime?
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  skippedCount   Int            @default(0)
+  createdBy      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  recipients     CampaignRecipient[]
+
+  @@index([status, scheduledAt])
+}
+
+model CampaignRecipient {
+  id         String          @id @default(cuid())
+  campaignId String
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address    String // email, chat id, телефон
+  status     RecipientStatus @default(QUEUED)
+  error      String?
+  sentAt     DateTime?
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, status])
+}
+
+// ───────────────────────────── Лукбук ─────────────────────────────
+
+model Look {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String
+  season      String? // «AW26»
+  description String?
+  coverUrl    String?
+  order       Int        @default(0)
+  isPublished Boolean    @default(true)
+  items       LookItem[]
+  createdAt   DateTime   @default(now())
+}
+
+model LookItem {
+  id        String  @id @default(cuid())
+  lookId    String
+  look      Look    @relation(fields: [lookId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order     Int     @default(0)
+  note      String?
+
+  @@unique([lookId, productId])
+}
+
+// ───────────────────────────── Журнал ─────────────────────────────
+
+model Article {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String?
+  body        String // Markdown
+  coverUrl    String?
+  category    String? // «Уход», «Ткани», «Ателье», «Интервью»
+  publishedAt DateTime?
+  authorId    String?
+  products    Product[] @relation("ArticleProducts")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ───────────────────────────── Подарочные сертификаты ─────────────────────────────
+
+enum GiftCardStatus {
+  PENDING // создан, ожидает оплаты
+  ACTIVE
+  USED
+  EXPIRED
+  CANCELLED
+}
+
+model GiftCard {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  amount         Int // номинал, копейки
+  balance        Int
+  status         GiftCardStatus @default(PENDING)
+  purchaserId    String?
+  purchaser      User?          @relation("GiftPurchaser", fields: [purchaserId], references: [id])
+  recipientName  String?
+  recipientEmail String?
+  message        String?
+  paymentId      String? // id платежа за сертификат
+  expiresAt      DateTime
+  createdAt      DateTime       @default(now())
+  redemptions    GiftRedemption[]
+}
+
+model GiftRedemption {
+  id         String   @id @default(cuid())
+  giftCardId String
+  giftCard   GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount     Int
+  createdAt  DateTime @default(now())
+}
+
+// ───────────────────────────── Выкуп и ресейл ─────────────────────────────
+
+enum ResaleStatus {
+  REQUESTED // клиентка подала заявку
+  OFFERED // бренд предложил сумму баллами
+  ACCEPTED // клиентка согласилась, ждём вещь
+  RECEIVED // вещь получена, баллы начислены
+  LISTED // выставлена на витрину pre-loved
+  SOLD
+  DECLINED
+  CANCELLED
+}
+
+model ResaleRequest {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItemId  String?
+  orderItem    OrderItem?   @relation(fields: [orderItemId], references: [id])
+  productId    String?
+  product      Product?     @relation("ResaleProduct", fields: [productId], references: [id])
+  description  String // состояние, носилась ли, дефекты
+  condition    String? // «как новое», «хорошее», «со следами носки»
+  photos       String[]     @default([])
+  status       ResaleStatus @default(REQUESTED)
+  offerPoints  Int? // предложение бренда
+  managerNote  String?
+  listedProductId String? // товар на витрине pre-loved
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ───────────────────────────── Стилист: персональные подборки ─────────────────────────────
+
+enum SelectionStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ARCHIVED
+}
+
+model Selection {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation("SelectionCustomer", fields: [userId], references: [id], onDelete: Cascade)
+  stylistId String?
+  stylist   User?           @relation("SelectionStylist", fields: [stylistId], references: [id])
+  title     String
+  note      String?
+  status    SelectionStatus @default(DRAFT)
+  items     SelectionItem[]
+  sentAt    DateTime?
+  viewedAt  DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model SelectionItem {
+  id          String    @id @default(cuid())
+  selectionId String
+  selection   Selection @relation(fields: [selectionId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String? // рекомендованный размер
+  comment     String?
+  order       Int       @default(0)
+
+  @@unique([selectionId, productId])
 }
