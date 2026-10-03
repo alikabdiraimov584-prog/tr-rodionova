@@ -27,6 +27,8 @@ model User {
   role         Role      @default(CUSTOMER)
   isActive     Boolean   @default(true) // отключённый сотрудник/клиент не может войти
   sessionVersion Int     @default(0) // растёт при смене пароля/блокировке: старые сессии перестают действовать
+  totpSecret     String? // двухфакторная защита сотрудников (TOTP), base32
+  totpEnabledAt  DateTime?
   anonymizedAt DateTime? // клиент обезличен по запросу (152-ФЗ)
   lastSeenAt   DateTime?
   createdAt    DateTime  @default(now())

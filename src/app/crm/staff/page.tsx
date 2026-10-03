@@ -8,6 +8,7 @@ import { Badge, Eyebrow, PageTitle } from "@/components/ui";
 import { ResetPasswordForm, StaffForm } from "@/components/crm/admin-forms";
 import { SubmitButton, ConfirmButton } from "@/components/form";
 import { updateStaffAction } from "@/app/actions/crm-admin";
+import { adminResetTotpAction } from "@/app/actions/totp";
 
 export const metadata: Metadata = { title: "Сотрудники" };
 
@@ -66,6 +67,12 @@ export default async function Staff() {
                     </form>
                   )}
                   <ResetPasswordForm id={s.id} />
+                  {s.totpEnabledAt && s.id !== me.id && (
+                    <form action={adminResetTotpAction} className="inline">
+                      <input type="hidden" name="id" value={s.id} />
+                      <ConfirmButton message="Сбросить двухфакторную защиту сотруднику? Все его сессии завершатся." className="text-xs text-muted underline hover:text-ink">сбросить 2FA</ConfirmButton>
+                    </form>
+                  )}
                 </td>
               </tr>
             ))}

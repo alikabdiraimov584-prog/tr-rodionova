@@ -65,6 +65,7 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
           </summary>
           <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white p-2 text-sm text-ink shadow-lg">
             <div className="px-3 py-2"><div className="font-semibold">{user.firstName} {user.lastName}</div><div className="text-xs text-muted">{ROLE[user.role]}</div></div>
+            <Link href="/crm/security" className="block rounded-lg px-3 py-2 hover:bg-sand">Безопасность входа</Link>
             <Link href="/" className="block rounded-lg px-3 py-2 hover:bg-sand">Открыть сайт</Link>
             <form action={logoutAction}><button className="block w-full rounded-lg px-3 py-2 text-left hover:bg-sand">Выйти</button></form>
           </div>

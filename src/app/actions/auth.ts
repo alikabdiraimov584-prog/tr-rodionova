@@ -5,6 +5,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPasswordOrDummy, loginAs, logout } from "@/lib/auth";
 import { checkRate, clearRate, clientIp } from "@/lib/ratelimit";
+import { startTwoFactor } from "@/lib/two-factor";
+import { isStaff } from "@/lib/auth";
 import { addPoints, recalcTier } from "@/lib/loyalty";
 import { getSetting } from "@/lib/settings";
 import { audit } from "@/lib/audit";
@@ -38,6 +40,11 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
   }
   if (!user.isActive) return { error: "Аккаунт отключён. Обратитесь к администратору." };
   await clearRate(emailKey);
+  if (isStaff(user.role) && user.totpSecret && user.totpEnabledAt) {
+    // второй фактор: сессия выдаётся только после кода из приложения
+    await startTwoFactor(user.id, safeNext(formData.get("next"), homeFor(user.role)));
+    redirect("/login/2fa");
+  }
   await loginAs(user.id, user.role, user.sessionVersion);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login", "User", user.id);
