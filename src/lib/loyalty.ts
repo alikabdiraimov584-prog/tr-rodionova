@@ -185,9 +185,16 @@ export async function expirePoints(tx: Tx, now = new Date()) {
     distinct: ["userId"],
     select: { userId: true },
   });
+  if (users.length === 0) return 0;
+  // история баллов и балансы всех затронутых клиенток — двумя запросами, а не по два на каждую
+  const ids = users.map((u) => u.userId);
+  const history = await tx.pointsTransaction.findMany({ where: { userId: { in: ids } }, orderBy: { createdAt: "asc" } });
+  const byUser = new Map<string, typeof history>();
+  for (const t of history) byUser.set(t.userId, [...(byUser.get(t.userId) ?? []), t]);
+  const balances = new Map((await tx.user.findMany({ where: { id: { in: ids } }, select: { id: true, pointsBalance: true } })).map((u) => [u.id, u.pointsBalance]));
   let n = 0;
   for (const { userId } of users) {
-    const all = await tx.pointsTransaction.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+    const all = byUser.get(userId) ?? [];
     const batches = all
       .filter((t) => t.amount > 0)
       .map((t) => ({ expiresAt: t.expiresAt, left: t.amount }))
@@ -200,8 +207,7 @@ export async function expirePoints(tx: Tx, now = new Date()) {
       if (spent <= 0) break;
     }
     const burn = batches.filter((b) => b.expiresAt && b.expiresAt < now).reduce((s, b) => s + b.left, 0);
-    const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { pointsBalance: true } });
-    const amount = Math.min(burn, user.pointsBalance);
+    const amount = Math.min(burn, balances.get(userId) ?? 0);
     if (amount > 0) {
       await addPoints(tx, userId, "EXPIRE", -amount, { comment: "Срок действия баллов истёк", expiresAt: null });
       n++;
