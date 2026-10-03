@@ -45,6 +45,8 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron
 | `AUTH_SECRET` | ключ подписи сессий (32+ символа) |
 | `CRON_SECRET` | токен для `/api/cron` |
 | `APP_URL` | публичный адрес сайта — для URL вебхуков и трекинговых ссылок |
+| `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY` | ЮKassa; без них в продакшене оплата недоступна |
+| `ALLOW_DEMO_PAYMENTS` | `1` — разрешить демо-оплату без ЮKassa (только для стенда) |
 
 Токены мессенджеров хранятся в базе и настраиваются администратором в CRM → Настройки → Каналы.
 

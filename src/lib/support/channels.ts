@@ -22,6 +22,11 @@ export type Inbound = {
   messageExternalId?: string | null;
   subject?: string | null;
   attachments?: { type: string; url?: string; name?: string }[];
+  /**
+   * false — отправитель не подтверждён провайдером (например, письмо без SPF/DKIM):
+   * такой контакт не привязывается к клиентке автоматически и не может отписать её от рассылок.
+   */
+  identityVerified?: boolean;
 };
 
 export type ChannelConfig = Record<string, string | undefined>;
@@ -225,7 +230,13 @@ const vk = {
 
 // ───────────── Email (входящие: Postmark Inbound / любой JSON-вебхук) ─────────────
 
-type MailHook = { From?: string; FromName?: string; FromFull?: { Email: string; Name?: string }; Subject?: string; TextBody?: string; StrippedTextReply?: string; MessageID?: string; from?: string; subject?: string; text?: string };
+type MailHook = { From?: string; FromName?: string; FromFull?: { Email: string; Name?: string }; Subject?: string; TextBody?: string; StrippedTextReply?: string; MessageID?: string; Headers?: { Name: string; Value: string }[]; from?: string; subject?: string; text?: string };
+
+/** Адрес From в письме легко подделать: считаем отправителя подтверждённым только при SPF или DKIM pass. */
+function mailSenderVerified(b: MailHook) {
+  const auth = (b.Headers ?? []).filter((h) => /^(authentication-results|received-spf)$/i.test(h.Name)).map((h) => h.Value.toLowerCase()).join(" ");
+  return /\b(spf|dkim)=pass\b/.test(auth) || /^pass\b/.test(auth);
+}
 
 const email = {
   async parse(ctx: WebhookContext): Promise<ParseResult> {
@@ -233,7 +244,7 @@ const email = {
     const addr = (b.FromFull?.Email ?? b.From ?? b.from ?? "").replace(/.*<([^>]+)>.*/, "$1").trim().toLowerCase();
     const text = (b.StrippedTextReply || b.TextBody || b.text || "").trim();
     if (!addr || !text) return { messages: [] };
-    return { messages: [{ contactExternalId: addr, email: addr, name: b.FromFull?.Name ?? b.FromName ?? null, text, subject: b.Subject ?? b.subject ?? null, messageExternalId: b.MessageID ? `mail_${b.MessageID}` : null }] };
+    return { messages: [{ contactExternalId: addr, email: addr, name: b.FromFull?.Name ?? b.FromName ?? null, text, subject: b.Subject ?? b.subject ?? null, messageExternalId: b.MessageID ? `mail_${b.MessageID}` : null, identityVerified: mailSenderVerified(b) }] };
   },
   async send(config: ChannelConfig, to: string, text: string, subject?: string | null): Promise<SendResult> {
     if (!config.postmarkToken || !config.from) return { ok: false, error: "Не настроена отправка почты (Postmark)" };

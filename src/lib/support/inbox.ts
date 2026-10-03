@@ -96,7 +96,9 @@ export async function ingestInbound(channel: Channel, msg: Inbound) {
     },
     create: { channel, externalId: msg.contactExternalId, name: msg.name, username: msg.username, phone: msg.phone, email: msg.email },
   });
-  if (!contact.userId) {
+  // Непроверенного отправителя (письмо без SPF/DKIM) к клиентке не привязываем — это делает сотрудник вручную
+  const verified = msg.identityVerified !== false;
+  if (!contact.userId && verified) {
     const u = await matchCustomer(contact.phone, contact.email);
     if (u) contact = await db.contact.update({ where: { id: contact.id }, data: { userId: u.id } });
   }
@@ -125,7 +127,7 @@ export async function ingestInbound(channel: Channel, msg: Inbound) {
   });
 
   // 3b. «СТОП» — отписка от рассылок
-  if (customer && /^\s*(стоп|stop|отписаться|отписка)\s*[.!]?\s*$/i.test(msg.text)) {
+  if (customer && verified && /^\s*(стоп|stop|отписаться|отписка)\s*[.!]?\s*$/i.test(msg.text)) {
     await db.user.update({ where: { id: customer.id }, data: { marketingConsent: false } });
     await db.consent.create({ data: { userId: customer.id, type: "MARKETING", granted: false, version: "message", userAgent: `channel:${channel}` } });
     await deliver(conv.id, "Вы отписаны от рассылок T.Rodionova. Сервисные сообщения о заказах продолжат приходить.", { system: true });
@@ -147,7 +149,7 @@ export async function ingestInbound(channel: Channel, msg: Inbound) {
       closedAt: null,
       priority,
       customerId: conv.customerId ?? customer?.id ?? null,
-      tags: [...new Set([...conv.tags, ...topics, ...(vip ? ["privé"] : [])])],
+      tags: [...new Set([...conv.tags, ...topics, ...(vip ? ["privé"] : []), ...(verified ? [] : ["отправитель не подтверждён"])])],
       orderNumbers: [...new Set([...conv.orderNumbers, ...validNumbers])],
       unread: { increment: 1 },
       lastMessageAt: now,
