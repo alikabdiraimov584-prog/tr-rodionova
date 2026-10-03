@@ -1,4 +1,5 @@
 import "server-only";
+import { headers } from "next/headers";
 
 /** Публичный адрес сайта для канонических ссылок, sitemap и Open Graph. */
 export function siteUrl() {
@@ -10,10 +11,11 @@ export function absolute(path: string) {
 }
 
 /** Структурированные данные schema.org. Рендерится в <script type="application/ld+json">. */
-export function JsonLd({ data }: { data: Record<string, unknown> | Record<string, unknown>[] }) {
-  // символ «<» экранируется, чтобы содержимое не могло закрыть тег script
+export async function JsonLd({ data }: { data: Record<string, unknown> | Record<string, unknown>[] }) {
+  // символ «<» экранируется, чтобы содержимое не могло закрыть тег script; nonce — из CSP текущего запроса
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  return <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: json }} />;
 }
 
 export function organizationJsonLd(brand: { name: string; phone: string; email: string }) {

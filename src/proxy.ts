@@ -15,24 +15,57 @@ async function readSession(req: NextRequest) {
   }
 }
 
+/**
+ * Content-Security-Policy с nonce на каждый запрос: Next.js подставляет nonce в свои inline-скрипты,
+ * наши JSON-LD берут его из заголовка x-nonce. Стили — 'unsafe-inline' из-за inline style у компонентов.
+ */
+function csp(nonce: string, dev: boolean) {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self' https://yoomoney.ru https://*.yookassa.ru",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const session = await readSession(req);
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const policy = csp(nonce, process.env.NODE_ENV !== "production");
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("content-security-policy", policy);
+  const withCsp = (res: NextResponse) => {
+    res.headers.set("Content-Security-Policy", policy);
+    return res;
+  };
 
-  if (pathname.startsWith("/crm")) {
-    if (!session) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url));
-    if (session.role === "CUSTOMER") return NextResponse.redirect(new URL("/account", req.url));
+  const needsAuth = pathname.startsWith("/crm") || pathname.startsWith("/account") || pathname.startsWith("/checkout") || pathname === "/login" || pathname === "/register";
+  if (needsAuth) {
+    const session = await readSession(req);
+    if (pathname.startsWith("/crm")) {
+      if (!session) return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)));
+      if (session.role === "CUSTOMER") return withCsp(NextResponse.redirect(new URL("/account", req.url)));
+    }
+    if (pathname.startsWith("/account") || pathname.startsWith("/checkout")) {
+      if (!session) return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)));
+    }
+    if ((pathname === "/login" || pathname === "/register") && session) {
+      const home = session.role === "CUSTOMER" ? "/account" : session.role === "SUPPORT" ? "/crm/support" : "/crm";
+      return withCsp(NextResponse.redirect(new URL(home, req.url)));
+    }
   }
-  if (pathname.startsWith("/account") || pathname.startsWith("/checkout")) {
-    if (!session) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url));
-  }
-  if ((pathname === "/login" || pathname === "/register") && session) {
-    const home = session.role === "CUSTOMER" ? "/account" : session.role === "SUPPORT" ? "/crm/support" : "/crm";
-    return NextResponse.redirect(new URL(home, req.url));
-  }
-  return NextResponse.next();
+  return withCsp(NextResponse.next({ request: { headers: requestHeaders } }));
 }
 
 export const config = {
-  matcher: ["/crm/:path*", "/account/:path*", "/checkout/:path*", "/login", "/register"],
+  // всё, кроме статики: CSP нужен каждой странице, проверка входа — только нужным путям
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|images/|uploads/|robots.txt|sitemap.xml).*)"],
 };
