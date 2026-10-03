@@ -98,6 +98,31 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
   }
 }
 
+/** Напоминание о корзине: только с согласием на рассылки и не чаще раза в 7 дней. */
+export async function notifyAbandonedCarts(now = new Date()) {
+  const from = new Date(now.getTime() - 3 * 86_400_000);
+  const to = new Date(now.getTime() - 20 * 3_600_000);
+  const rows = await db.cartItem.groupBy({ by: ["userId"], where: { updatedAt: { gte: from, lte: to } }, _max: { updatedAt: true } });
+  if (rows.length === 0) return 0;
+  const ids = rows.map((r) => r.userId);
+  const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
+  const [recent, users] = await Promise.all([
+    db.notification.findMany({ where: { event: "CART_REMINDER", createdAt: { gte: weekAgo }, userId: { in: ids } }, select: { userId: true } }),
+    db.user.findMany({ where: { id: { in: ids }, marketingConsent: true, isActive: true, role: "CUSTOMER" }, select: { id: true, email: true, firstName: true, unsubscribeToken: true, cart: { include: { variant: { include: { product: { select: { name: true, slug: true, price: true } } } } } } } }),
+  ]);
+  const skip = new Set(recent.map((r) => r.userId));
+  const brand = await getSetting("brand");
+  let n = 0;
+  for (const u of users) {
+    if (skip.has(u.id) || u.cart.length === 0) continue;
+    const lines = u.cart.map((c) => `· ${c.variant.product.name}, ${c.variant.size} — ${formatMoney(c.variant.price ?? c.variant.product.price)}`).join("\n");
+    const text = `${u.firstName}, здравствуйте.\n\nВ вашей корзине остались вещи:\n${lines}\n\nОни ждут вас: ${siteUrl()}/cart\nПри оформлении можно оплатить часть баллами Circle.${signature(brand)}\n\nОтписаться от рассылок: ${siteUrl()}/unsubscribe/${u.unsubscribeToken}`;
+    await dispatch({ userId: u.id, event: "CART_REMINDER", subject: "Вещи в вашей корзине", text, email: u.email, sms: null });
+    n++;
+  }
+  return n;
+}
+
 /** Уведомление клиентке по баллам (день рождения, скорое сгорание). */
 export async function notifyPoints(userId: string, event: "POINTS_BIRTHDAY" | "POINTS_EXPIRING", data: { points: number; expiresAt?: Date | null }) {
   try {

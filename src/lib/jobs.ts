@@ -4,7 +4,7 @@ import { addPoints, expirePoints } from "@/lib/loyalty";
 import { setOrderStatus, RETURN_WINDOW_DAYS } from "@/lib/orders";
 import { audit } from "@/lib/audit";
 import { runDueCampaigns } from "@/lib/campaigns";
-import { notifyExpiringPoints, notifyPoints } from "@/lib/notifications";
+import { notifyAbandonedCarts, notifyExpiringPoints, notifyPoints } from "@/lib/notifications";
 import { purgeRateLimits } from "@/lib/ratelimit";
 
 /** Завершить заказы, у которых прошёл срок возврата. При завершении начисляются баллы. */
@@ -91,12 +91,13 @@ export async function runDailyJobs(actorId: string | null = null) {
   const tiers = await recalcAllTiers();
   const campaigns = await runDueCampaigns(process.env.APP_URL ?? "https://t-rodionova.ru");
   const expiringNotified = await notifyExpiringPoints(7);
+  const cartReminders = await notifyAbandonedCarts();
   const purged = await purgeRateLimits();
   // веб-аналитика старше 24 месяцев удаляется: срок хранения по политике ПДн
   const analyticsBorder = new Date(Date.now() - 730 * 86_400_000);
   await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: analyticsBorder } } });
   const oldSessions = await db.visitorSession.deleteMany({ where: { startedAt: { lt: analyticsBorder } } });
-  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, purged, oldSessions: oldSessions.count };
+  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, purged, oldSessions: oldSessions.count };
   await audit(actorId, "jobs.daily", "System", null, result);
   return result;
 }

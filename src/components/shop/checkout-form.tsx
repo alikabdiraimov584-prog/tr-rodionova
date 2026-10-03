@@ -55,6 +55,15 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
               </label>
             ))}
           </div>
+          {delivery === "COURIER" && (
+            <label className="mt-4 flex cursor-pointer items-start gap-3 border border-line p-4 text-sm">
+              <input type="checkbox" name="fittingRequested" value="on" className="mt-1 accent-black" />
+              <span>
+                <span className="block">Примерка перед покупкой</span>
+                <span className="block text-xs text-muted">Курьер подождёт 15 минут в Москве и Петербурге. Оплатите только то, что подошло: за остальное вернём деньги после возврата курьером.</span>
+              </span>
+            </label>
+          )}
           {delivery !== "PICKUP" && (
             <div className="mt-4 space-y-3">
               {addresses.length > 0 && (

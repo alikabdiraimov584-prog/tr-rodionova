@@ -200,6 +200,7 @@ export type CheckoutInput = {
   promoCode?: string | null;
   pointsToUse?: number;
   giftCode?: string | null;
+  fittingRequested?: boolean;
 };
 
 export async function createOrderFromCart(userId: string, input: CheckoutInput) {
@@ -251,6 +252,7 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
         total: quote.total,
         promoCodeId: quote.promo?.ok ? quote.promo.promo.id : null,
         comment: input.comment ?? null,
+        fittingRequested: !!input.fittingRequested,
         items: {
           create: quote.lines.map((l) => ({
             variantId: l.variantId,

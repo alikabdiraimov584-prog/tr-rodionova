@@ -69,6 +69,7 @@ const CheckoutSchema = z.object({
   addressId: z.string().optional(),
   addressText: z.string().trim().optional(),
   comment: z.string().trim().max(500).optional(),
+  fittingRequested: z.string().optional(),
   promoCode: z.string().trim().optional(),
   pointsToUse: z.coerce.number().int().min(0).optional(),
   giftCode: z.string().trim().max(32).optional(),
@@ -89,6 +90,7 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
       addressText: d.addressText || null,
       promoCode: d.promoCode || null,
       giftCode: d.giftCode || null,
+      fittingRequested: d.deliveryMethod === "COURIER" && d.fittingRequested === "on",
     });
     orderId = order.id;
   } catch (e) {
