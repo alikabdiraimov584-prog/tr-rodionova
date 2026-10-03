@@ -23,6 +23,16 @@ export type BrandSettings = {
   telegram: string;
 };
 
+/** Реквизиты продавца: обязательны на сайте по ст. 26.1 ЗоЗПП и Правилам дистанционной торговли. */
+export type SellerSettings = {
+  name: string; // ИП Иванова И.И. / ООО «…»
+  inn: string;
+  ogrn: string;
+  address: string; // адрес регистрации
+  hours: string; // режим работы
+  showroom: string; // адрес шоурума (если есть)
+};
+
 export type SupportSettings = {
   workFrom: number; // час начала работы, МСК
   workTo: number;
@@ -33,7 +43,8 @@ export type SupportSettings = {
   reopenDays: number; // новое сообщение в закрытый диалог моложе N дней переоткрывает его
 };
 
-const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings } = {
+const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings; seller: SellerSettings } = {
+  seller: { name: "", inn: "", ogrn: "", address: "", hours: "ежедневно 10:00–21:00", showroom: "" },
   support: {
     workFrom: 10,
     workTo: 21,

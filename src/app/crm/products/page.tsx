@@ -26,7 +26,7 @@ export default async function Products({ searchParams }: PageProps<"/crm/product
   const soldBy = new Map(sold.map((s) => [s.productId, Number(s.qty)]));
   return (
     <div>
-      <PageTitle title="Товары" actions={<Link href="/crm/products/new" className="btn-primary btn-sm">Новый товар</Link>}>{products.length} моделей</PageTitle>
+      <PageTitle title="Товары" actions={<><Link href="/crm/products/categories" className="btn-outline btn-sm">Категории и SEO</Link><Link href="/crm/products/new" className="btn-primary btn-sm">Новый товар</Link></>}>{products.length} моделей</PageTitle>
       <form className="mb-4"><input name="q" defaultValue={q} placeholder="Название или артикул" className="input w-72 py-2" /></form>
       <div className="card overflow-x-auto">
         <table className="table">

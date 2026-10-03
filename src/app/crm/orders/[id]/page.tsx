@@ -38,7 +38,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
       <PageTitle
         eyebrow={formatDate(order.createdAt, true)}
         title={`Заказ №${order.number}`}
-        actions={<Badge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</Badge>}
+        actions={<><a href={`/crm/orders/${order.id}/print`} target="_blank" className="btn-outline btn-sm">Печать: сборочный лист, накладная, возврат</a><Badge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</Badge></>}
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="space-y-6">

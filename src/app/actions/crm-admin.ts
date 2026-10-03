@@ -120,6 +120,9 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
       const cur = await getSetting("brand");
       const next = { ...cur, name: String(formData.get("name") || cur.name), tagline: String(formData.get("tagline") ?? ""), phone: String(formData.get("phone") ?? ""), email: String(formData.get("email") ?? ""), telegram: String(formData.get("telegram") ?? "") };
       await setSetting("brand", next);
+    } else if (section === "seller") {
+      const f = (k: string) => String(formData.get(k) ?? "").trim();
+      await setSetting("seller", { name: f("name"), inn: f("inn").replace(/\D/g, ""), ogrn: f("ogrn").replace(/\D/g, ""), address: f("address"), hours: f("hours"), showroom: f("showroom") });
     } else if (section === "delivery") {
       const r = (k: string) => toKopecks(String(formData.get(k) ?? "0"));
       await setSetting("delivery", { freeFrom: r("freeFrom"), courier: r("courier"), cdek: r("cdek"), boxberry: r("boxberry"), yandex: r("yandex") });

@@ -5,8 +5,21 @@ import { getCurrentUser } from "@/lib/auth";
 import { ProductCard } from "@/components/shop/product-card";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
+import { Markdown } from "@/components/markdown";
+import { JsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Каталог" };
+export async function generateMetadata({ searchParams }: PageProps<"/catalog">): Promise<Metadata> {
+  const sp = await searchParams;
+  const slug = typeof sp.category === "string" ? sp.category : undefined;
+  if (!slug) return { title: "Каталог", description: "Женская одежда T.Rodionova: жакеты, платья, боди, брюки, трикотаж из шерсти, кашемира и шёлка. Доставка по России." };
+  const c = await db.category.findUnique({ where: { slug } });
+  if (!c) return { title: "Каталог" };
+  return {
+    title: c.seoTitle ?? `${c.name} — купить в T.Rodionova`,
+    description: c.seoDescription ?? `${c.name} T.Rodionova: премиальная женская одежда, сшито в Европе. Доставка по России, примерка курьером.`,
+    alternates: { canonical: `/catalog?category=${c.slug}` },
+  };
+}
 
 const SORTS: Record<string, { label: string; orderBy: Prisma.ProductOrderByWithRelationInput }> = {
   new: { label: "Новое", orderBy: { createdAt: "desc" } },
@@ -63,6 +76,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
     db.product.findMany({ where: { status: "ACTIVE", material: { not: null } }, distinct: ["material"], select: { material: true } }),
   ]);
   const current = categories.find((c) => c.slug === category);
+  const faq = Array.isArray(current?.faq) ? (current!.faq as { q: string; a: string }[]) : [];
   const base = { category, sort: sort === "new" ? undefined : sort, new: onlyNew ? "1" : undefined, q: q || undefined, size: sizes.join(",") || undefined, color: colors.join(",") || undefined, material: materials.join(",") || undefined, price: price?.[1] };
   const link = (patch: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
@@ -100,6 +114,25 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
             <Empty title="Ничего не найдено" action={<Link href="/catalog" className="btn-outline">Весь каталог</Link>}>Попробуйте изменить фильтры или запрос.</Empty>
           ) : (
             <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">{products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
+          )}
+          {current && !q && !onlyNew && activeCount === 0 && (current.seoText || faq.length > 0) && (
+            <section className="mt-16 max-w-3xl border-t border-line pt-10">
+              {current.seoText && <div className="prose-sm"><Markdown source={current.seoText} /></div>}
+              {faq.length > 0 && (
+                <div className="mt-10">
+                  <h2 className="mb-4 text-xl">Вопросы и ответы</h2>
+                  <dl className="divide-y divide-line">
+                    {faq.map((f) => (
+                      <div key={f.q} className="py-4">
+                        <dt className="font-medium">{f.q}</dt>
+                        <dd className="mt-1 text-sm text-ink/80">{f.a}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <JsonLd data={{ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) }} />
+                </div>
+              )}
+            </section>
           )}
         </div>
       </div>

@@ -11,7 +11,7 @@ const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 export default async function Settings() {
   await requireSection("settings");
-  const [brand, delivery, support] = await Promise.all([getSetting("brand"), getSetting("delivery"), getSetting("support")]);
+  const [brand, delivery, support, seller] = await Promise.all([getSetting("brand"), getSetting("delivery"), getSetting("support"), getSetting("seller")]);
   const rub = (k: number) => k / 100;
   return (
     <div className="space-y-6">
@@ -29,6 +29,20 @@ export default async function Settings() {
                 <label className="sm:col-span-2"><span className="label">Telegram</span><input name="telegram" defaultValue={brand.telegram} className="input py-2" /></label>
               </div>
             </SettingsForm>
+            <div className="mt-8">
+              <h3 className="mb-1">Реквизиты продавца</h3>
+              <p className="mb-3 text-xs text-muted">Показываются в подвале сайта, в оферте и в накладных. Без них сайт не соответствует правилам дистанционной торговли.</p>
+              <SettingsForm section="seller">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="sm:col-span-2"><span className="label">Продавец (ИП / ООО)</span><input name="name" defaultValue={seller.name} placeholder="ИП Родионова Т. А." className="input py-2" /></label>
+                  <label><span className="label">ИНН</span><input name="inn" defaultValue={seller.inn} className="input py-2" /></label>
+                  <label><span className="label">ОГРН / ОГРНИП</span><input name="ogrn" defaultValue={seller.ogrn} className="input py-2" /></label>
+                  <label className="sm:col-span-2"><span className="label">Адрес регистрации</span><input name="address" defaultValue={seller.address} className="input py-2" /></label>
+                  <label><span className="label">Режим работы</span><input name="hours" defaultValue={seller.hours} className="input py-2" /></label>
+                  <label><span className="label">Шоурум (адрес, часы)</span><input name="showroom" defaultValue={seller.showroom} className="input py-2" /></label>
+                </div>
+              </SettingsForm>
+            </div>
           </div>
         </div>
         <div className="card p-5">

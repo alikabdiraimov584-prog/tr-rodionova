@@ -153,3 +153,44 @@ export async function stockOperationAction(_: ActionState, formData: FormData): 
   revalidatePath("/crm", "layout");
   return { ok: true, message: notified ? `Готово. Уведомлено из листа ожидания: ${notified}` : "Готово" };
 }
+
+// ───────────── Категории и SEO-тексты ─────────────
+
+const CategorySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1, "Название"),
+  slug: z.string().trim().optional(),
+  order: z.coerce.number().int().min(0).optional(),
+  seoTitle: z.string().trim().max(70).optional(),
+  seoDescription: z.string().trim().max(200).optional(),
+  seoText: z.string().optional(),
+  faq: z.string().optional(),
+});
+
+export async function saveCategoryAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireSection("products");
+  const parsed = CategorySchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: `Проверьте поле «${parsed.error.issues[0].message}»` };
+  const d = parsed.data;
+  // пары «вопрос / ответ», разделённые пустой строкой
+  const faq = (d.faq ?? "")
+    .replace(/\r/g, "")
+    .split(/\n\s*\n/)
+    .map((block) => block.split("\n").map((l) => l.trim()).filter(Boolean))
+    .filter((lines) => lines.length >= 2)
+    .map((lines) => ({ q: lines[0], a: lines.slice(1).join(" ") }));
+  const slug = d.slug ? d.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") : undefined;
+  try {
+    await db.category.update({
+      where: { id: d.id },
+      data: { name: d.name, ...(slug ? { slug } : {}), ...(d.order !== undefined ? { order: d.order } : {}), seoTitle: d.seoTitle || null, seoDescription: d.seoDescription || null, seoText: d.seoText?.replace(/\r/g, "").trim() || null, faq },
+    });
+  } catch (e) {
+    const msg = errorMessage(e);
+    return { error: msg.includes("Unique") ? "Категория с таким адресом уже есть" : msg };
+  }
+  await audit(me.id, "category.update", "Category", d.id, { name: d.name });
+  revalidatePath("/crm/products/categories");
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Сохранено" };
+}

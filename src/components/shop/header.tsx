@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { getSettingOrDefault } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { Logo } from "@/components/ui";
 
@@ -49,7 +50,8 @@ export async function ShopHeader() {
   );
 }
 
-export function ShopFooter() {
+export async function ShopFooter() {
+  const [brand, seller] = await Promise.all([getSettingOrDefault("brand"), getSettingOrDefault("seller")]);
   const cols: [string, [string, string][]][] = [
     ["Покупателям", [["/delivery", "Доставка и возврат"], ["/sizes", "Размеры и мерки"], ["/care", "Уход за изделиями"], ["/gift", "Подарочные сертификаты"], ["/preloved", "Выкуп и pre-loved"]]],
     ["Бренд", [["/about", "О бренде"], ["/collections", "Коллекции"], ["/lookbook", "Лукбук"], ["/journal", "Журнал"], ["/showroom", "Шоурум и контакты"]]],
@@ -69,11 +71,18 @@ export function ShopFooter() {
         ))}
         <div className="text-[0.72rem]">
           <div className="eyebrow mb-3">Связь</div>
-          <p className="text-ink/80">care@t-rodionova.ru<br />+7 (495) 000-00-00<br />ежедневно 10:00–21:00</p>
-          <p className="mt-3 text-ink/80">Москва, Большая Никитская 14<br />шоурум 11:00–21:00</p>
+          <p className="text-ink/80">{brand.email}<br />{brand.phone}<br />{seller.hours}</p>
+          {seller.showroom && <p className="mt-3 text-ink/80">{seller.showroom}</p>}
         </div>
       </div>
-      <div className="border-t border-line py-4 text-center text-[0.62rem] uppercase tracking-[0.14em] text-muted">© {new Date().getFullYear()} T.Rodionova · Шерсть · Кашемир · Шёлк · Сшито в Европе</div>
+      <div className="border-t border-line px-4 py-4 text-center text-[0.62rem] uppercase tracking-[0.14em] text-muted">
+        © {new Date().getFullYear()} {brand.name} · Шерсть · Кашемир · Шёлк · Сшито в Европе
+        {seller.name && (
+          <div className="mt-2 normal-case tracking-normal">
+            Продавец: {seller.name}{seller.inn && `, ИНН ${seller.inn}`}{seller.ogrn && `, ОГРНИП/ОГРН ${seller.ogrn}`}{seller.address && `, ${seller.address}`}
+          </div>
+        )}
+      </div>
     </footer>
   );
 }
