@@ -1,26 +1,195 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --taupe: #a89b8c;
+  --ivory: #f8f5ee;
+  --black: #0e0e0e;
+  --gold: #d9c29f;
+  --sand: #ede7db;
+  --stone: #cfc6b8;
+  --ink-soft: #5c554d;
+  --background: var(--ivory);
+  --foreground: var(--black);
 }
 
 @theme inline {
+  --color-taupe: var(--taupe);
+  --color-ivory: var(--ivory);
+  --color-black: var(--black);
+  --color-gold: var(--gold);
+  --color-sand: var(--sand);
+  --color-stone: var(--stone);
+  --color-ink-soft: var(--ink-soft);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-dm-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-serif {
+  font-family: var(--font-serif);
+  font-weight: 400;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.95rem 2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  border: 1px solid var(--black);
+  background: var(--black);
+  color: var(--ivory);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  cursor: pointer;
+}
+.btn:hover {
+  background: transparent;
+  color: var(--black);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--black);
+}
+.btn-outline:hover {
+  background: var(--black);
+  color: var(--ivory);
+}
+.btn-gold {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--black);
+}
+.btn-gold:hover {
+  background: transparent;
+}
+.btn-sm {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.65rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.8rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--stone);
+  background: transparent;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus {
+  border-color: var(--black);
+}
+.input-box {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--stone);
+  background: #fff;
+  font-size: 0.9rem;
+  outline: none;
+}
+.input-box:focus {
+  border-color: var(--black);
+}
+label.field {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.25rem;
+}
+
+.hairline {
+  border-color: var(--stone);
+}
+
+.monogram-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--taupe);
+}
+.monogram-divider::before,
+.monogram-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--stone);
+}
+
+/* CRM */
+.admin {
+  background: #fff;
+  color: var(--black);
+  font-weight: 400;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--sand);
+  padding: 1.25rem;
+}
+.table {
+  width: 100%;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+}
+.table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--sand);
+}
+.table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--sand);
+  vertical-align: top;
+}
+.table tr:hover td {
+  background: #faf8f3;
+}
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
 }
