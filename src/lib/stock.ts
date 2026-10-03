@@ -3,12 +3,19 @@ import type { Prisma } from "@/generated/prisma/client";
 
 type Tx = Prisma.TransactionClient;
 
+/**
+ * Резерв под заказ. Проверка свободного остатка и увеличение резерва — одним UPDATE с условием,
+ * иначе два одновременных оформления могут зарезервировать больше, чем есть.
+ */
 export async function reserveStock(tx: Tx, variantId: string, qty: number, orderId: string) {
-  const v = await tx.productVariant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
-  if (v.stock - v.reserved < qty) {
+  if (qty <= 0) throw new Error("Количество должно быть больше нуля");
+  const updated = await tx.$executeRaw`
+    UPDATE "ProductVariant" SET "reserved" = "reserved" + ${qty}
+    WHERE "id" = ${variantId} AND "stock" - "reserved" >= ${qty}`;
+  if (updated === 0) {
+    const v = await tx.productVariant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
     throw new Error(`«${v.product.name}», размер ${v.size}: доступно только ${Math.max(0, v.stock - v.reserved)} шт.`);
   }
-  await tx.productVariant.update({ where: { id: variantId }, data: { reserved: { increment: qty } } });
   await tx.stockMovement.create({ data: { variantId, type: "RESERVE", quantity: -qty, orderId } });
 }
 
@@ -52,9 +59,10 @@ export async function writeOffStock(
   opts: { reason: string; createdBy?: string | null },
 ) {
   if (qty <= 0) throw new Error("Количество должно быть больше нуля");
-  const v = await tx.productVariant.findUniqueOrThrow({ where: { id: variantId } });
-  if (v.stock - v.reserved < qty) throw new Error("Нельзя списать больше, чем свободно на складе");
-  await tx.productVariant.update({ where: { id: variantId }, data: { stock: { decrement: qty } } });
+  const updated = await tx.$executeRaw`
+    UPDATE "ProductVariant" SET "stock" = "stock" - ${qty}
+    WHERE "id" = ${variantId} AND "stock" - "reserved" >= ${qty}`;
+  if (updated === 0) throw new Error("Нельзя списать больше, чем свободно на складе");
   await tx.stockMovement.create({
     data: { variantId, type: "WRITE_OFF", quantity: -qty, reason: opts.reason, createdBy: opts.createdBy },
   });

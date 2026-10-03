@@ -530,6 +530,7 @@ enum LedgerType {
   EXPENSE_ACQUIRING
   EXPENSE_OTHER
   REFUND
+  COGS_REVERSAL // сторно себестоимости: товар вернулся на склад
 }
 
 model LedgerEntry {

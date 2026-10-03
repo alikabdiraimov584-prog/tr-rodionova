@@ -84,6 +84,7 @@ export const LEDGER_TYPE: Record<LedgerType, { label: string; sign: 1 | -1 }> = 
   EXPENSE_ACQUIRING: { label: "Эквайринг", sign: -1 },
   EXPENSE_OTHER: { label: "Прочие расходы", sign: -1 },
   REFUND: { label: "Возврат покупателю", sign: -1 },
+  COGS_REVERSAL: { label: "Сторно себестоимости", sign: 1 },
 };
 
 export const TASK_STATUS: Record<TaskStatus, { label: string; tone: Tone }> = {

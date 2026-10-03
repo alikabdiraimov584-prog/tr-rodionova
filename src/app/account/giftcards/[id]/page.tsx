@@ -6,15 +6,16 @@ import { db } from "@/lib/db";
 import { formatDate, formatMoney } from "@/lib/money";
 import { GIFT_STATUS } from "@/lib/labels";
 import { Alert, Badge, PageTitle } from "@/components/ui";
-import { SubmitButton } from "@/components/form";
 import { CopyLink } from "@/components/account/copy-link";
-import { payGiftCardDemoAction } from "@/app/actions/gift";
+import { GiftPayButton } from "@/components/account/gift-pay-button";
+import { syncGiftCardPayment, yookassaEnabled } from "@/lib/payments/yookassa";
 
 export const metadata: Metadata = { title: "Сертификат" };
 
-export default async function GiftCardPage({ params }: PageProps<"/account/giftcards/[id]">) {
+export default async function GiftCardPage({ params, searchParams }: PageProps<"/account/giftcards/[id]">) {
   const { id } = await params;
   const user = await requireUser(`/account/giftcards/${id}`);
+  if ((await searchParams).paid) await syncGiftCardPayment(id);
   const card = await db.giftCard.findUnique({
     where: { id },
     include: { redemptions: { orderBy: { createdAt: "desc" }, include: { order: { select: { number: true } } } } },
@@ -33,10 +34,7 @@ export default async function GiftCardPage({ params }: PageProps<"/account/giftc
             <div className="text-sm">Ожидает оплаты: {formatMoney(card.amount)}</div>
             <div className="text-xs text-muted">Код сертификата появится сразу после оплаты</div>
           </div>
-          <form action={payGiftCardDemoAction}>
-            <input type="hidden" name="id" value={card.id} />
-            <SubmitButton>Оплатить (демо)</SubmitButton>
-          </form>
+          <GiftPayButton cardId={card.id} live={yookassaEnabled()} />
         </div>
       )}
       {card.status === "ACTIVE" && <Alert tone="success">Сертификат оплачен и активен. Перешлите код получателю — текст ниже можно скопировать.</Alert>}

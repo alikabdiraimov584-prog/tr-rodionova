@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser, requireUser } from "@/lib/auth";
-import { createOrderFromCart, cancelOrder, markOrderPaid } from "@/lib/orders";
+import { createOrderFromCart, cancelOrder } from "@/lib/orders";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 import { trackEvent } from "@/lib/web-analytics";
@@ -103,14 +103,6 @@ async function ownOrder(orderId: string) {
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order || order.userId !== user.id) throw new Error("Заказ не найден");
   return { user, order };
-}
-
-/** Демо-оплата. В продакшене заменяется вебхуком ЮKassa (см. /api/payments/webhook). */
-export async function payOrderDemoAction(formData: FormData) {
-  const { order } = await ownOrder(String(formData.get("orderId")));
-  if (order.status === "NEW") await markOrderPaid(order.id, { createdBy: null });
-  revalidatePath(`/account/orders/${order.id}`);
-  revalidatePath("/account", "layout");
 }
 
 export async function cancelOwnOrderAction(formData: FormData) {

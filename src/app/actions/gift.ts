@@ -2,12 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { formatDate, formatMoney, toKopecks, RUB } from "@/lib/money";
 import { normalizeGiftCode } from "@/lib/orders";
+import { activateGiftCard } from "@/lib/gift-payment";
+import { createGiftCardPayment, demoPaymentsAllowed, yookassaEnabled } from "@/lib/payments/yookassa";
 import { GIFT_MAX_RUB, GIFT_MIN_RUB, GIFT_VALIDITY_MONTHS, generateGiftCode } from "@/lib/gift";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 
@@ -71,23 +74,37 @@ async function ownCard(id: string) {
 }
 
 /**
- * Демо-оплата сертификата.
- * TODO: заменить на реальную оплату — создать платёж у провайдера (ЮKassa), сохранить paymentId,
- * а активацию выполнять из вебхука после подтверждения оплаты.
+ * Кнопка «Оплатить» на странице сертификата: при настроенной ЮKassa — переход на платёжную
+ * страницу (активация придёт из вебхука), иначе демо-оплата, если она разрешена окружением.
  */
-export async function payGiftCardDemoAction(formData: FormData) {
-  const { user, card } = await ownCard(String(formData.get("id") ?? ""));
-  if (card.status !== "PENDING") throw new Error("Сертификат уже оплачен или отменён");
-  await db.$transaction(async (tx) => {
-    await tx.giftCard.update({ where: { id: card.id }, data: { status: "ACTIVE", paymentId: `demo_${Date.now()}` } });
-    await tx.ledgerEntry.create({
-      data: { type: "INCOME_OTHER", amount: card.amount, category: "Сертификаты", comment: `Подарочный сертификат ${card.code} на ${formatMoney(card.amount)}`, createdBy: user.id },
-    });
-    await audit(user.id, "giftcard.paid", "GiftCard", card.id, { amount: card.amount, demo: true }, tx);
-  });
+export async function payGiftCardAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  let card: { id: string; status: string };
+  let userId: string;
+  try {
+    const own = await ownCard(String(formData.get("id") ?? ""));
+    card = own.card;
+    userId = own.user.id;
+  } catch (e) {
+    return { error: errorMessage(e) };
+  }
+  if (card.status !== "PENDING") return { error: "Сертификат уже оплачен или отменён" };
+  if (yookassaEnabled()) {
+    let url: string;
+    try {
+      const h = await headers();
+      const base = process.env.APP_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+      url = await createGiftCardPayment(card.id, `${base}/account/giftcards/${card.id}?paid=1`);
+    } catch (e) {
+      return { error: errorMessage(e) };
+    }
+    redirect(url);
+  }
+  if (!demoPaymentsAllowed()) return { error: "Оплата временно недоступна, напишите в службу заботы" };
+  await activateGiftCard(card.id, `demo_${Date.now()}`, { createdBy: userId, demo: true });
   revalidatePath(`/account/giftcards/${card.id}`);
   revalidatePath("/account/giftcards");
   revalidatePath("/crm/giftcards");
+  return { ok: true, message: "Демо-оплата прошла" };
 }
 
 /** «Проверить баланс по коду» в кабинете: показывает статус и остаток любого сертификата. */

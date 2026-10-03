@@ -5,9 +5,10 @@ const SESSION_COOKIE = "tr_session";
 
 async function readSession(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
+  const secret = process.env.AUTH_SECRET;
+  if (!token || !secret || secret.length < 32) return null;
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET ?? ""), { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), { algorithms: ["HS256"] });
     return payload as { userId: string; role: "CUSTOMER" | "SUPPORT" | "MANAGER" | "ADMIN" };
   } catch {
     return null;

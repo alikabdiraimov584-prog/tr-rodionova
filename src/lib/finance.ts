@@ -46,7 +46,8 @@ export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
     const e = map.get(key) ?? {};
     const g = (t: LedgerType) => e[t] ?? 0;
     const netRevenue = g("INCOME_SALE") + g("INCOME_OTHER") - g("REFUND");
-    const gross = netRevenue - g("EXPENSE_COGS");
+    const cogs = g("EXPENSE_COGS") - g("COGS_REVERSAL");
+    const gross = netRevenue - cogs;
     const opex = g("EXPENSE_ACQUIRING") + g("EXPENSE_SHIPPING") + g("EXPENSE_MARKETING") + g("EXPENSE_PRODUCTION") + g("EXPENSE_SALARY") + g("EXPENSE_RENT") + g("EXPENSE_OTHER");
     out.push({
       key,
@@ -55,7 +56,7 @@ export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
       otherIncome: g("INCOME_OTHER"),
       refunds: g("REFUND"),
       netRevenue,
-      cogs: g("EXPENSE_COGS"),
+      cogs,
       gross,
       grossPct: netRevenue ? Math.round((gross / netRevenue) * 100) : 0,
       acquiring: g("EXPENSE_ACQUIRING"),

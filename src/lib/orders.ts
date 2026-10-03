@@ -208,6 +208,10 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
     if (l.available < l.quantity) throw new Error(`«${l.productName}», размер ${l.size}: доступно ${Math.max(0, l.available)} шт.`);
   }
   if (input.deliveryMethod !== "PICKUP" && !input.addressId && !input.addressText) throw new Error("Укажите адрес доставки");
+  if (input.addressId) {
+    const own = await db.address.count({ where: { id: input.addressId, userId } });
+    if (!own) throw new Error("Адрес не найден");
+  }
   if (input.giftCode && quote.giftError) throw new Error(quote.giftError);
 
   const session = await currentSession();
@@ -267,10 +271,23 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
       await addPoints(tx, userId, "SPEND_PURCHASE", -quote.pointsUsed, { orderId: order.id, comment: `Оплата заказа №${order.number}`, expiresAt: null });
     }
     if (quote.promo?.ok) {
-      await tx.promoUse.create({ data: { promoId: quote.promo.promo.id, userId, orderId: order.id } });
+      // блокируем строку промокода, чтобы лимиты использований не обходились параллельными заказами
+      const promoId = quote.promo.promo.id;
+      await tx.$executeRaw`SELECT "id" FROM "PromoCode" WHERE "id" = ${promoId} FOR UPDATE`;
+      const promo = await tx.promoCode.findUniqueOrThrow({ where: { id: promoId }, include: { _count: { select: { uses: true } } } });
+      if (promo.maxUses && promo._count.uses >= promo.maxUses) throw new Error("Лимит использований промокода исчерпан");
+      const mine = await tx.promoUse.count({ where: { promoId, userId } });
+      if (mine >= promo.perUser) throw new Error("Вы уже использовали этот промокод");
+      await tx.promoUse.create({ data: { promoId, userId, orderId: order.id } });
     }
     if (giftCardId && giftUsed > 0) {
-      const card = await tx.giftCard.update({ where: { id: giftCardId }, data: { balance: { decrement: giftUsed } } });
+      // списание с сертификата — одним UPDATE с условием по остатку
+      const debited = await tx.giftCard.updateMany({
+        where: { id: giftCardId, status: "ACTIVE", balance: { gte: giftUsed } },
+        data: { balance: { decrement: giftUsed } },
+      });
+      if (debited.count === 0) throw new Error("Остаток сертификата изменился, обновите страницу");
+      const card = await tx.giftCard.findUniqueOrThrow({ where: { id: giftCardId } });
       await tx.giftRedemption.create({ data: { giftCardId, orderId: order.id, amount: giftUsed } });
       if (card.balance <= 0) await tx.giftCard.update({ where: { id: giftCardId }, data: { balance: 0, status: "USED" } });
       await audit(userId, "giftcard.redeem", "GiftCard", giftCardId, { orderId: order.id, amount: giftUsed }, tx);
@@ -294,7 +311,7 @@ export async function markOrderPaid(orderId: string, opts: { createdBy?: string 
     await tx.order.update({ where: { id: orderId }, data: { status: "PAID", paidAt: new Date() } });
     const pending = await tx.payment.findFirst({ where: { orderId, status: "PENDING" } });
     if (pending) {
-      await tx.payment.update({ where: { id: pending.id }, data: { status: "SUCCEEDED", externalId: opts.externalId ?? `demo_${Date.now()}` } });
+      await tx.payment.update({ where: { id: pending.id }, data: { status: "SUCCEEDED", externalId: opts.externalId ?? `manual_${Date.now()}` } });
     }
     await commitSale(tx, orderId, opts.createdBy);
     const cogs = order.items.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
@@ -311,6 +328,12 @@ export async function markOrderPaid(orderId: string, opts: { createdBy?: string 
     await addOrderEvent(tx, orderId, "Оплата получена", "PAID", opts.createdBy);
     await audit(opts.createdBy ?? null, "order.paid", "Order", orderId, undefined, tx);
   });
+}
+
+/** Сторно себестоимости за позиции, вернувшиеся на склад: иначе P&L занижает маржу. */
+async function reverseCogs(tx: Tx, order: { id: string; number: number }, lines: { costPrice: number | null; qty: number }[], comment: string, createdBy?: string | null) {
+  const amount = lines.reduce((s, l) => s + (l.costPrice ?? 0) * Math.max(0, l.qty), 0);
+  if (amount > 0) await tx.ledgerEntry.create({ data: { type: "COGS_REVERSAL", amount, orderId: order.id, comment, createdBy } });
 }
 
 /** Возвращает на сертификат всё, что было списано по заказу (при отмене). */
@@ -346,6 +369,7 @@ export async function cancelOrder(orderId: string, opts: { reason?: string; crea
       );
       await tx.payment.updateMany({ where: { orderId, status: "SUCCEEDED" }, data: { status: "REFUNDED" } });
       await tx.ledgerEntry.create({ data: { type: "REFUND", amount: order.total, orderId, comment: `Отмена заказа №${order.number}`, createdBy: opts.createdBy } });
+      await reverseCogs(tx, order, order.items.filter((i) => !i.isPreorder).map((i) => ({ costPrice: i.costPrice, qty: i.quantity - i.returnedQty })), `Сторно себестоимости: отмена заказа №${order.number}`, opts.createdBy);
     }
     if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
     await restoreGiftForOrder(tx, orderId, opts.createdBy);
@@ -374,6 +398,7 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
       const refund = Math.max(0, order.total - order.deliveryCost) - refundFor(order, alreadyReturned);
       await tx.payment.updateMany({ where: { orderId, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED"] } }, data: { status: "REFUNDED" } });
       if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
+      await reverseCogs(tx, order, order.items.filter((i) => !i.isPreorder).map((i) => ({ costPrice: i.costPrice, qty: i.quantity - i.returnedQty })), `Сторно себестоимости: возврат по заказу №${order.number}`, opts.createdBy);
       if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
     }
     await tx.order.update({
@@ -399,19 +424,31 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
 export async function partialReturn(orderId: string, lines: { orderItemId: string; qty: number }[], opts: { reason?: string; createdBy?: string | null; restock?: boolean }) {
   return db.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
-    if (!["DELIVERED", "COMPLETED", "SHIPPED"].includes(order.status)) throw new Error("Возврат возможен только после доставки");
+    if (!canTransition(order.status, "RETURNED")) throw new Error("Возврат возможен только после доставки");
     const value = await returnOrderItems(tx, orderId, lines, opts);
     if (value > 0) {
       const refund = refundFor(order, value);
       if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Частичный возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
-      await tx.payment.updateMany({ where: { orderId, status: "SUCCEEDED" }, data: { status: "PARTIALLY_REFUNDED" } });
+      if (opts.restock !== false) {
+        const byId = new Map(order.items.map((i) => [i.id, i]));
+        await reverseCogs(
+          tx,
+          order,
+          lines.map((l) => ({ costPrice: byId.get(l.orderItemId)?.costPrice ?? null, qty: byId.get(l.orderItemId)?.isPreorder ? 0 : l.qty })),
+          `Сторно себестоимости: частичный возврат по заказу №${order.number}`,
+          opts.createdBy,
+        );
+      }
+      const items = await tx.orderItem.findMany({ where: { orderId } });
+      const allReturned = items.every((i) => i.returnedQty >= i.quantity);
+      await tx.payment.updateMany({ where: { orderId, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED"] } }, data: { status: allReturned ? "REFUNDED" : "PARTIALLY_REFUNDED" } });
+      if (allReturned) {
+        await tx.order.update({ where: { id: orderId }, data: { status: "RETURNED" } });
+        await addOrderEvent(tx, orderId, "Все позиции возвращены", "RETURNED", opts.createdBy);
+      }
       if (order.userId) {
-        const items = await tx.orderItem.findMany({ where: { orderId } });
-        const allReturned = items.every((i) => i.returnedQty >= i.quantity);
         if (allReturned) {
           await revertOrderPoints(tx, orderId, opts.createdBy);
-          await tx.order.update({ where: { id: orderId }, data: { status: "RETURNED" } });
-          await addOrderEvent(tx, orderId, "Все позиции возвращены", "RETURNED", opts.createdBy);
         } else {
           // списанные баллы возвращаем пропорционально возвращённым позициям
           const pointsBack = Math.floor((order.pointsUsed * value) / Math.max(1, order.subtotal));

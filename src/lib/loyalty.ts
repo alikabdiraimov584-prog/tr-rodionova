@@ -15,16 +15,21 @@ export async function addPoints(
   opts: { orderId?: string | null; comment?: string; createdBy?: string | null; expiresAt?: Date | null } = {},
 ) {
   if (!amount) return null;
-  const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { pointsBalance: true } });
-  if (amount < 0 && user.pointsBalance + amount < 0) {
-    throw new Error("Недостаточно баллов");
+  // Баланс меняем одним UPDATE с условием: при одновременных списаниях он не уйдёт в минус
+  const updated = await tx.user.updateMany({
+    where: { id: userId, ...(amount < 0 ? { pointsBalance: { gte: -amount } } : {}) },
+    data: { pointsBalance: { increment: amount } },
+  });
+  if (updated.count === 0) {
+    const exists = await tx.user.count({ where: { id: userId } });
+    throw new Error(exists ? "Недостаточно баллов" : "Клиент не найден");
   }
   let expiresAt = opts.expiresAt;
   if (amount > 0 && expiresAt === undefined) {
     const s = await getSetting("loyalty");
     expiresAt = new Date(Date.now() + s.pointsExpireDays * 24 * 60 * 60 * 1000);
   }
-  const t = await tx.pointsTransaction.create({
+  return tx.pointsTransaction.create({
     data: {
       userId,
       type,
@@ -35,8 +40,6 @@ export async function addPoints(
       expiresAt: expiresAt ?? null,
     },
   });
-  await tx.user.update({ where: { id: userId }, data: { pointsBalance: { increment: amount } } });
-  return t;
 }
 
 /** Пересчитать уровень по сумме покупок за 12 месяцев и за всё время. */
@@ -125,8 +128,11 @@ export async function revertOrderPoints(tx: Tx, orderId: string, createdBy?: str
   const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
   if (!order.userId) return;
   if (order.pointsEarned > 0) {
+    // часть начисления могла быть отозвана раньше при частичных возвратах
+    const reverted = await tx.pointsTransaction.aggregate({ where: { orderId, type: "REVERT" }, _sum: { amount: true } });
+    const left = order.pointsEarned + (reverted._sum.amount ?? 0);
     const user = await tx.user.findUniqueOrThrow({ where: { id: order.userId } });
-    const revert = -Math.min(order.pointsEarned, user.pointsBalance);
+    const revert = -Math.max(0, Math.min(left, user.pointsBalance));
     if (revert) {
       await addPoints(tx, order.userId, "REVERT", revert, {
         orderId,
