@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { formatDate } from "@/lib/money";
 import { Markdown } from "@/components/markdown";
 import { ProductCard } from "@/components/shop/product-card";
+import { getSetting } from "@/lib/settings";
+import { JsonLd, absolute, breadcrumbJsonLd } from "@/lib/seo";
 
 async function load(slug: string) {
   return db.article.findUnique({
@@ -20,15 +22,54 @@ function isPublished(a: { publishedAt: Date | null }) {
 
 export async function generateMetadata({ params }: PageProps<"/journal/[slug]">): Promise<Metadata> {
   const a = await load((await params).slug);
-  return { title: a && isPublished(a) ? a.title : "Журнал", description: a?.excerpt ?? undefined };
+  if (!a || !isPublished(a)) return { title: "Журнал" };
+  const description = a.metaDescription ?? a.excerpt ?? undefined;
+  return {
+    title: a.metaTitle ?? a.title,
+    description,
+    keywords: a.keywords.length ? a.keywords : undefined,
+    alternates: { canonical: `/journal/${a.slug}` },
+    openGraph: {
+      type: "article",
+      title: a.metaTitle ?? a.title,
+      description,
+      url: `/journal/${a.slug}`,
+      publishedTime: a.publishedAt?.toISOString(),
+      modifiedTime: a.updatedAt.toISOString(),
+      section: a.category ?? undefined,
+      tags: a.keywords,
+      ...(a.coverUrl ? { images: [{ url: a.coverUrl, alt: a.title }] } : {}),
+    },
+  };
 }
 
 export default async function ArticlePage({ params }: PageProps<"/journal/[slug]">) {
   const { slug } = await params;
   const a = await load(slug);
   if (!a || !isPublished(a)) notFound();
+  const brand = await getSetting("brand");
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 md:px-8">
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: a.title,
+            description: a.metaDescription ?? a.excerpt ?? undefined,
+            image: a.coverUrl ? [absolute(a.coverUrl)] : undefined,
+            datePublished: a.publishedAt?.toISOString(),
+            dateModified: a.updatedAt.toISOString(),
+            articleSection: a.category ?? undefined,
+            keywords: a.keywords.join(", ") || undefined,
+            inLanguage: "ru",
+            mainEntityOfPage: absolute(`/journal/${a.slug}`),
+            author: { "@type": "Organization", name: brand.name },
+            publisher: { "@type": "Organization", name: brand.name, logo: { "@type": "ImageObject", url: absolute("/icon.svg") } },
+          },
+          breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Журнал", path: "/journal" }, { name: a.title, path: `/journal/${a.slug}` }]),
+        ]}
+      />
       <nav className="mb-6 text-[0.65rem] uppercase tracking-[0.2em] text-muted">
         <Link href="/journal">Журнал</Link>
         {a.category && <> / <Link href={`/journal?category=${encodeURIComponent(a.category)}`}>{a.category}</Link></>}

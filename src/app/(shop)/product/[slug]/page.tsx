@@ -9,6 +9,7 @@ import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductCard } from "@/components/shop/product-card";
 import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
+import { JsonLd, absolute, breadcrumbJsonLd } from "@/lib/seo";
 
 async function load(slug: string) {
   return db.product.findUnique({
@@ -26,7 +27,14 @@ async function load(slug: string) {
 
 export async function generateMetadata({ params }: PageProps<"/product/[slug]">): Promise<Metadata> {
   const p = await load((await params).slug);
-  return { title: p?.name ?? "Товар", description: p?.description ?? undefined };
+  if (!p || p.status !== "ACTIVE") return { title: "Товар" };
+  const description = p.description ? `${p.description.slice(0, 160)}${p.description.length > 160 ? "…" : ""}` : undefined;
+  return {
+    title: `${p.name} — купить в T.Rodionova`,
+    description,
+    alternates: { canonical: `/product/${p.slug}` },
+    openGraph: { type: "website", title: p.name, description, url: `/product/${p.slug}`, images: p.images.slice(0, 3).map((i) => ({ url: i.url, alt: i.alt ?? p.name })) },
+  };
 }
 
 export default async function ProductPage({ params }: PageProps<"/product/[slug]">) {
@@ -53,8 +61,32 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
     ...(p.isPreloved ? [["Состояние", p.condition] as [string, string | null]] : []),
     ...(p.isPreorder ? [["Отшив", p.preorderShipAt ? `к ${formatDate(p.preorderShipAt)}` : "4–6 недель"] as [string, string]] : []),
   ];
+  const inStock = p.isPreorder || p.variants.some((v) => v.stock - v.reserved > 0);
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: p.name,
+    description: p.description ?? undefined,
+    sku: p.sku,
+    brand: { "@type": "Brand", name: "T.Rodionova" },
+    material: p.composition ?? undefined,
+    category: p.category?.name,
+    image: p.images.map((i) => absolute(i.url)),
+    url: absolute(`/product/${p.slug}`),
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "RUB",
+      price: (p.price / 100).toFixed(2),
+      availability: inStock ? (p.isPreorder ? "https://schema.org/PreOrder" : "https://schema.org/InStock") : "https://schema.org/OutOfStock",
+      itemCondition: p.isPreloved ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
+      url: absolute(`/product/${p.slug}`),
+      seller: { "@type": "Organization", name: "T.Rodionova" },
+    },
+    ...(rating ? { aggregateRating: { "@type": "AggregateRating", ratingValue: rating.toFixed(1), reviewCount: p.reviews.length } } : {}),
+  };
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
+      <JsonLd data={[productJsonLd, breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
       <nav className="py-3 text-[0.66rem] uppercase tracking-[0.1em] text-muted">
         <Link href="/catalog" className="hover:text-ink">Каталог</Link>
         {p.category && <> / <Link href={`/catalog?category=${p.category.slug}`} className="hover:text-ink">{p.category.name}</Link></>}

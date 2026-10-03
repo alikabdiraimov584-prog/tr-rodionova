@@ -55,6 +55,7 @@ export function LookItemAddForm({ lookId, products }: { lookId: string; products
 
 type ArticleData = {
   id?: string; title?: string; slug?: string; excerpt?: string | null; category?: string | null; coverUrl?: string | null; body?: string; publishedAt?: string | null; productIds?: string[];
+  metaTitle?: string | null; metaDescription?: string | null; keywords?: string[];
 };
 
 export const ARTICLE_CATEGORIES = ["Уход", "Ткани", "Ателье", "Интервью", "Стиль"];
@@ -87,6 +88,12 @@ export function ArticleForm({ article, products, covers }: { article?: ArticleDa
           {products.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}
         </select>
       </label>
+      <fieldset className="grid gap-3 border border-line p-4 md:col-span-2 md:grid-cols-2">
+        <legend className="label px-1">SEO (необязательно — иначе берутся заголовок и лид)</legend>
+        <label><span className="label">Title для поисковиков (до 70 знаков)</span><input name="metaTitle" maxLength={70} defaultValue={article?.metaTitle ?? ""} className="input" /></label>
+        <label><span className="label">Ключевые слова через запятую</span><input name="keywords" defaultValue={article?.keywords?.join(", ") ?? ""} className="input" /></label>
+        <label className="md:col-span-2"><span className="label">Description (до 200 знаков)</span><textarea name="metaDescription" maxLength={200} rows={2} defaultValue={article?.metaDescription ?? ""} className="input" /></label>
+      </fieldset>
       <div className="flex flex-wrap items-center gap-6 md:col-span-2">
         <button className="btn-primary" disabled={pending}>{article?.id ? "Сохранить" : "Создать статью"}</button>
         <Msg s={state} />

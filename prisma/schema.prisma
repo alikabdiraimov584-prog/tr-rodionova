@@ -901,6 +901,10 @@ model Article {
   category    String? // «Уход», «Ткани», «Ателье», «Интервью»
   publishedAt DateTime?
   authorId    String?
+  // SEO: заголовок и описание для поисковиков, если отличаются от основных
+  metaTitle       String?
+  metaDescription String?
+  keywords        String[]  @default([])
   products    Product[] @relation("ArticleProducts")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

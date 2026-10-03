@@ -116,6 +116,9 @@ const ArticleSchema = z.object({
   coverUrl: z.string().trim().optional(),
   body: z.string().min(1, "Текст статьи"),
   publishedAt: z.string().trim().optional(),
+  metaTitle: z.string().trim().max(70).optional(),
+  metaDescription: z.string().trim().max(200).optional(),
+  keywords: z.string().trim().max(500).optional(),
 });
 
 export async function saveArticleAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -138,6 +141,9 @@ export async function saveArticleAction(_: ActionState, formData: FormData): Pro
     coverUrl: d.coverUrl || null,
     body: d.body.replace(/\r/g, ""),
     publishedAt,
+    metaTitle: d.metaTitle || null,
+    metaDescription: d.metaDescription || null,
+    keywords: (d.keywords ?? "").split(",").map((k) => k.trim()).filter(Boolean),
   };
   if (!data.slug) return { error: "Не удалось составить адрес страницы — укажите его латиницей" };
   let articleId = id;
