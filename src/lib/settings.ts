@@ -67,6 +67,15 @@ export async function getSetting<K extends keyof SettingsMap>(key: K): Promise<S
   return { ...defaults[key], ...((row?.value as object) ?? {}) } as SettingsMap[K];
 }
 
+/** То же, но без базы (например, при сборке статических страниц) возвращает значения по умолчанию. */
+export async function getSettingOrDefault<K extends keyof SettingsMap>(key: K): Promise<SettingsMap[K]> {
+  try {
+    return await getSetting(key);
+  } catch {
+    return defaults[key] as SettingsMap[K];
+  }
+}
+
 export async function setSetting<K extends keyof SettingsMap>(key: K, value: SettingsMap[K]) {
   await db.setting.upsert({ where: { key }, update: { value }, create: { key, value } });
 }

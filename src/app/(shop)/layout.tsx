@@ -1,11 +1,14 @@
 import { Suspense } from "react";
 import { ShopHeader, ShopFooter } from "@/components/shop/header";
 import { Analytics } from "@/components/analytics";
-import { getSetting } from "@/lib/settings";
+import { getSettingOrDefault } from "@/lib/settings";
 import { JsonLd, organizationJsonLd, siteUrl } from "@/lib/seo";
 
+// Витрина читает каталог и настройки из базы на каждый запрос; при сборке база недоступна
+export const dynamic = "force-dynamic";
+
 export default async function ShopLayout({ children }: LayoutProps<"/">) {
-  const brand = await getSetting("brand");
+  const brand = await getSettingOrDefault("brand");
   return (
     <>
       <JsonLd

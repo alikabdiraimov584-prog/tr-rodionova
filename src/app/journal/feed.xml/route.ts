@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { siteUrl } from "@/lib/seo";
 
-export const revalidate = 1800;
+export const dynamic = "force-dynamic";
 
 const esc = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!);
 
