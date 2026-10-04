@@ -50,14 +50,15 @@ export async function proxy(req: NextRequest) {
     return res;
   };
 
-  const needsAuth = pathname.startsWith("/crm") || pathname.startsWith("/account") || pathname.startsWith("/checkout") || pathname === "/login" || pathname === "/register";
+  const needsAuth = pathname.startsWith("/crm") || pathname.startsWith("/account") || pathname === "/login" || pathname === "/register";
   if (needsAuth) {
     const session = await readSession(req);
     if (pathname.startsWith("/crm")) {
       if (!session) return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)));
       if (session.role === "CUSTOMER") return withCsp(NextResponse.redirect(new URL("/account", req.url)));
     }
-    if (pathname.startsWith("/account") || pathname.startsWith("/checkout")) {
+    // /checkout открыт гостям: корзина в cookie, аккаунт создаётся при оформлении
+    if (pathname.startsWith("/account")) {
       if (!session) return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)));
     }
     if ((pathname === "/login" || pathname === "/register") && session) {

@@ -10,8 +10,9 @@ const crmPassword = process.env.CRM_PASSWORD;
 const maxPages = Number(process.env.MAX_PAGES ?? 120);
 const perTemplate = Number(process.env.PER_TEMPLATE ?? 4); // сколько страниц одного шаблона (/product/*, /journal/*) обходить
 const budgetMs = Number(process.env.TIME_BUDGET_MIN ?? 20) * 60_000;
-const startedAt = Date.now();
+let startedAt = Date.now();
 const overBudget = () => Date.now() - startedAt > budgetMs;
+const resetBudget = () => { startedAt = Date.now(); };
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 // шаблон маршрута: /product/abc → /product/*, /crm/orders/123 → /crm/orders/*
 const template = (path) => path.replace(/\/(product|journal|lookbook|orders|customers|products|returns|tickets|collections|staff|promos|reviews|stock|notifications)\/[^/?]+/g, "/$1/*");
@@ -38,6 +39,7 @@ const skip = /\/(unsubscribe|go|api|_next|logout|data-export|export|print|reset|
 const noisy = /[?&](page|sort|size|color|material|price|q|new|period|dim|from|to|status|tab)=/;
 
 async function crawl(role, viewport, startPaths, login) {
+  resetBudget(); // лимит времени — на каждый обход отдельно
   const { ctx, page, errors } = await newPage(viewport);
   if (login) {
     await page.goto(`${base}/login`);
@@ -242,7 +244,7 @@ async function crmAudit() {
   await check("фильтр заказов по статусу", async () => { await page.goto(`${base}/crm/orders?status=PAID`, { waitUntil: "networkidle" }); });
   await check("карточка заказа и печать", async () => {
     await page.goto(`${base}/crm/orders`, { waitUntil: "networkidle" });
-    const link = page.locator("a[href^='/crm/orders/']").first();
+    const link = page.locator("a[href^='/crm/orders/']:not([href$='/new'])").first();
     if (!(await link.count())) return;
     const href = await link.getAttribute("href");
     await page.goto(base + href, { waitUntil: "networkidle" });
@@ -251,12 +253,12 @@ async function crmAudit() {
   });
   await check("карточка клиентки", async () => {
     await page.goto(`${base}/crm/customers`, { waitUntil: "networkidle" });
-    const link = page.locator("a[href^='/crm/customers/']").first();
+    const link = page.locator("a[href^='/crm/customers/']:not([href*='export'])").first();
     if (await link.count()) await page.goto(base + (await link.getAttribute("href")), { waitUntil: "networkidle" });
   });
   await check("карточка товара", async () => {
     await page.goto(`${base}/crm/products`, { waitUntil: "networkidle" });
-    const link = page.locator("a[href^='/crm/products/']").first();
+    const link = page.locator("a[href^='/crm/products/']:not([href*='export']):not([href$='/new'])").first();
     if (await link.count()) await page.goto(base + (await link.getAttribute("href")), { waitUntil: "networkidle" });
   });
   await check("аналитика за 90 дней", async () => { await page.goto(`${base}/crm/analytics?period=90`, { waitUntil: "networkidle" }); });
