@@ -20,7 +20,7 @@ async function load(slug: string) {
       category: true,
       reviews: { where: { isPublic: true }, include: { user: { select: { firstName: true, height: true, preferredSize: true } } }, orderBy: { createdAt: "desc" } },
       articles: { where: { publishedAt: { lte: new Date() } }, select: { slug: true, title: true } },
-      lookItems: { include: { look: true }, take: 2 },
+      lookItems: { include: { look: { include: { items: { include: { product: { include: { images: { orderBy: { order: "asc" } }, variants: true } } }, orderBy: { order: "asc" } } } } }, take: 2 },
     },
   });
 }
@@ -51,6 +51,9 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4 }),
   ]);
   const pts = Math.floor((p.price * (tier?.cashbackPct ?? 3)) / 100 / 100);
+  // «С этим носят»: вещи из тех же образов лукбука, иначе соседи по категории
+  const lookMates = p.lookItems.flatMap((li) => li.look.items.map((it) => it.product)).filter((r, i, arr) => r.id !== p.id && r.status === "ACTIVE" && arr.findIndex((x) => x.id === r.id) === i).slice(0, 4);
+  const wornWith = lookMates.length > 0 ? lookMates : related;
   const rating = p.reviews.length ? p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length : null;
   const specs: [string, string | null | undefined][] = [
     ["Состав", p.composition],
@@ -114,7 +117,12 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           <div className="mt-4">
             <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))} />
           </div>
-          <div className="mt-2 flex gap-2">
+          <ul className="mt-3 space-y-1 text-[0.78rem] text-ink/80">
+            <li>Курьер по Москве и области завтра, по России 2–7 дней</li>
+            <li>Примерка 15 минут перед покупкой: платите только за то, что подошло</li>
+            <li>Возврат 14 дней, курьер заберёт бесплатно</li>
+          </ul>
+          <div className="mt-3 flex gap-2">
             <form action={toggleWishlistAction} className="flex-1">
               <input type="hidden" name="productId" value={p.id} />
               <input type="hidden" name="back" value={`/product/${p.slug}`} />
@@ -152,10 +160,10 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           </div>
         </section>
       )}
-      {related.length > 0 && (
+      {wornWith.length > 0 && (
         <section className="mt-16 border-t border-line pt-6">
           <h2 className="mb-3">С этим носят</h2>
-          <div className="grid grid-cols-2 gap-1 md:grid-cols-4">{related.map((r) => <ProductCard key={r.id} p={r} />)}</div>
+          <div className="grid grid-cols-2 gap-1 md:grid-cols-4">{wornWith.map((r) => <ProductCard key={r.id} p={r} />)}</div>
         </section>
       )}
     </div>

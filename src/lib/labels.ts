@@ -47,7 +47,7 @@ export const DELIVERY_METHOD: Record<DeliveryMethod, { label: string; hint: stri
   CDEK: { label: "СДЭК", hint: "До пункта выдачи или курьером, 2–7 дней" },
   BOXBERRY: { label: "Boxberry", hint: "До пункта выдачи, 2–7 дней" },
   YANDEX: { label: "Яндекс Доставка", hint: "Курьером в день заказа по Москве" },
-  PICKUP: { label: "Самовывоз", hint: "Шоурум, Москва, Большая Никитская 14" },
+  PICKUP: { label: "Самовывоз", hint: "Из шоурума бренда" },
 };
 
 export const STOCK_MOVEMENT: Record<StockMovementType, { label: string; tone: Tone }> = {
