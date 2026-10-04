@@ -92,25 +92,24 @@ async function crawl(role, viewport, startPaths, login) {
       const u = h.split("#")[0];
       if (u && !seen.has(u)) queue.push(u);
     }
-    // безопасные кнопки: type=button вне форм с данными, без «опасных» слов
-    const buttons = nTpl > 1 ? [] : await page.locator('button:visible, [role="button"]:visible, summary:visible').all().catch(() => []);
-    for (const b of buttons.slice(0, 40)) {
+    // безопасные кнопки: type=button вне форм с данными, без «опасных» слов.
+    // Свойства собираем одним вызовом: после клика по <summary> старые хэндлы устаревают и каждое обращение ждало бы таймаут.
+    const SEL = 'button:visible, [role="button"]:visible, summary:visible';
+    const metas = nTpl > 1 ? [] : await page.locator(SEL).evaluateAll((els) => els.map((el) => ({
+      text: (el.textContent ?? "").trim(), type: el.getAttribute("type"), tag: el.tagName.toLowerCase(), inForm: !!el.closest("form"),
+    }))).catch(() => []);
+    for (let i = 0; i < Math.min(metas.length, 40); i++) {
       if (overBudget()) break;
-      const text = ((await b.textContent().catch(() => "")) ?? "").trim();
-      const type = await b.getAttribute("type").catch(() => null);
-      const tag = await b.evaluate((el) => el.tagName.toLowerCase()).catch(() => "");
-      const inForm = await b.evaluate((el) => !!el.closest("form")).catch(() => true);
-      if (tag === "summary" || (type === "button" && !DESTRUCTIVE.test(text)) || (tag === "button" && !inForm && !DESTRUCTIVE.test(text))) {
-        const before = page.url();
-        try {
-          await b.click({ timeout: 3000, trial: true });
-          await b.click({ timeout: 3000 });
-          stats.buttonsClicked++;
-          await page.waitForTimeout(150);
-          if (page.url() !== before) await page.goBack({ waitUntil: "domcontentloaded" }).catch(() => null);
-        } catch (e) {
-          if (!/intercepts pointer|not visible|detached|outside of the viewport/i.test(e.message)) note("button", `${role} ${path} «${text.slice(0, 30)}»`, e.message.split("\n")[0]);
-        }
+      const { text, type, tag, inForm } = metas[i];
+      if (!(tag === "summary" || (type === "button" && !DESTRUCTIVE.test(text)) || (tag === "button" && !inForm && !DESTRUCTIVE.test(text)))) continue;
+      const before = page.url();
+      try {
+        await page.locator(SEL).nth(i).click({ timeout: 2000 });
+        stats.buttonsClicked++;
+        await page.waitForTimeout(150);
+        if (page.url() !== before) await page.goBack({ waitUntil: "domcontentloaded" }).catch(() => null);
+      } catch (e) {
+        if (!/intercepts pointer|not visible|detached|outside of the viewport|resolved to|strict mode/i.test(e.message)) note("button", `${role} ${path} «${text.slice(0, 30)}»`, e.message.split("\n")[0]);
       }
     }
     for (const e of errors) note("console-after-click", `${role} ${path}`, e);
