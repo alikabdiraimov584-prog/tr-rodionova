@@ -1,7 +1,15 @@
 # TLS от Let's Encrypt выпускается и продлевается автоматически. DOMAIN берётся из .env.
 {$DOMAIN} {
 	encode zstd gzip
-	reverse_proxy web:3000
+	# web — имя сервиса в docker compose; при обновлении за ним несколько контейнеров,
+	# неудачное соединение с исчезнувшим контейнером повторяется до 15 секунд
+	reverse_proxy web:3000 {
+		lb_try_duration 15s
+		lb_try_interval 500ms
+		transport http {
+			dial_timeout 5s
+		}
+	}
 	header {
 		# остальные заголовки безопасности выставляет приложение
 		-Server

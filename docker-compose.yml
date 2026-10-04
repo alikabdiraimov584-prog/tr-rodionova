@@ -14,12 +14,14 @@ services:
       - uploads:/app/public/uploads
     expose:
       - "3000"
+    # /api/health проверяет и базу; при старте идут миграции и сид, поэтому start_period длинный
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/robots.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 90s
+      retries: 3
+      start_period: 180s
+    stop_grace_period: 30s
 
   # Вариант «всё на одном сервере»: PostgreSQL в контейнере. Включается COMPOSE_PROFILES=localdb в .env,
   # тогда DATABASE_URL=postgresql://tr:${DB_PASSWORD}@db:5432/tr_rodionova. Позже можно перейти на управляемую базу.
