@@ -70,6 +70,31 @@ export const INTEGRATIONS: IntegrationDef[] = [
     },
   },
   {
+    key: "cloudpayments",
+    group: "payments",
+    name: "CloudPayments",
+    summary: "Карты, СБП, SberPay, T-Pay, Mir Pay и оплата частями (Долями, Подели, Яндекс Сплит, «Плати частями») в одной кассе. Чеки через CloudKassir.",
+    effect: "При включении кнопка «Оплатить» ведёт на платёжную страницу CloudPayments; если включена и ЮKassa, приоритет у CloudPayments.",
+    fields: [
+      { key: "publicId", label: "Public ID", placeholder: "pk_…", hint: "Кабинет CloudPayments → Сайты → ваш сайт" },
+      { key: "apiSecret", label: "API Secret", secret: true, hint: "Там же, кнопка «Пароль для API»" },
+      { key: "taxationSystem", label: "Система налогообложения для чеков", placeholder: "0 — ОСН, 1 — УСН доходы, 2 — УСН доходы-расходы (пусто, если одна в кассе)" },
+    ],
+    guide: [
+      "Заключите договор интернет-эквайринга CloudPayments и подключите CloudKassir (облачная касса для чеков 54-ФЗ).",
+      "Вставьте Public ID и API Secret, нажмите «Проверить подключение».",
+      "В кабинете CloudPayments → Сайты → Уведомления укажите адрес ниже для Pay, Fail и Refund (добавив ?kind=pay, ?kind=fail, ?kind=refund), формат любой, подпись HMAC включена.",
+      "Сервисы частями (Долями, Подели, Сплит, «Плати частями») и СБП включаются заявками в кабинете CloudPayments и появляются на платёжной странице сами.",
+    ],
+    webhookPath: "/api/payments/cloudpayments",
+    test: async (c) => {
+      if (!c.publicId || !c.apiSecret) return { ok: false, error: "Укажите Public ID и API Secret" };
+      const auth = Buffer.from(`${c.publicId}:${c.apiSecret}`).toString("base64");
+      const r = await json<{ Success?: boolean; Message?: string | null }>("https://api.cloudpayments.ru/test", { method: "POST", headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" }, body: "{}" });
+      return r.body.Success ? { ok: true, info: r.body.Message ?? "Ключи приняты" } : { ok: false, error: r.body.Message ?? `CloudPayments ответил HTTP ${r.status}` };
+    },
+  },
+  {
     key: "cdek",
     group: "delivery",
     name: "СДЭК",

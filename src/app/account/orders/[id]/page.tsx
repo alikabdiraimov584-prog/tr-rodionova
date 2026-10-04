@@ -9,7 +9,7 @@ import { ConfirmButton } from "@/components/form";
 import { ReviewForm } from "@/components/account/review-form";
 import { cancelOwnOrderAction } from "@/app/actions/shop";
 import { PayButton } from "@/components/account/pay-button";
-import { syncOrderPayment, yookassaEnabled } from "@/lib/payments/yookassa";
+import { syncOrderPayment, paymentsEnabled } from "@/lib/payments/provider";
 import { trackingUrl } from "@/lib/delivery";
 
 const STEPS = ["NEW", "PAID", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
@@ -42,7 +42,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             <div className="text-xs text-muted">{payment ? PAYMENT_METHOD[payment.method] : ""} · резерв действует 24 часа{order.isPreorder ? " · предзаказ" : ""}</div>
           </div>
           <div className="flex gap-2">
-            <PayButton orderId={order.id} live={await yookassaEnabled()} />
+            <PayButton orderId={order.id} live={await paymentsEnabled()} />
             <form action={cancelOwnOrderAction}>
               <input type="hidden" name="orderId" value={order.id} />
               <ConfirmButton message="Отменить заказ? Списанные баллы вернутся на счёт.">Отменить</ConfirmButton>

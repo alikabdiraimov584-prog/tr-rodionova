@@ -8,7 +8,7 @@ import { GIFT_STATUS } from "@/lib/labels";
 import { Alert, Badge, PageTitle } from "@/components/ui";
 import { CopyLink } from "@/components/account/copy-link";
 import { GiftPayButton } from "@/components/account/gift-pay-button";
-import { syncGiftCardPayment, yookassaEnabled } from "@/lib/payments/yookassa";
+import { syncGiftCardPayment, paymentsEnabled } from "@/lib/payments/provider";
 
 export const metadata: Metadata = { title: "Сертификат" };
 
@@ -34,7 +34,7 @@ export default async function GiftCardPage({ params, searchParams }: PageProps<"
             <div className="text-sm">Ожидает оплаты: {formatMoney(card.amount)}</div>
             <div className="text-xs text-muted">Код сертификата появится сразу после оплаты</div>
           </div>
-          <GiftPayButton cardId={card.id} live={await yookassaEnabled()} />
+          <GiftPayButton cardId={card.id} live={await paymentsEnabled()} />
         </div>
       )}
       {card.status === "ACTIVE" && <Alert tone="success">Сертификат оплачен и активен. Перешлите код получателю — текст ниже можно скопировать.</Alert>}

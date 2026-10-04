@@ -11,7 +11,7 @@ import { formatDate, formatMoney, toKopecks, RUB } from "@/lib/money";
 import { normalizeGiftCode } from "@/lib/orders";
 import { activateGiftCard } from "@/lib/gift-payment";
 import { checkRate } from "@/lib/ratelimit";
-import { createGiftCardPayment, demoPaymentsAllowed, yookassaEnabled } from "@/lib/payments/yookassa";
+import { createGiftCardPayment, demoPaymentsAllowed, paymentsEnabled } from "@/lib/payments/provider";
 import { GIFT_MAX_RUB, GIFT_MIN_RUB, GIFT_VALIDITY_MONTHS, generateGiftCode } from "@/lib/gift";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 
@@ -89,7 +89,7 @@ export async function payGiftCardAction(_: ActionState, formData: FormData): Pro
     return { error: errorMessage(e) };
   }
   if (card.status !== "PENDING") return { error: "Сертификат уже оплачен или отменён" };
-  if (await yookassaEnabled()) {
+  if (await paymentsEnabled()) {
     let url: string;
     try {
       const h = await headers();
