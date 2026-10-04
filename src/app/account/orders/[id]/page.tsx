@@ -42,7 +42,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             <div className="text-sm">Ожидает оплаты: {formatMoney(order.total)}</div>
             <div className="text-xs text-muted">{payment ? PAYMENT_METHOD[payment.method] : ""} · резерв действует 24 часа{order.isPreorder ? " · предзаказ" : ""}</div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <PayButton orderId={order.id} live={await paymentsEnabled()} />
             <form action={cancelOwnOrderAction}>
               <input type="hidden" name="orderId" value={order.id} />
@@ -73,7 +73,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
       })())}
 
       {stepIdx >= 0 && (
-        <ol className="grid grid-cols-6 gap-1 text-center text-[0.6rem] uppercase tracking-[0.12em]">
+        <ol className="grid grid-cols-3 gap-x-1 gap-y-3 text-center text-[0.6rem] uppercase tracking-[0.12em] sm:grid-cols-6">
           {STEPS.map((s, i) => (
             <li key={s}>
               <div className={`h-1 ${i <= stepIdx ? "bg-ink" : "bg-line"}`} />
@@ -87,12 +87,12 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
         <div className="divide-y divide-line border-y border-line">
           {order.items.map((i) => (
             <div key={i.id} className="flex justify-between gap-4 py-4">
-              <div>
+              <div className="min-w-0">
                 <Link href={`/product/${i.variant.product.slug}`} className="text-sm">{i.productName}</Link>
                 <div className="text-xs text-muted">{i.color} · {i.size} · {i.quantity} шт. {i.returnedQty ? `· возвращено ${i.returnedQty}` : ""}</div>
                 {canReview && !reviewed.has(i.variant.productId) && <div className="mt-2"><ReviewForm productId={i.variant.productId} productName={i.productName} /></div>}
               </div>
-              <div className="text-sm">{formatMoney(i.price * i.quantity)}</div>
+              <div className="shrink-0 text-sm">{formatMoney(i.price * i.quantity)}</div>
             </div>
           ))}
         </div>
@@ -130,7 +130,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
         <h2 className="mb-3 text-xl">История</h2>
         <ul className="space-y-2 text-sm">
           {order.history.map((h) => (
-            <li key={h.id} className="flex gap-4"><span className="w-36 shrink-0 text-xs text-muted">{formatDate(h.createdAt, true)}</span><span>{h.status ? `${ORDER_STATUS[h.status].label}. ` : ""}{h.message !== "Статус изменён" ? h.message : ""}</span></li>
+            <li key={h.id} className="flex flex-col gap-0.5 sm:flex-row sm:gap-4"><span className="shrink-0 text-xs text-muted sm:w-36">{formatDate(h.createdAt, true)}</span><span>{h.status ? `${ORDER_STATUS[h.status].label}. ` : ""}{h.message !== "Статус изменён" ? h.message : ""}</span></li>
           ))}
         </ul>
       </section>

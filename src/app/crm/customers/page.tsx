@@ -66,24 +66,24 @@ export default async function Customers({ searchParams }: PageProps<"/crm/custom
       >
         {rows.length} клиентов · LTV {formatMoney(rows.reduce((s, r) => s + r.u.lifetimeSpent, 0))}
       </PageTitle>
-      <form className="mb-4 flex flex-wrap gap-2">
-        <input name="q" defaultValue={q} placeholder="Имя, email, телефон" className="input w-64 py-2" />
-        <select name="tier" defaultValue={tier ?? ""} className="input w-40 py-2">
+      <form className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <input name="q" defaultValue={q} placeholder="Имя, email, телефон" className="input col-span-2 py-2 sm:w-64" />
+        <select name="tier" defaultValue={tier ?? ""} className="input py-2 sm:w-40">
           <option value="">Все уровни</option>
           {tiers.map((t) => <option key={t.id} value={t.code}>{t.name}</option>)}
         </select>
-        <select name="segment" defaultValue={segment ?? ""} className="input w-48 py-2">
+        <select name="segment" defaultValue={segment ?? ""} className="input py-2 sm:w-48">
           <option value="">Все сегменты</option>
           {Object.values(SEGMENTS).map((s) => <option key={s.code} value={s.code}>{s.label}</option>)}
         </select>
-        <select name="tag" defaultValue={tag ?? ""} className="input w-44 py-2">
+        <select name="tag" defaultValue={tag ?? ""} className="input py-2 sm:w-44">
           <option value="">Все теги</option>
           {allTags.map((t) => <option key={t}>{t}</option>)}
         </select>
-        <select name="sort" defaultValue={sort} className="input w-48 py-2">
+        <select name="sort" defaultValue={sort} className="input py-2 sm:w-48">
           {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <button className="btn-primary btn-sm">Найти</button>
+        <button className="btn-primary btn-sm col-span-2">Найти</button>
       </form>
       <div className="card overflow-x-auto">
         <table className="table">

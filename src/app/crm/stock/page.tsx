@@ -49,8 +49,8 @@ export default async function Stock({ searchParams }: PageProps<"/crm/stock">) {
         <StockOperationForm key={preset} preset={preset} variants={all.map((v) => ({ id: v.id, label: `${v.product.name} · ${v.color ?? ""} · ${v.size} · ${v.sku} · ост. ${v.stock - v.reserved}` }))} />
       </div>
       <div className="flex flex-wrap gap-2">
-        <form className="flex gap-2">
-          <input name="q" defaultValue={q} placeholder="Артикул, название, штрихкод" className="input w-72 py-2" />
+        <form className="flex w-full gap-2 sm:w-auto">
+          <input name="q" defaultValue={q} placeholder="Артикул, название, штрихкод" className="input w-full py-2 sm:w-72" />
           {low && <input type="hidden" name="low" value="1" />}
         </form>
         <Link href={qs("/crm/stock", { q, low: low ? undefined : 1 })} className={`badge ${low ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>Заканчивается (≤ 1)</Link>

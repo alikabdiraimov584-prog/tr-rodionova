@@ -72,7 +72,7 @@ export default async function CampaignPage({ params }: PageProps<"/crm/campaigns
         <Stat label="Заказы" value={orders || "—"} hint={c.sentCount && orders ? `конверсия ${Math.round((orders / c.sentCount) * 1000) / 10}%` : undefined} />
         <Stat label="Выручка" value={revenue ? formatMoney(revenue) : "—"} />
       </div>
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr] [&>*]:min-w-0">
         <div className="card p-5">
           <Eyebrow>Сообщение</Eyebrow>
           {c.subject && <div className="mt-2 text-sm font-medium">{c.subject}</div>}

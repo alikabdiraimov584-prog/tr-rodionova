@@ -87,12 +87,12 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
       <JsonLd data={[productJsonLd, breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
-      <nav className="py-3 text-[0.66rem] uppercase tracking-[0.1em] text-muted">
+      <nav className="py-3 text-[0.66rem] uppercase tracking-[0.1em] text-muted [&_a]:inline-block [&_a]:py-1">
         <Link href="/catalog" className="hover:text-ink">Каталог</Link>
         {p.category && <> / <Link href={`/catalog?category=${p.category.slug}`} className="hover:text-ink">{p.category.name}</Link></>}
         {p.isPreloved && <> / <Link href="/preloved" className="hover:text-ink">Pre-loved</Link></>}
       </nav>
-      <div className="grid gap-6 md:grid-cols-[1.4fr_1fr] lg:gap-10">
+      <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] lg:grid-cols-[1.4fr_1fr] lg:gap-10">
         <div className="grid grid-cols-2 gap-1">
           {p.images.map((img, i) => (
             <div key={img.id} className={`relative aspect-[3/4] bg-sand ${i === 0 ? "col-span-2 md:col-span-1" : ""}`}>
@@ -100,10 +100,10 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
             </div>
           ))}
         </div>
-        <div className="md:sticky md:top-28 md:self-start">
+        <div className="min-w-0 md:sticky md:top-32 md:self-start">
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-xl">{p.name}</h1>
-            <div className="text-right text-base">{formatMoney(p.price)}{p.compareAt && <div className="text-xs text-muted line-through">{formatMoney(p.compareAt)}</div>}</div>
+            <h1 className="min-w-0 text-xl">{p.name}</h1>
+            <div className="shrink-0 text-right text-base">{formatMoney(p.price)}{p.compareAt && <div className="text-xs text-muted line-through">{formatMoney(p.compareAt)}</div>}</div>
           </div>
           <div className="mt-1 text-[0.68rem] uppercase tracking-[0.08em] text-muted">
             {p.isPreorder ? "Предзаказ · " : ""}{p.isPreloved ? `Pre-loved · ${p.condition ?? ""} · ` : ""}+{pts.toLocaleString("ru-RU")} баллов Circle{rating ? ` · ★ ${rating.toFixed(1)} (${p.reviews.length})` : ""}
@@ -120,14 +120,14 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
               <input type="hidden" name="back" value={`/product/${p.slug}`} />
               <button className="btn-outline w-full">{inWishlist ? "В избранном" : "В избранное"}</button>
             </form>
-            <Link href="/sizes" className="btn-ghost">Размеры</Link>
+            <Link href="/sizes" className="btn-ghost shrink-0">Размеры</Link>
           </div>
           <dl className="mt-6 divide-y divide-line border-y border-line text-[0.78rem]">
             {specs.filter(([, v]) => v).map(([k, v]) => (
-              <div key={k} className="grid grid-cols-[110px_1fr] gap-3 py-2.5"><dt className="text-muted">{k}</dt><dd>{v}</dd></div>
+              <div key={k} className="grid grid-cols-[90px_1fr] gap-3 py-2.5 sm:grid-cols-[110px_1fr]"><dt className="text-muted">{k}</dt><dd>{v}</dd></div>
             ))}
-            <div className="grid grid-cols-[110px_1fr] gap-3 py-2.5"><dt className="text-muted">Доставка</dt><dd>Курьер с примеркой по Москве и Петербургу за 1–2 дня, СДЭК по России 2–7 дней. <Link href="/delivery" className="underline">Подробнее</Link></dd></div>
-            <div className="grid grid-cols-[110px_1fr] gap-3 py-2.5"><dt className="text-muted">Возврат</dt><dd>14 дней с момента получения. Для Privé — бесплатный обратный забор.</dd></div>
+            <div className="grid grid-cols-[90px_1fr] gap-3 py-2.5 sm:grid-cols-[110px_1fr]"><dt className="text-muted">Доставка</dt><dd>Курьер с примеркой по Москве и Петербургу за 1–2 дня, СДЭК по России 2–7 дней. <Link href="/delivery" className="underline">Подробнее</Link></dd></div>
+            <div className="grid grid-cols-[90px_1fr] gap-3 py-2.5 sm:grid-cols-[110px_1fr]"><dt className="text-muted">Возврат</dt><dd>14 дней с момента получения. Для Privé — бесплатный обратный забор.</dd></div>
           </dl>
           {(p.lookItems.length > 0 || p.articles.length > 0) && (
             <div className="mt-5 text-[0.72rem] text-muted">
@@ -141,7 +141,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
       {p.reviews.length > 0 && (
         <section className="mt-16 border-t border-line pt-6">
           <h2>Отзывы · {p.reviews.length}</h2>
-          <div className="mt-4 grid gap-1 md:grid-cols-3">
+          <div className="mt-4 grid gap-1 sm:grid-cols-2 md:grid-cols-3">
             {p.reviews.map((r) => (
               <div key={r.id} className="border border-line p-4 text-sm">
                 <div className="text-[0.68rem] tracking-[0.1em] text-muted">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)} · {r.user.firstName}{r.user.height ? ` · рост ${r.user.height}` : ""}{r.user.preferredSize ? ` · размер ${r.user.preferredSize}` : ""}</div>

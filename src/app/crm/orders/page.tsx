@@ -49,9 +49,9 @@ export default async function CrmOrders({ searchParams }: PageProps<"/crm/orders
             {ORDER_STATUS[s].label} · {countBy.get(s) ?? 0}
           </Link>
         ))}
-        <form className="ml-auto">
+        <form className="w-full sm:ml-auto sm:w-auto">
           {status && <input type="hidden" name="status" value={status} />}
-          <input name="q" defaultValue={q} placeholder="№, имя, email, телефон, трек" className="input w-72 py-2" />
+          <input name="q" defaultValue={q} placeholder="№, имя, email, телефон, трек" className="input w-full py-2 sm:w-72" />
         </form>
       </div>
       <div className="card overflow-x-auto">

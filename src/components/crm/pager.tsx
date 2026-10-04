@@ -4,9 +4,9 @@ export function Pager({ page, pages, href }: { page: number; pages: number; href
   if (pages <= 1) return null;
   return (
     <div className="mt-6 flex items-center justify-between text-[0.68rem] uppercase tracking-[0.16em]">
-      {page > 1 ? <Link href={href(page - 1)} className="text-ink">← Назад</Link> : <span />}
+      {page > 1 ? <Link href={href(page - 1)} className="inline-flex min-h-11 items-center text-ink">← Назад</Link> : <span />}
       <span className="text-muted">Стр. {page} из {pages}</span>
-      {page < pages ? <Link href={href(page + 1)} className="text-ink">Вперёд →</Link> : <span />}
+      {page < pages ? <Link href={href(page + 1)} className="inline-flex min-h-11 items-center text-ink">Вперёд →</Link> : <span />}
     </div>
   );
 }

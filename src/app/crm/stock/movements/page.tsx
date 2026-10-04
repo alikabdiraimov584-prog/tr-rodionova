@@ -35,7 +35,7 @@ export default async function Movements({ searchParams }: PageProps<"/crm/stock/
         {(Object.keys(STOCK_MOVEMENT) as StockMovementType[]).map((t) => (
           <Link key={t} href={qs("/crm/stock/movements", { q, type: t })} className={`badge ${type === t ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>{STOCK_MOVEMENT[t].label}</Link>
         ))}
-        <form className="ml-auto">{type && <input type="hidden" name="type" value={type} />}<input name="q" defaultValue={q} placeholder="Артикул или товар" className="input w-60 py-2" /></form>
+        <form className="w-full sm:ml-auto sm:w-auto">{type && <input type="hidden" name="type" value={type} />}<input name="q" defaultValue={q} placeholder="Артикул или товар" className="input w-full py-2 sm:w-60" /></form>
       </div>
       <div className="card overflow-x-auto">
         <table className="table">

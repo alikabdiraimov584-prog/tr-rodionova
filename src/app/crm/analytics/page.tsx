@@ -55,7 +55,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <div className="card p-5">
+        <div className="card min-w-0 p-5">
           <Eyebrow>Визиты и заказы по дням</Eyebrow>
           <div className="mt-4"><BarChart money={false} data={daily.map((d) => ({ label: days > 30 ? "" : d.label, value: d.visits, sub: d.orders }))} /></div>
           <div className="mt-2 flex gap-4 text-xs text-muted"><span><span className="mr-1 inline-block h-2 w-2 bg-taupe" />визиты</span><span><span className="mr-1 inline-block h-2 w-2 bg-champagne" />заказы</span></div>
@@ -131,6 +131,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
           <p className="mt-1 text-xs text-muted">Короткая ссылка для сторис, блогеров, QR-кодов в шоуруме и рассылок. Считает клики, визиты, заказы и выручку.</p>
         </div>
         <TrackingLinkForm />
+        <div className="-mx-5 overflow-x-auto px-5">
         <table className="table">
           <thead><tr><th>Ссылка</th><th>Метки</th><th className="text-right">Клики</th><th className="text-right">Визиты</th><th className="text-right">Заказы</th><th className="text-right">Выручка</th><th /></tr></thead>
           <tbody>
@@ -150,6 +151,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

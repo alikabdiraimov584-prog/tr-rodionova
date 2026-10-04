@@ -40,16 +40,16 @@ export function RegisterForm({ next, refCode, referrerName }: { next?: string; r
         <span className="mt-1 block text-xs text-muted">Для подарочных баллов. Указывается один раз.</span>
       </label>
       <label className="block"><span className="label">Пароль</span><input name="password" type="password" minLength={8} required autoComplete="new-password" className="input" /></label>
-      <label className="flex gap-2 text-xs text-muted">
-        <input type="checkbox" name="consent" required className="mt-0.5 accent-black" />
+      <label className="flex gap-2 py-1 text-xs text-muted">
+        <input type="checkbox" name="consent" required className="mt-0.5 h-4 w-4 shrink-0 accent-black" />
         <span>Даю <Link href="/privacy#consent" target="_blank" className="underline">согласие на обработку персональных данных</Link> на условиях <Link href="/privacy" target="_blank" className="underline">политики</Link></span>
       </label>
-      <label className="flex gap-2 text-xs text-muted">
-        <input type="checkbox" name="offer" required className="mt-0.5 accent-black" />
+      <label className="flex gap-2 py-1 text-xs text-muted">
+        <input type="checkbox" name="offer" required className="mt-0.5 h-4 w-4 shrink-0 accent-black" />
         <span>Принимаю условия <Link href="/offer" target="_blank" className="underline">публичной оферты</Link> и <Link href="/offer#loyalty" target="_blank" className="underline">правила программы Circle</Link></span>
       </label>
-      <label className="flex gap-2 text-xs text-muted">
-        <input type="checkbox" name="marketingConsent" className="mt-0.5 accent-black" />
+      <label className="flex gap-2 py-1 text-xs text-muted">
+        <input type="checkbox" name="marketingConsent" className="mt-0.5 h-4 w-4 shrink-0 accent-black" />
         <span>Хочу получать новости о коллекциях и закрытых показах (<Link href="/privacy#marketing" target="_blank" className="underline">согласие на рассылки</Link>)</span>
       </label>
       {state?.error && <p className="text-sm text-danger">{state.error}</p>}

@@ -26,7 +26,7 @@ export default async function Tasks({ searchParams }: PageProps<"/crm/tasks">) {
   ]);
   const now = new Date();
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+    <div className="grid gap-6 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
       <div>
         <PageTitle title="Задачи" />
         <div className="mb-4 flex flex-wrap gap-2">

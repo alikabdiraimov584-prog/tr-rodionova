@@ -44,17 +44,21 @@ export function Analytics() {
 
   if (consent !== null) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ivory/95 px-4 py-4 text-xs backdrop-blur">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-muted">
-          Мы используем необходимые cookie для работы сайта и, с вашего согласия, собственную аналитику посещений — без передачи данных третьим лицам.{" "}
-          <Link href="/privacy#section-14" className="underline">Подробнее</Link>
-        </p>
-        <div className="flex gap-2">
-          <button type="button" className="btn-ghost btn-sm" onClick={() => setConsent("necessary")}>Только необходимые</button>
-          <button type="button" className="btn-primary btn-sm" onClick={() => setConsent("all")}>Принять</button>
+    <>
+      {/* Распорка внизу страницы: баннер не перекрывает подвал и кнопки */}
+      <div aria-hidden className="h-48 sm:h-20" />
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ivory/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-xs backdrop-blur sm:py-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
+          <p className="max-w-2xl text-muted">
+            Мы используем необходимые cookie для работы сайта и, с вашего согласия, собственную аналитику посещений — без передачи данных третьим лицам.{" "}
+            <Link href="/privacy#section-14" className="underline">Подробнее</Link>
+          </p>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button type="button" className="btn-ghost btn-sm flex-1 sm:flex-none" onClick={() => setConsent("necessary")}>Только необходимые</button>
+            <button type="button" className="btn-primary btn-sm flex-1 sm:flex-none" onClick={() => setConsent("all")}>Принять</button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

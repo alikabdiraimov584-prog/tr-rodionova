@@ -20,9 +20,9 @@ export function BarChart({ data, height = 180, money = true }: { data: { label: 
           );
         })}
       </svg>
-      <div className="mt-2 flex text-[0.6rem] uppercase tracking-[0.1em] text-muted">
-        {data.map((d) => (
-          <div key={d.label} className="truncate text-center" style={{ width: `${w}%` }}>{d.label}</div>
+      <div className="mt-2 flex overflow-hidden text-[0.6rem] uppercase tracking-[0.1em] text-muted">
+        {data.map((d, i) => (
+          <div key={`${d.label}-${i}`} className="min-w-0 shrink-0 truncate text-center" style={{ width: `${w}%` }}>{d.label}</div>
         ))}
       </div>
     </div>

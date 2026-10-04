@@ -52,7 +52,7 @@ export default async function Dashboard() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <div className="card p-5">
+        <div className="card min-w-0 p-5">
           <div className="flex items-baseline justify-between"><Eyebrow>Выручка по месяцам</Eyebrow><span className="text-xs text-muted">12 мес.</span></div>
           <div className="mt-4"><BarChart data={months.map((m) => ({ label: m.label, value: m.revenue }))} /></div>
         </div>
@@ -108,7 +108,7 @@ export default async function Dashboard() {
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="card p-5 xl:col-span-2">
           <div className="flex justify-between"><Eyebrow>Сегменты клиентов (RFM)</Eyebrow><Link href="/crm/customers" className="text-xs underline">Клиенты</Link></div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {Object.values(SEGMENTS).map((s) => (
               <Link key={s.code} href={`/crm/customers?segment=${s.code}`} className="border border-line p-3 hover:bg-ivory">
                 <Badge tone={s.tone}>{s.label}</Badge>

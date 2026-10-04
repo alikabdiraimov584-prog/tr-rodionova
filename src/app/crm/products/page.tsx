@@ -27,7 +27,7 @@ export default async function Products({ searchParams }: PageProps<"/crm/product
   return (
     <div>
       <PageTitle title="Товары" actions={<><Link href="/crm/products/categories" className="btn-outline btn-sm">Категории и SEO</Link><Link href="/crm/products/new" className="btn-primary btn-sm">Новый товар</Link></>}>{products.length} моделей</PageTitle>
-      <form className="mb-4"><input name="q" defaultValue={q} placeholder="Название или артикул" className="input w-72 py-2" /></form>
+      <form className="mb-4"><input name="q" defaultValue={q} placeholder="Название или артикул" className="input w-full py-2 sm:w-72" /></form>
       <div className="card overflow-x-auto">
         <table className="table">
           <thead><tr><th>Модель</th><th>Артикул</th><th>Категория</th><th>Статус</th><th className="text-right">Цена</th><th className="text-right">Маржа</th><th className="text-right">Остаток</th><th className="text-right">Продано, 90 дн.</th></tr></thead>

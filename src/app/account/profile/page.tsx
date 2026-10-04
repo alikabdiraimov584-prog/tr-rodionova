@@ -43,7 +43,7 @@ export default async function ProfilePage() {
                   {a.isDefault && <Badge tone="success">Основной</Badge>}
                   <div className="text-muted">{[a.postcode, a.city, a.street, a.building, a.apartment && `кв. ${a.apartment}`].filter(Boolean).join(", ")}</div>
                 </div>
-                <div className="flex gap-4 text-[0.62rem] uppercase tracking-[0.18em]">
+                <div className="flex gap-4 text-[0.62rem] uppercase tracking-[0.18em] [&_button]:min-h-10 [&_button]:px-1">
                   {!a.isDefault && (
                     <form action={setDefaultAddressAction}><input type="hidden" name="id" value={a.id} /><button className="text-muted hover:text-ink">Основной</button></form>
                   )}

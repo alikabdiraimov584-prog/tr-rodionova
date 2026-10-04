@@ -46,7 +46,7 @@ export default async function ResaleCard({ params }: PageProps<"/crm/resale/[id]
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="card p-5 text-sm">
             <Eyebrow>Клиентка</Eyebrow>
             <div className="mt-2">

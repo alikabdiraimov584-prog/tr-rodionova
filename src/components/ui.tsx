@@ -45,7 +45,7 @@ export function Badge({ tone = "neutral", children, className = "" }: { tone?: T
 
 export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone }) {
   return (
-    <div className="card p-5">
+    <div className="card p-4 md:p-5">
       <div className="eyebrow">{label}</div>
       <div className={`serif mt-2 text-xl ${tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : ""}`}>{value}</div>
       {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
@@ -70,13 +70,13 @@ export function Alert({ tone = "danger", children }: { tone?: Tone; children: Re
 
 export function PageTitle({ eyebrow, title, children, actions }: { eyebrow?: string; title: string; children?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 md:mb-8 md:gap-4">
+      <div className="min-w-0">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h1 className="mt-1">{title}</h1>
         {children && <p className="mt-2 max-w-2xl text-sm text-muted">{children}</p>}
       </div>
-      {actions && <div className="flex gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

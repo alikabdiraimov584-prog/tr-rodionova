@@ -52,7 +52,7 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
   const insert = (v: string) => setText((t) => t + v);
 
   return (
-    <form ref={formRef} action={action} className="grid gap-6 xl:grid-cols-[1fr_380px]">
+    <form ref={formRef} action={action} className="grid gap-6 xl:grid-cols-[1fr_380px] [&>*]:min-w-0">
       {c?.id && <input type="hidden" name="id" value={c.id} />}
       {c?.trackingLinkId && <input type="hidden" name="trackingLinkId" value={c.trackingLinkId} />}
       <input ref={modeRef} type="hidden" name="mode" defaultValue="draft" />

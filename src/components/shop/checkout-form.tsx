@@ -30,10 +30,10 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
   }, [delivery, appliedPromo, points, appliedGift]);
 
   return (
-    <form action={action} className="grid gap-10 md:grid-cols-[1fr_380px]">
-      <div className="space-y-10">
+    <form action={action} className="grid gap-8 md:grid-cols-[1fr_340px] md:gap-10 lg:grid-cols-[1fr_380px]">
+      <div className="min-w-0 space-y-8 md:space-y-10">
         <section>
-          <h2 className="mb-4 text-2xl">Контакты</h2>
+          <h2 className="mb-4 text-xl md:text-2xl">Контакты</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <label><span className="label">Имя</span><input name="firstName" defaultValue={profile.firstName} required className="input" /></label>
             <label><span className="label">Фамилия</span><input name="lastName" defaultValue={profile.lastName ?? ""} className="input" /></label>
@@ -43,11 +43,11 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
         </section>
 
         <section>
-          <h2 className="mb-4 text-2xl">Доставка</h2>
+          <h2 className="mb-4 text-xl md:text-2xl">Доставка</h2>
           <div className="grid gap-2">
             {(Object.keys(DELIVERY_METHOD) as DeliveryMethod[]).map((m) => (
               <label key={m} className={`flex cursor-pointer items-start gap-3 border p-4 ${delivery === m ? "border-ink bg-white" : "border-line"}`}>
-                <input type="radio" name="deliveryMethod" value={m} checked={delivery === m} onChange={() => setDelivery(m)} className="mt-1 accent-black" />
+                <input type="radio" name="deliveryMethod" value={m} checked={delivery === m} onChange={() => setDelivery(m)} className="mt-1 h-4 w-4 shrink-0 accent-black" />
                 <span>
                   <span className="block text-sm">{DELIVERY_METHOD[m].label}</span>
                   <span className="block text-xs text-muted">{DELIVERY_METHOD[m].hint}</span>
@@ -57,7 +57,7 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
           </div>
           {delivery === "COURIER" && (
             <label className="mt-4 flex cursor-pointer items-start gap-3 border border-line p-4 text-sm">
-              <input type="checkbox" name="fittingRequested" value="on" className="mt-1 accent-black" />
+              <input type="checkbox" name="fittingRequested" value="on" className="mt-1 h-4 w-4 shrink-0 accent-black" />
               <span>
                 <span className="block">Примерка перед покупкой</span>
                 <span className="block text-xs text-muted">Курьер подождёт 15 минут в Москве и Петербурге. Оплатите только то, что подошло: за остальное вернём деньги после возврата курьером.</span>
@@ -88,11 +88,11 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
         </section>
 
         <section>
-          <h2 className="mb-4 text-2xl">Оплата</h2>
+          <h2 className="mb-4 text-xl md:text-2xl">Оплата</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {(Object.keys(PAYMENT_METHOD) as PaymentMethod[]).map((m) => (
               <label key={m} className={`flex cursor-pointer items-center gap-3 border p-4 text-sm ${payment === m ? "border-ink bg-white" : "border-line"}`}>
-                <input type="radio" name="paymentMethod" value={m} checked={payment === m} onChange={() => setPayment(m)} className="accent-black" />
+                <input type="radio" name="paymentMethod" value={m} checked={payment === m} onChange={() => setPayment(m)} className="h-4 w-4 shrink-0 accent-black" />
                 {PAYMENT_METHOD[m]}
               </label>
             ))}
@@ -107,13 +107,13 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
         </section>
       </div>
 
-      <aside className="card h-fit space-y-5 p-6 md:sticky md:top-32">
-        <h2 className="text-2xl">Ваш заказ</h2>
+      <aside className="card h-fit min-w-0 space-y-5 p-5 md:sticky md:top-32 md:p-6">
+        <h2 className="text-xl md:text-2xl">Ваш заказ</h2>
         <div>
           <span className="label">Промокод</span>
           <div className="flex gap-2">
             <input value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase())} className="input" placeholder="WELCOME10" />
-            <button type="button" className="btn-outline btn-sm" onClick={() => setAppliedPromo(promo)}>Применить</button>
+            <button type="button" className="btn-outline btn-sm shrink-0" onClick={() => setAppliedPromo(promo)}>Применить</button>
           </div>
           <input type="hidden" name="promoCode" value={quote.promoApplied ?? ""} />
           {quote.promoError && appliedPromo && <p className="mt-1 text-xs text-danger">{quote.promoError}</p>}
@@ -122,8 +122,8 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
         <div>
           <span className="label">Подарочный сертификат</span>
           <div className="flex gap-2">
-            <input value={gift} onChange={(e) => setGift(e.target.value.toUpperCase())} className="input font-mono" placeholder="TR-XXXX-XXXX-XXXX-XXXX" />
-            <button type="button" className="btn-outline btn-sm" onClick={() => setAppliedGift(gift.trim())}>Применить</button>
+            <input value={gift} onChange={(e) => setGift(e.target.value.toUpperCase())} className="input min-w-0 font-mono" placeholder="TR-XXXX-XXXX-XXXX-XXXX" />
+            <button type="button" className="btn-outline btn-sm shrink-0" onClick={() => setAppliedGift(gift.trim())}>Применить</button>
           </div>
           <input type="hidden" name="giftCode" value={quote.giftApplied > 0 && quote.giftCode ? quote.giftCode : ""} />
           {quote.giftError && appliedGift && <p className="mt-1 text-xs text-danger">{quote.giftError}</p>}
@@ -133,7 +133,7 @@ export function CheckoutForm({ profile, addresses, initialQuote }: { profile: Pr
           <span className="label">Оплатить баллами · баланс {profile.pointsBalance.toLocaleString("ru-RU")}</span>
           <div className="flex items-center gap-3">
             <input type="range" min={0} max={quote.pointsMax} step={100} value={Math.min(points, quote.pointsMax)} onChange={(e) => setPoints(Number(e.target.value))} className="flex-1 accent-black" disabled={quote.pointsMax === 0} />
-            <button type="button" className="text-[0.65rem] uppercase tracking-[0.15em] text-taupe-dark" onClick={() => setPoints(quote.pointsMax)}>Макс.</button>
+            <button type="button" className="min-h-10 px-2 text-[0.65rem] uppercase tracking-[0.15em] text-taupe-dark" onClick={() => setPoints(quote.pointsMax)}>Макс.</button>
           </div>
           <input type="hidden" name="pointsToUse" value={quote.pointsUsed} />
           <p className="mt-1 text-xs text-muted">До {profile.maxPayPct}% заказа на уровне {profile.tierName}. Списать: {quote.pointsUsed.toLocaleString("ru-RU")} из {quote.pointsMax.toLocaleString("ru-RU")}</p>

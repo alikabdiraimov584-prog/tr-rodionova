@@ -73,7 +73,7 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
       <p className="text-xs text-muted">Рекомендация для сегмента: {seg.advice}</p>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="card overflow-x-auto">
             <div className="p-4 pb-0"><Eyebrow>Заказы</Eyebrow></div>
             <table className="table">

@@ -30,7 +30,7 @@ export function AddToCart({ slug, variants, loggedIn, preorder = false }: { slug
                   setColor(c.color ?? "");
                   setVariantId(variants.find((v) => v.color === c.color && (preorder || v.available > 0))?.id ?? "");
                 }}
-                className={`h-8 w-8 rounded-full border-2 ${color === c.color ? "border-ink" : "border-line"}`}
+                className={`h-10 w-10 rounded-full border-2 ${color === c.color ? "border-ink" : "border-line"}`}
                 style={{ background: c.colorHex ?? undefined }}
               />
             ))}
@@ -45,7 +45,7 @@ export function AddToCart({ slug, variants, loggedIn, preorder = false }: { slug
               key={s.id}
               type="button"
               onClick={() => setVariantId(s.id)}
-              className={`min-w-12 border px-3 py-2 text-sm ${variantId === s.id ? "border-ink bg-ink text-ivory" : "border-line bg-white"} ${s.available <= 0 && !preorder ? "text-muted line-through" : ""}`}
+              className={`min-w-12 min-h-11 border px-3 py-2 text-sm ${variantId === s.id ? "border-ink bg-ink text-ivory" : "border-line bg-white"} ${s.available <= 0 && !preorder ? "text-muted line-through" : ""}`}
             >
               {s.size}
             </button>

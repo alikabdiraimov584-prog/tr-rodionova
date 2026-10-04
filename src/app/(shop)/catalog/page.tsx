@@ -35,7 +35,7 @@ return (
     <div className="eyebrow border-b border-line pb-1.5">{title}</div>
     <ul className="mt-2 space-y-1 text-[0.72rem]">
       {items.map((i) => (
-        <li key={i.label}><Link href={i.href} className={`flex items-center gap-2 ${i.on ? "text-ink underline underline-offset-4" : "text-muted hover:text-ink"}`}>{i.hex && <span className="h-2.5 w-2.5 border border-line" style={{ background: i.hex }} />}{i.label}</Link></li>
+        <li key={i.label}><Link href={i.href} className={`flex min-h-9 items-center gap-2 md:min-h-0 md:py-0.5 ${i.on ? "text-ink underline underline-offset-4" : "text-muted hover:text-ink"}`}>{i.hex && <span className="h-2.5 w-2.5 border border-line" style={{ background: i.hex }} />}{i.label}</Link></li>
       ))}
     </ul>
   </div>
@@ -88,27 +88,40 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   const activeCount = sizes.length + colors.length + materials.length + (price ? 1 : 0);
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line py-3 text-[0.68rem] uppercase tracking-[0.1em]">
-        <Link href={link({ category: undefined, new: undefined })} className={!category && !onlyNew ? "underline underline-offset-4" : "text-muted hover:text-ink"}>Все</Link>
-        <Link href={link({ category: undefined, new: "1" })} className={onlyNew ? "underline underline-offset-4" : "text-muted hover:text-ink"}>Новое</Link>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-line py-2 text-[0.68rem] uppercase tracking-[0.1em]">
+        <Link href={link({ category: undefined, new: undefined })} className={`py-2.5 ${!category && !onlyNew ? "underline underline-offset-4" : "text-muted hover:text-ink"}`}>Все</Link>
+        <Link href={link({ category: undefined, new: "1" })} className={`py-2.5 ${onlyNew ? "underline underline-offset-4" : "text-muted hover:text-ink"}`}>Новое</Link>
         {current && <span className="underline underline-offset-4">{current.name}</span>}
-        <span className="ml-auto flex items-center gap-4">
-          <form action="/catalog" className="flex items-center gap-2">
+        <span className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 sm:ml-auto sm:w-auto">
+          <form action="/catalog" className="flex w-full items-center gap-2 sm:w-auto">
             {category && <input type="hidden" name="category" value={category} />}
-            <input name="q" defaultValue={q} placeholder="Поиск" className="w-32 border-b border-line bg-transparent py-1 text-xs normal-case tracking-normal outline-none focus:border-ink" />
+            <input name="q" defaultValue={q} placeholder="Поиск" className="w-full min-w-0 border-b border-line bg-transparent py-2 text-xs normal-case tracking-normal outline-none focus:border-ink sm:w-32" />
           </form>
-          {Object.entries(SORTS).map(([k, v]) => <Link key={k} href={link({ sort: k === "new" ? undefined : k })} className={sort === k ? "underline underline-offset-4" : "text-muted hover:text-ink"}>{v.label}</Link>)}
+          {Object.entries(SORTS).map(([k, v]) => <Link key={k} href={link({ sort: k === "new" ? undefined : k })} className={`py-2.5 ${sort === k ? "underline underline-offset-4" : "text-muted hover:text-ink"}`}>{v.label}</Link>)}
         </span>
       </div>
-      <div className="grid gap-6 md:grid-cols-[200px_1fr]">
+      <div className="grid gap-4 md:gap-6 md:grid-cols-[200px_1fr]">
         <aside className="hidden space-y-6 border-r border-line py-5 pr-5 md:block">
-          <div className="flex items-baseline justify-between text-[0.72rem]"><span>{products.length} {products.length === 1 ? "модель" : products.length < 5 ? "модели" : "моделей"}</span>{activeCount > 0 && <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="text-muted underline">Сбросить</Link>}</div>
+          <div className="flex items-baseline justify-between text-[0.72rem]"><span>{products.length} {products.length === 1 ? "модель" : products.length < 5 ? "модели" : "моделей"}</span>{activeCount > 0 && <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="py-1 text-muted underline">Сбросить</Link>}</div>
           <Facet title="Размер" items={SIZES.map((s) => ({ label: s, href: link({ size: toggleList(sizes, s) }), on: sizes.includes(s) }))} />
           <Facet title="Цвет" items={allColors.map((c) => ({ label: c.color!, hex: c.colorHex, href: link({ color: toggleList(colors, c.color!) }), on: colors.includes(c.color!) }))} />
           {allMaterials.length > 0 && <Facet title="Материал" items={allMaterials.map((m) => ({ label: m.material!, href: link({ material: toggleList(materials, m.material!) }), on: materials.includes(m.material!) }))} />}
           <Facet title="Цена" items={PRICES.map((p) => ({ label: p[0], href: link({ price: price?.[1] === p[1] ? undefined : p[1] }), on: price?.[1] === p[1] }))} />
         </aside>
-        <div className="py-5">
+        <details className="border-b border-line md:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between py-2 text-[0.68rem] uppercase tracking-[0.1em]">
+            <span>Фильтры{activeCount > 0 ? ` · ${activeCount}` : ""}</span>
+            <span className="text-muted">{products.length} {products.length === 1 ? "модель" : products.length < 5 ? "модели" : "моделей"}</span>
+          </summary>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5 pb-5">
+          {activeCount > 0 && <div className="col-span-2 text-[0.72rem]"><Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="inline-block py-1 text-muted underline">Сбросить фильтры</Link></div>}
+          <Facet title="Размер" items={SIZES.map((s) => ({ label: s, href: link({ size: toggleList(sizes, s) }), on: sizes.includes(s) }))} />
+          <Facet title="Цвет" items={allColors.map((c) => ({ label: c.color!, hex: c.colorHex, href: link({ color: toggleList(colors, c.color!) }), on: colors.includes(c.color!) }))} />
+          {allMaterials.length > 0 && <Facet title="Материал" items={allMaterials.map((m) => ({ label: m.material!, href: link({ material: toggleList(materials, m.material!) }), on: materials.includes(m.material!) }))} />}
+          <Facet title="Цена" items={PRICES.map((p) => ({ label: p[0], href: link({ price: price?.[1] === p[1] ? undefined : p[1] }), on: price?.[1] === p[1] }))} />
+          </div>
+        </details>
+        <div className="min-w-0 py-4 md:py-5">
           <h1 className="mb-4 text-base">{q ? `Поиск: «${q}»` : onlyNew ? "Новое" : current?.name ?? "Все вещи"}</h1>
           {products.length === 0 ? (
             <Empty title="Ничего не найдено" action={<Link href="/catalog" className="btn-outline">Весь каталог</Link>}>Попробуйте изменить фильтры или запрос.</Empty>

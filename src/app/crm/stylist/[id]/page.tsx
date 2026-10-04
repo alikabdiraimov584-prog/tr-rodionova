@@ -85,7 +85,7 @@ export default async function SelectionPage({ params, searchParams }: PageProps<
       </PageTitle>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="card">
             <div className="p-4 pb-0"><Eyebrow>Вещи · {s.items.length}</Eyebrow></div>
             {s.items.length === 0 ? (

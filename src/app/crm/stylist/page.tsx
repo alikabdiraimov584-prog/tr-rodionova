@@ -34,7 +34,7 @@ export default async function StylistList({ searchParams }: PageProps<"/crm/styl
     <div>
       <PageTitle title="Стилист онлайн">Персональные подборки: стилист собирает вещи с рекомендованным размером и комментарием, клиентка видит их в кабинете и добавляет в корзину в один клик.</PageTitle>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <div>
           <div className="mb-4 flex flex-wrap gap-2">
             <Link href="/crm/stylist" className={`badge ${!filter ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>Активные</Link>

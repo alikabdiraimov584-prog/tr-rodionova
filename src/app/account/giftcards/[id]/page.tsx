@@ -43,7 +43,7 @@ export default async function GiftCardPage({ params, searchParams }: PageProps<"
       {card.status === "EXPIRED" && <Alert tone="warning">Срок действия сертификата истёк {formatDate(card.expiresAt)}.</Alert>}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="card p-6 text-center">
             <div className="eyebrow">Код сертификата</div>
             <div className="serif mt-3 text-2xl tracking-[0.12em] md:text-3xl">{showCode ? card.code : "TR-••••-••••-••••-••••"}</div>

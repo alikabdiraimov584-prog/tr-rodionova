@@ -15,7 +15,7 @@ export default async function CheckoutPage() {
   const addresses = await db.address.findMany({ where: { userId: user.id, NOT: { label: "Архив" } }, orderBy: { isDefault: "desc" } });
   const initialQuote = await quoteAction({ deliveryMethod: "COURIER" });
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 md:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
       <PageTitle eyebrow="Шаг 2 из 2" title="Оформление заказа" />
       <CheckoutForm
         initialQuote={initialQuote}

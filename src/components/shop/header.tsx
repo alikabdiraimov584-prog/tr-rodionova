@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getSettingOrDefault } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { Logo } from "@/components/ui";
+import { MobileMenu } from "@/components/shop/mobile-menu";
 
 const NAV = [
   ["/catalog", "Женщинам"],
@@ -20,30 +21,31 @@ export async function ShopHeader() {
   ]);
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-ivory">
-      <div className="bg-ink py-1.5 text-center text-[0.62rem] uppercase tracking-[0.14em] text-ivory">
-        Бесплатная доставка от 15 000 ₽ · Примерка курьером в Москве и Петербурге · <Link href="/circle" className="underline underline-offset-2">Circle: 2 000 баллов за регистрацию</Link>
+      <div className="bg-ink px-3 py-1.5 text-center text-[0.62rem] uppercase tracking-[0.14em] text-ivory">
+        Бесплатная доставка от 15 000 ₽ <span className="hidden sm:inline">· Примерка курьером в Москве и Петербурге </span>· <Link href="/circle" className="inline-block py-1 underline underline-offset-2">Circle: 2 000 баллов за регистрацию</Link>
       </div>
-      <div className="mx-auto grid max-w-[1440px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-3.5 md:px-6">
-        <nav className="flex gap-5 text-[0.68rem] uppercase tracking-[0.1em]">
+      <div className="mx-auto grid max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-1.5 md:grid-cols-[1fr_auto_1fr] md:gap-4 md:px-6 md:py-2">
+        <MobileMenu nav={NAV} categories={categories.map((c) => [`/catalog?category=${c.slug}`, c.name] as const)} loggedIn={!!user} cartCount={cartCount || 0} />
+        <nav className="hidden gap-3 text-[0.68rem] uppercase tracking-[0.1em] md:flex lg:gap-5">
           {NAV.map(([href, label]) => (
-            <Link key={href} href={href} className="hover:underline underline-offset-4">{label}</Link>
+            <Link key={href} href={href} className="py-2.5 hover:underline underline-offset-4">{label}</Link>
           ))}
         </nav>
-        <Logo />
-        <nav className="flex justify-end gap-5 text-[0.68rem] uppercase tracking-[0.1em]">
-          <Link href="/catalog?q=" className="hidden sm:inline hover:underline underline-offset-4">Поиск</Link>
-          <Link href={user ? "/account" : "/login"} className="hover:underline underline-offset-4">{user ? "Кабинет" : "Войти"}</Link>
-          <Link href="/cart" className="hover:underline underline-offset-4">Корзина {cartCount || 0}</Link>
+        <div className="flex justify-center md:justify-start"><Logo className="py-3" /></div>
+        <nav className="flex items-center justify-end gap-3 text-[0.68rem] uppercase tracking-[0.1em] lg:gap-5">
+          <Link href="/catalog?q=" className="hidden py-2.5 lg:inline hover:underline underline-offset-4">Поиск</Link>
+          <Link href={user ? "/account" : "/login"} className="hidden py-2.5 sm:inline hover:underline underline-offset-4">{user ? "Кабинет" : "Войти"}</Link>
+          <Link href="/cart" className="-mr-2 inline-flex min-h-11 items-center px-2 whitespace-nowrap hover:underline underline-offset-4 md:mr-0 md:px-0">Корзина {cartCount || 0}</Link>
         </nav>
       </div>
-      <div className="hidden border-t border-line md:block">
-        <div className="mx-auto flex max-w-[1440px] gap-5 overflow-x-auto px-6 py-2.5 text-[0.68rem] uppercase tracking-[0.08em] text-muted">
-          <Link href="/catalog?new=1" className="whitespace-nowrap hover:text-ink">Новое</Link>
+      <div className="border-t border-line">
+        <div className="scroll-row mx-auto flex max-w-[1440px] gap-5 overflow-x-auto px-4 py-1 text-[0.68rem] uppercase tracking-[0.08em] text-muted md:px-6">
+          <Link href="/catalog?new=1" className="shrink-0 py-2 whitespace-nowrap hover:text-ink">Новое</Link>
           {categories.map((c) => (
-            <Link key={c.id} href={`/catalog?category=${c.slug}`} className="whitespace-nowrap hover:text-ink">{c.name}</Link>
+            <Link key={c.id} href={`/catalog?category=${c.slug}`} className="shrink-0 py-2 whitespace-nowrap hover:text-ink">{c.name}</Link>
           ))}
-          <Link href="/preloved" className="whitespace-nowrap hover:text-ink">Pre-loved</Link>
-          <Link href="/gift" className="whitespace-nowrap hover:text-ink">Сертификаты</Link>
+          <Link href="/preloved" className="shrink-0 py-2 whitespace-nowrap hover:text-ink">Pre-loved</Link>
+          <Link href="/gift" className="shrink-0 py-2 pr-4 whitespace-nowrap hover:text-ink">Сертификаты</Link>
         </div>
       </div>
     </header>
@@ -60,12 +62,12 @@ export async function ShopFooter() {
   ];
   return (
     <footer className="mt-20 border-t border-line">
-      <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-12 md:grid-cols-5 md:px-6">
+      <div className="mx-auto grid grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-3 md:grid-cols-5 md:px-6 max-w-[1440px]">
         {cols.map(([title, links]) => (
           <div key={title} className="text-[0.72rem]">
             <div className="eyebrow mb-3">{title}</div>
-            <ul className="space-y-1.5">
-              {links.map(([href, label]) => <li key={href}><Link href={href} className="text-ink/80 hover:text-ink">{label}</Link></li>)}
+            <ul className="space-y-1">
+              {links.map(([href, label]) => <li key={href}><Link href={href} className="inline-block py-1 text-ink/80 hover:text-ink">{label}</Link></li>)}
             </ul>
           </div>
         ))}

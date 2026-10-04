@@ -29,7 +29,7 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
 
   return (
     <form action={action} className="grid gap-6 xl:grid-cols-[1fr_340px]">
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <div className="card space-y-4 p-5">
           <div className="eyebrow">Покупатель</div>
           <select name="customerId" value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input">

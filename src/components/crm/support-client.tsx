@@ -45,7 +45,7 @@ export function Composer({ conversationId, templates, ctx, hint }: { conversatio
         <button type="button" onClick={() => setNote(false)} className={`badge ${!note ? "border-ink bg-ink text-ivory" : "border-line"}`}>Ответ клиенту</button>
         <button type="button" onClick={() => setNote(true)} className={`badge ${note ? "border-champagne-dark bg-champagne text-ink" : "border-line"}`}>Заметка для команды</button>
         <select
-          className="ml-auto border border-line bg-white px-2 py-1 text-xs"
+          className="min-h-9 border border-line bg-white px-2 py-1 text-xs sm:ml-auto"
           value=""
           onChange={(e) => {
             const t = templates.find((x) => x.id === e.target.value);
@@ -136,7 +136,7 @@ export function TemplateForm({ t }: { t?: Template }) {
   return (
     <form action={action} className="space-y-2">
       {t && <input type="hidden" name="id" value={t.id} />}
-      <div className="grid grid-cols-[1fr_140px] gap-2">
+      <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
         <input name="title" defaultValue={t?.title} placeholder="Название" className="input py-2" />
         <input name="shortcut" defaultValue={t?.shortcut ?? ""} placeholder="/команда" className="input py-2" />
       </div>

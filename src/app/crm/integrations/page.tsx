@@ -65,7 +65,7 @@ export default async function IntegrationsPage() {
                   </div>
                 </summary>
                 <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_300px]">
-                  <div className="space-y-3">
+                  <div className="min-w-0 space-y-3">
                     <IntegrationForm integrationKey={i.key} fields={i.fields} filled={st?.filled ?? {}} enabled={st?.enabled ?? false} hasTest={!!i.test} />
                     {st?.lastCheckAt && (
                       <p className={`text-xs ${st.lastCheckOk ? "text-success" : "text-danger"}`}>

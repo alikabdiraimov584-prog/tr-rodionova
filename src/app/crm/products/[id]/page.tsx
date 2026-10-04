@@ -61,12 +61,12 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
                 <td className="text-right text-muted">{v.reserved}</td>
                 <td className="text-right">{v._count.alerts || "—"}</td>
                 <td>
-                  <form action={updateVariantAction} className="flex gap-2">
+                  <form action={updateVariantAction} className="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="id" value={v.id} />
-                    <input name="price" defaultValue={v.price ? v.price / 100 : ""} placeholder={formatMoney(p.price)} className="w-28 border border-line px-2 py-1 text-xs" />
-                    <input name="barcode" defaultValue={v.barcode ?? ""} placeholder="штрихкод" className="w-32 border border-line px-2 py-1 text-xs" />
-                    <input name="colorHex" defaultValue={v.colorHex ?? ""} placeholder="#hex" className="w-20 border border-line px-2 py-1 text-xs" />
-                    <SubmitButton className="text-xs underline">ок</SubmitButton>
+                    <input name="price" defaultValue={v.price ? v.price / 100 : ""} placeholder={formatMoney(p.price)} className="min-h-9 w-28 border border-line px-2 py-1 text-xs" />
+                    <input name="barcode" defaultValue={v.barcode ?? ""} placeholder="штрихкод" className="min-h-9 w-32 border border-line px-2 py-1 text-xs" />
+                    <input name="colorHex" defaultValue={v.colorHex ?? ""} placeholder="#hex" className="min-h-9 w-20 border border-line px-2 py-1 text-xs" />
+                    <SubmitButton className="min-h-9 px-2 text-xs underline">ок</SubmitButton>
                   </form>
                 </td>
               </tr>

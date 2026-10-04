@@ -46,7 +46,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
         actions={<><a href={`/crm/orders/${order.id}/print`} target="_blank" className="btn-outline btn-sm">Печать: сборочный лист, накладная, возврат</a><Badge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</Badge></>}
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="card overflow-x-auto">
             <table className="table">
               <thead><tr><th>Товар</th><th>Артикул</th><th>Размер</th><th>Кол-во</th><th>Возврат</th><th className="text-right">Цена</th><th className="text-right">Себест.</th></tr></thead>

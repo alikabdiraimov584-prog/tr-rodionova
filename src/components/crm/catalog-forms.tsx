@@ -27,12 +27,12 @@ export function ProductForm({ p, categories, collections }: { p?: P; categories:
         <label><span className="label">Артикул</span><input name="sku" defaultValue={p?.sku} required className="input" /></label>
         <label><span className="label">Адрес страницы</span><input name="slug" defaultValue={p?.slug} placeholder="авто" className="input" /></label>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <label><span className="label">Цена, ₽</span><input name="price" defaultValue={rub(p?.price)} required className="input" /></label>
         <label><span className="label">Старая цена</span><input name="compareAt" defaultValue={rub(p?.compareAt)} className="input" /></label>
         <label><span className="label">Себестоимость</span><input name="costPrice" defaultValue={rub(p?.costPrice)} className="input" /></label>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <label><span className="label">Категория</span>
           <select name="categoryId" defaultValue={p?.categoryId ?? ""} className="input"><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         </label>

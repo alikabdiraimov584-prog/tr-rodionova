@@ -139,6 +139,23 @@ h3 { font-size: 1rem; }
   .hairline { border-top: 1px solid var(--line); }
 }
 
+/* Касание: цели нажатия не меньше 44px, поля без автозума в iOS (шрифт ≥ 16px) */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+  .input, select.input { min-height: 44px; font-size: 16px; }
+  .table td a { display: inline-block; padding-block: 6px; }
+}
+/* Телефоны: чуть крупнее базовый текст, шапки таблиц не переносятся (таблицы прокручиваются по горизонтали) */
+@media (max-width: 640px) {
+  body { font-size: 14px; }
+  .table th { white-space: nowrap; }
+  .table td { padding-left: 10px; padding-right: 10px; }
+}
+/* Прокручиваемые ряды без видимого скроллбара (категории в шапке, навигация кабинета) */
+.scroll-row { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.scroll-row::-webkit-scrollbar { display: none; }
+
 @keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fade-up { animation: fade-up 0.4s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }

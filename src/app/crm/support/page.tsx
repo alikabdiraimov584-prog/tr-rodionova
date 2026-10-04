@@ -101,16 +101,16 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
   const working = isWorkingTime(settings, now);
 
   return (
-    <div className="-mx-4 -my-8 md:-mx-8">
+    <div className="-mx-4 -my-5 md:-mx-7 md:-my-6">
       <AutoRefresh seconds={8} />
       {conv && <MarkRead id={conv.id} unread={conv.unread} />}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-line bg-white px-4 py-3 text-sm md:px-6">
-        <h1 className="text-2xl">Поддержка</h1>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-line bg-white px-4 py-3 text-sm md:px-6">
+        <h1 className="w-full text-2xl sm:w-auto">Поддержка</h1>
         <span className="text-muted">Активных: <b className="font-normal text-ink">{counts[2]}</b></span>
         <span className={overdue ? "text-danger" : "text-muted"}>Ждут дольше {settings.slaMinutes} мин: {overdue}</span>
         <span className="text-muted">Первый ответ сегодня: {avgFirst !== null ? `${avgFirst} мин` : "—"}</span>
         <span className={working ? "text-success" : "text-warning"}>{working ? "Рабочее время" : "Нерабочее время · автоответ включён"}</span>
-        <div className="ml-auto flex gap-3 text-[0.68rem] uppercase tracking-[0.16em]">
+        <div className="flex gap-3 text-[0.68rem] uppercase tracking-[0.16em] sm:ml-auto [&_a]:inline-block [&_a]:py-2">
           {can(me.role, "ordersEdit") && <Link href="/crm/support/templates" className="text-muted hover:text-ink">Шаблоны</Link>}
           {can(me.role, "integrations") && <Link href="/crm/settings/channels" className="text-muted hover:text-ink">Каналы</Link>}
         </div>
@@ -122,32 +122,32 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
         </details>
       )}
 
-      <div className="grid min-h-[calc(100vh-120px)] lg:grid-cols-[340px_1fr] 2xl:grid-cols-[340px_1fr_320px]">
+      <div className="grid min-h-[calc(100vh-120px)] lg:grid-cols-[320px_1fr] xl:grid-cols-[340px_1fr] 2xl:grid-cols-[340px_1fr_320px]">
         {/* Список диалогов */}
         <aside className={`border-r border-line bg-white ${conv ? "hidden lg:block" : ""}`}>
           <div className="space-y-2 border-b border-line p-3">
-            <div className="flex gap-1 text-[0.65rem] uppercase tracking-[0.12em]">
+            <div className="flex flex-wrap gap-1 text-[0.65rem] uppercase tracking-[0.12em]">
               {[["mine", `Мои · ${counts[0]}`], ["unassigned", `Без ответственного · ${counts[1]}`], ["all", "Все"]].map(([k, v]) => (
-                <Link key={k} href={qs("/crm/support", { ...base, view: k })} className={`px-2 py-1 ${view === k ? "bg-ink text-ivory" : "text-muted hover:text-ink"}`}>{v}</Link>
+                <Link key={k} href={qs("/crm/support", { ...base, view: k })} className={`px-2 py-2 ${view === k ? "bg-ink text-ivory" : "text-muted hover:text-ink"}`}>{v}</Link>
               ))}
             </div>
-            <form className="flex gap-2">
+            <form className="flex flex-wrap gap-2">
               <input type="hidden" name="view" value={view} />
-              <input name="q" defaultValue={q} placeholder="Поиск по имени, тексту" className="input py-1.5 text-xs" />
-              <select name="channel" defaultValue={channel ?? ""} className="border border-line bg-white px-1 text-xs">
+              <input name="q" defaultValue={q} placeholder="Поиск по имени, тексту" className="input min-w-0 flex-1 basis-40 py-1.5 text-xs" />
+              <select name="channel" defaultValue={channel ?? ""} className="min-h-10 border border-line bg-white px-1 text-xs">
                 <option value="">Все</option>
                 {Object.entries(CHANNEL).map(([k, v]) => <option key={k} value={k}>{v.short}</option>)}
               </select>
-              <select name="status" defaultValue={status} className="border border-line bg-white px-1 text-xs">
+              <select name="status" defaultValue={status} className="min-h-10 border border-line bg-white px-1 text-xs">
                 <option value="active">Активные</option>
                 <option value="OPEN">Ждут ответа</option>
                 <option value="PENDING">Ждём клиента</option>
                 <option value="CLOSED">Закрытые</option>
               </select>
-              <button className="text-xs">→</button>
+              <button className="min-h-10 min-w-10 border border-line bg-white text-xs" aria-label="Найти">→</button>
             </form>
           </div>
-          <ul className="max-h-[calc(100vh-230px)] overflow-y-auto">
+          <ul className="lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto">
             {list.map((c) => {
               const late = c.status === "OPEN" && c.waitingSince && c.waitingSince < slaBorder;
               const last = c.messages[0];
@@ -186,7 +186,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-3 border-b border-line bg-white px-4 py-3">
-                <Link href={qs("/crm/support", base)} className="text-xs text-muted lg:hidden">← Назад</Link>
+                <Link href={qs("/crm/support", base)} className="-ml-2 inline-flex min-h-10 items-center px-2 text-xs text-muted lg:hidden">← Назад</Link>
                 <ChannelDot channel={conv.channel} />
                 <div className="min-w-0">
                   <div className="truncate text-sm">{conv.contact.name ?? conv.contact.username ?? conv.contact.externalId}</div>
@@ -196,11 +196,11 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
                   <Badge tone={CONVERSATION_STATUS[conv.status].tone}>{CONVERSATION_STATUS[conv.status].label}</Badge>
                   <form action={updateConversationAction} className="flex gap-1">
                     <input type="hidden" name="conversationId" value={conv.id} />
-                    <select name="assigneeId" defaultValue={conv.assignee?.id ?? ""} className="border border-line bg-white px-2 py-1 text-xs">
+                    <select name="assigneeId" defaultValue={conv.assignee?.id ?? ""} className="min-h-9 border border-line bg-white px-2 py-1 text-xs">
                       <option value="">Без ответственного</option>
                       {staff.map((s) => <option key={s.id} value={s.id}>{s.firstName}</option>)}
                     </select>
-                    <button className="text-xs underline">ок</button>
+                    <button className="min-h-9 px-2 text-xs underline">ок</button>
                   </form>
                   <form action={updateConversationAction}>
                     <input type="hidden" name="conversationId" value={conv.id} />
@@ -214,7 +214,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
                   </form>
                 </div>
               </div>
-              <div className="flex-1 space-y-3 overflow-y-auto p-4 md:max-h-[calc(100vh-330px)]">
+              <div className="flex-1 space-y-3 overflow-y-auto p-3 md:p-4 lg:max-h-[calc(100vh-330px)]">
                 {history.length > 0 && (
                   <div className="text-center text-xs text-muted">
                     Предыдущие обращения: {history.map((h, i) => <span key={h.id}>{i > 0 && ", "}<Link href={qs("/crm/support", { ...base, c: h.id, status: "CLOSED" })} className="underline">{formatDate(h.createdAt)}</Link></span>)}
@@ -233,7 +233,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
                     </div>
                   ) : (
                     <div key={m.id} className={`flex ${m.direction === "OUT" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[75%] px-4 py-2.5 text-sm ${m.direction === "OUT" ? "bg-ink text-ivory" : "border border-line bg-white"}`}>
+                      <div className={`max-w-[88%] px-3 py-2.5 text-sm sm:max-w-[75%] sm:px-4 ${m.direction === "OUT" ? "bg-ink text-ivory" : "border border-line bg-white"}`}>
                         <div className="whitespace-pre-wrap">{m.text}</div>
                         <div className={`mt-1 text-[0.65rem] ${m.direction === "OUT" ? "text-ivory/60" : "text-muted"}`}>
                           {m.direction === "OUT" && `${m.author?.firstName ?? ""} · `}{formatDate(m.createdAt, true)}

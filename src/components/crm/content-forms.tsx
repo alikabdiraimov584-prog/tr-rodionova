@@ -17,8 +17,8 @@ export function LookForm({ look, covers }: { look?: LookData; covers: string[] }
     <form action={action} className="grid gap-4 md:grid-cols-2">
       {look?.id && <input type="hidden" name="id" value={look.id} />}
       <label><span className="label">Название</span><input name="title" defaultValue={look?.title} required className="input" /></label>
-      <div className="grid grid-cols-[1fr_120px_90px] gap-3">
-        <label><span className="label">Адрес страницы</span><input name="slug" defaultValue={look?.slug} placeholder="авто" className="input" /></label>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_120px_90px]">
+        <label className="col-span-2 sm:col-span-1"><span className="label">Адрес страницы</span><input name="slug" defaultValue={look?.slug} placeholder="авто" className="input" /></label>
         <label><span className="label">Сезон</span><input name="season" defaultValue={look?.season ?? ""} placeholder="AW26" className="input" /></label>
         <label><span className="label">Порядок</span><input name="order" type="number" min={0} defaultValue={look?.order ?? 0} className="input" /></label>
       </div>

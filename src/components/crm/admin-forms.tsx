@@ -12,7 +12,7 @@ function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
 export function LedgerForm() {
   const [state, action, pending] = useActionState(addLedgerAction, undefined);
   return (
-    <form action={action} className="grid gap-3 md:grid-cols-[200px_140px_150px_1fr_1.5fr_auto] md:items-end">
+    <form action={action} className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 md:items-end xl:grid-cols-[200px_140px_150px_1fr_1.5fr_auto]">
       <label><span className="label">Статья</span>
         <select name="type" className="input py-2">
           <option value="EXPENSE_MARKETING">Маркетинг</option>
@@ -30,7 +30,7 @@ export function LedgerForm() {
       <label><span className="label">Категория</span><input name="category" placeholder="Блогеры, ткани…" className="input py-2" /></label>
       <label><span className="label">Комментарий</span><input name="comment" className="input py-2" /></label>
       <button className="btn-primary btn-sm" disabled={pending}>Добавить</button>
-      <div className="md:col-span-6"><Msg s={state} /></div>
+      <div className="sm:col-span-2 md:col-span-3 xl:col-span-6"><Msg s={state} /></div>
     </form>
   );
 }
@@ -38,7 +38,7 @@ export function LedgerForm() {
 export function StaffForm() {
   const [state, action, pending] = useActionState(createStaffAction, undefined);
   return (
-    <form action={action} className="grid gap-3 md:grid-cols-[1fr_1fr_1.3fr_1fr_160px_auto] md:items-end">
+    <form action={action} className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 md:items-end xl:grid-cols-[1fr_1fr_1.3fr_1fr_160px_auto]">
       <label><span className="label">Имя</span><input name="firstName" className="input py-2" /></label>
       <label><span className="label">Фамилия</span><input name="lastName" className="input py-2" /></label>
       <label><span className="label">Рабочий email</span><input name="email" type="email" className="input py-2" /></label>
@@ -47,7 +47,7 @@ export function StaffForm() {
         <select name="role" defaultValue="SUPPORT" className="input py-2"><option value="SUPPORT">Поддержка</option><option value="MANAGER">Менеджер</option><option value="ADMIN">Администратор</option></select>
       </label>
       <button className="btn-primary btn-sm" disabled={pending}>Создать</button>
-      <div className="md:col-span-6"><Msg s={state} /></div>
+      <div className="sm:col-span-2 md:col-span-3 xl:col-span-6"><Msg s={state} /></div>
     </form>
   );
 }
@@ -106,7 +106,7 @@ export function TelegramWebhookForm({ baseUrl }: { baseUrl: string }) {
   const [state, action, pending] = useActionState(telegramSetWebhookAction, undefined);
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
-      <input name="baseUrl" defaultValue={baseUrl} placeholder="https://tr-rodionova.ru" className="input w-72 py-2" />
+      <input name="baseUrl" defaultValue={baseUrl} placeholder="https://tr-rodionova.ru" className="input w-full py-2 sm:w-72" />
       <button className="btn-outline btn-sm" disabled={pending}>Установить вебхук</button>
       <Msg s={state} />
     </form>

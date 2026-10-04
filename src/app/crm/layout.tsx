@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireStaff } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CrmNav } from "@/components/crm/nav";
+import { CrmMobileNav } from "@/components/crm/mobile-nav";
 import { can, type Section } from "@/lib/permissions";
 import { ROLE } from "@/lib/labels";
 import { logoutAction } from "@/app/actions/auth";
@@ -56,21 +57,22 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
   const initials = `${user.firstName[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase();
   return (
     <div className="crm flex min-h-screen flex-col bg-ivory text-ink">
-      <header className="sticky top-0 z-30 flex h-13 items-center gap-4 bg-[#1a1c1f] px-4 text-white">
+      <header className="sticky top-0 z-30 flex h-13 items-center gap-3 bg-[#1a1c1f] px-4 text-white md:gap-4">
+        <CrmMobileNav groups={visible} />
         <Link href="/crm" className="text-[0.95rem] font-bold tracking-tight">T.Rodionova <span className="font-normal text-white/60">CRM</span></Link>
         <form action="/crm/customers" className="mx-auto hidden w-full max-w-xl md:block">
           <input name="q" placeholder="Поиск по клиентам, заказам, товарам…" className="w-full rounded-lg border-0 bg-[#2b2e33] px-3 py-1.5 text-sm text-white placeholder:text-white/50 outline-none focus:bg-[#34373d]" />
         </form>
         <details className="relative ml-auto">
-          <summary className="flex cursor-pointer list-none items-center gap-2 text-sm">
+          <summary className="-mr-2 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg px-2 text-sm hover:bg-white/10">
             <span className="grid h-7 w-7 place-items-center rounded-full bg-[#5e8e3e] text-[0.7rem] font-bold">{initials}</span>
             <span className="hidden sm:inline">{user.firstName}</span>
           </summary>
-          <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white p-2 text-sm text-ink shadow-lg">
+          <div className="absolute right-0 mt-1 w-56 rounded-xl bg-white p-2 text-sm text-ink shadow-lg">
             <div className="px-3 py-2"><div className="font-semibold">{user.firstName} {user.lastName}</div><div className="text-xs text-muted">{ROLE[user.role]}</div></div>
-            <Link href="/crm/security" className="block rounded-lg px-3 py-2 hover:bg-sand">Безопасность входа</Link>
-            <Link href="/" className="block rounded-lg px-3 py-2 hover:bg-sand">Открыть сайт</Link>
-            <form action={logoutAction}><button className="block w-full rounded-lg px-3 py-2 text-left hover:bg-sand">Выйти</button></form>
+            <Link href="/crm/security" className="block rounded-lg px-3 py-2.5 hover:bg-sand">Безопасность входа</Link>
+            <Link href="/" className="block rounded-lg px-3 py-2.5 hover:bg-sand">Открыть сайт</Link>
+            <form action={logoutAction}><button className="block w-full rounded-lg px-3 py-2.5 text-left hover:bg-sand">Выйти</button></form>
           </div>
         </details>
       </header>
@@ -79,11 +81,7 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
           <CrmNav groups={visible} />
         </aside>
         <div className="min-w-0 flex-1">
-          <details className="border-b border-line bg-white px-4 py-2 lg:hidden">
-            <summary className="cursor-pointer list-none text-sm font-semibold">Меню</summary>
-            <div className="mt-2"><CrmNav groups={visible} /></div>
-          </details>
-          <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-7">{children}</main>
+          <main className="mx-auto max-w-[1400px] px-4 py-5 md:px-7 md:py-6">{children}</main>
         </div>
       </div>
     </div>
