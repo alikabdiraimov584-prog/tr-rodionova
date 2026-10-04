@@ -51,7 +51,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
-  # Ежедневные задачи: баллы, уведомления, рассылки, очистка — вызов /api/cron в 03:10 МСК
+  # Планировщик: ежедневные задачи в 03:10 МСК (00:10 UTC) и ежечасные (напоминания об оплате, снятие резерва) в :05
   cron:
     image: curlimages/curl:latest
     restart: unless-stopped
@@ -64,7 +64,10 @@ services:
         while true; do
           now=$$(date -u +%H%M)
           if [ "$$now" = "0010" ]; then
-            curl -fsS -H "Authorization: Bearer $$CRON_SECRET" http://web:3000/api/cron || echo "cron failed"
+            curl -fsS -H "Authorization: Bearer $$CRON_SECRET" http://web:3000/api/cron || echo "daily cron failed"
+            sleep 60
+          elif [ "$${now#??}" = "05" ]; then
+            curl -fsS -H "Authorization: Bearer $$CRON_SECRET" "http://web:3000/api/cron?job=hourly" || echo "hourly cron failed"
             sleep 60
           fi
           sleep 30

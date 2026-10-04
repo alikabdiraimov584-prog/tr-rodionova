@@ -98,6 +98,61 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
   }
 }
 
+/**
+ * Напоминания о неоплаченном заказе (сервисные, без согласия на рассылки):
+ * PAYMENT_REMINDER через 2 часа после оформления, PAYMENT_LAST_CALL за час до снятия резерва (24 ч).
+ * Оплата при получении и перевод по реквизитам не торопятся: там платёж идёт вне сайта.
+ */
+export async function notifyUnpaidOrders(now = new Date()) {
+  const h = 3_600_000;
+  const orders = await db.order.findMany({
+    where: { status: "NEW", total: { gt: 0 }, createdAt: { gte: new Date(now.getTime() - 24 * h), lte: new Date(now.getTime() - 2 * h) }, payments: { some: { status: "PENDING", method: { in: ["CARD", "SBP", "INSTALLMENT"] } } } },
+    select: { id: true, number: true, firstName: true, email: true, phone: true, total: true, paymentUrl: true, userId: true, createdAt: true },
+  });
+  if (orders.length === 0) return 0;
+  const sent = await db.notification.findMany({ where: { orderId: { in: orders.map((o) => o.id) }, event: { in: ["PAYMENT_REMINDER", "PAYMENT_LAST_CALL"] } }, select: { orderId: true, event: true } });
+  const has = (id: string, ev: string) => sent.some((x) => x.orderId === id && x.event === ev);
+  const brand = await getSetting("brand");
+  let n = 0;
+  for (const o of orders) {
+    const age = now.getTime() - o.createdAt.getTime();
+    const lastCall = age >= 23 * h;
+    const event = lastCall ? "PAYMENT_LAST_CALL" : "PAYMENT_REMINDER";
+    if (has(o.id, event)) continue;
+    const link = o.paymentUrl ?? `${siteUrl()}/account/orders/${o.id}`;
+    const text = lastCall
+      ? `${o.firstName}, здравствуйте.\n\nЧерез час резерв по заказу №${o.number} (${formatMoney(o.total)}) снимается, и вещи вернутся в продажу. Оплатить сейчас: ${link}`
+      : `${o.firstName}, здравствуйте.\n\nЗаказ №${o.number} на ${formatMoney(o.total)} ждёт оплаты, вещи зарезервированы за вами на 24 часа. Оплатить: ${link}\n\nЕсли передумали, ничего делать не нужно: резерв снимется сам.`;
+    await dispatch({ userId: o.userId, orderId: o.id, event, subject: lastCall ? `Резерв по заказу №${o.number} снимается через час` : `Заказ №${o.number} ждёт оплаты`, text: text + signature(brand), email: o.email, phone: o.phone, sms: lastCall ? `T.Rodionova: заказ №${o.number} ждёт оплаты, через час резерв снимется. ${link}` : null });
+    n++;
+  }
+  return n;
+}
+
+/** Через 10 дней после получения: как сели вещи, уход за тканью, просьба об отзыве за баллы. Один раз на заказ. */
+export async function notifyReviewRequests(now = new Date()) {
+  const d = 86_400_000;
+  const orders = await db.order.findMany({
+    where: { status: { in: ["DELIVERED", "COMPLETED"] }, userId: { not: null }, deliveredAt: { gte: new Date(now.getTime() - 14 * d), lte: new Date(now.getTime() - 10 * d) } },
+    include: { items: { include: { variant: { include: { product: { select: { id: true, name: true, care: true, composition: true } } } } } }, user: { select: { id: true, isActive: true, reviews: { select: { productId: true } } } } },
+  });
+  if (orders.length === 0) return 0;
+  const sent = new Set((await db.notification.findMany({ where: { orderId: { in: orders.map((o) => o.id) }, event: "REVIEW_REQUEST" }, select: { orderId: true } })).map((x) => x.orderId));
+  const [brand, loyalty] = await Promise.all([getSetting("brand"), getSetting("loyalty")]);
+  let n = 0;
+  for (const o of orders) {
+    if (sent.has(o.id) || !o.user?.isActive) continue;
+    const reviewed = new Set(o.user.reviews.map((r) => r.productId));
+    const pending = o.items.filter((i) => i.quantity - i.returnedQty > 0 && !reviewed.has(i.variant.product.id));
+    if (pending.length === 0) continue;
+    const care = pending.map((i) => i.variant.product.care ? `· ${i.productName}: ${i.variant.product.care}` : null).filter(Boolean).join("\n");
+    const text = `${o.firstName}, здравствуйте.\n\nПрошло десять дней с доставки заказа №${o.number}. Надеемся, вещи уже стали частью гардероба.${care ? `\n\nКак ухаживать:\n${care}` : ""}\n\nБудем благодарны за пару слов о покупке: отзыв помогает другим клиенткам выбрать размер и посадку${loyalty.reviewPoints > 0 ? `, а вам начислим ${loyalty.reviewPoints} баллов Circle` : ""}.\nОставить отзыв: ${siteUrl()}/account/orders/${o.id}`;
+    await dispatch({ userId: o.userId, orderId: o.id, event: "REVIEW_REQUEST", subject: `Как вам вещи из заказа №${o.number}?`, text: text + signature(brand), email: o.email, sms: null });
+    n++;
+  }
+  return n;
+}
+
 /** Напоминание о корзине: только с согласием на рассылки и не чаще раза в 7 дней. */
 export async function notifyAbandonedCarts(now = new Date()) {
   const from = new Date(now.getTime() - 3 * 86_400_000);

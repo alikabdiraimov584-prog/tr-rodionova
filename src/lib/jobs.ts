@@ -5,7 +5,8 @@ import { addPoints, expirePoints } from "@/lib/loyalty";
 import { setOrderStatus, RETURN_WINDOW_DAYS } from "@/lib/orders";
 import { audit } from "@/lib/audit";
 import { runDueCampaigns } from "@/lib/campaigns";
-import { notifyAbandonedCarts, notifyExpiringPoints, notifyPoints } from "@/lib/notifications";
+import { notifyAbandonedCarts, notifyExpiringPoints, notifyPoints, notifyReviewRequests, notifyUnpaidOrders } from "@/lib/notifications";
+import { cancelOrder } from "@/lib/orders";
 import { purgeRateLimits } from "@/lib/ratelimit";
 
 /** Завершить заказы, у которых прошёл срок возврата. При завершении начисляются баллы. */
@@ -85,6 +86,32 @@ export async function recalcAllTiers() {
   return updates.length;
 }
 
+/** Снятие резерва: неоплаченные онлайн-заказы старше 24 часов отменяются, товар возвращается в продажу (оферта, п. 6.4). */
+export async function cancelUnpaidOrders(now = new Date()) {
+  const border = new Date(now.getTime() - 24 * 3_600_000);
+  const due = await db.order.findMany({
+    where: { status: "NEW", total: { gt: 0 }, createdAt: { lt: border }, payments: { some: { status: "PENDING", method: { in: ["CARD", "SBP", "INSTALLMENT"] } } } },
+    select: { id: true },
+  });
+  let n = 0;
+  for (const o of due) {
+    try {
+      await cancelOrder(o.id, { reason: "Резерв снят: заказ не оплачен в течение 24 часов" });
+      n++;
+    } catch {
+      // заказ мог быть оплачен между выборкой и отменой
+    }
+  }
+  return n;
+}
+
+/** Ежечасные задачи: напоминания об оплате и снятие просроченного резерва. */
+export async function runHourlyJobs() {
+  const paymentReminders = await notifyUnpaidOrders();
+  const unpaidCancelled = await cancelUnpaidOrders();
+  return { paymentReminders, unpaidCancelled };
+}
+
 export async function runDailyJobs(actorId: string | null = null) {
   const completed = await completeDeliveredOrders();
   const birthdays = await grantBirthdayBonuses();
@@ -93,13 +120,15 @@ export async function runDailyJobs(actorId: string | null = null) {
   const campaigns = await runDueCampaigns(process.env.APP_URL ?? "https://tr-rodionova.ru");
   const expiringNotified = await notifyExpiringPoints(7);
   const cartReminders = await notifyAbandonedCarts();
+  const reviewRequests = await notifyReviewRequests();
   const purged = await purgeRateLimits();
   const shipments = await syncAllCdekShipments();
   // веб-аналитика старше 24 месяцев удаляется: срок хранения по политике ПДн
   const analyticsBorder = new Date(Date.now() - 730 * 86_400_000);
   await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: analyticsBorder } } });
   const oldSessions = await db.visitorSession.deleteMany({ where: { startedAt: { lt: analyticsBorder } } });
-  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, purged, shipments, oldSessions: oldSessions.count };
+  const hourly = await runHourlyJobs();
+  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, reviewRequests, ...hourly, purged, shipments, oldSessions: oldSessions.count };
   await audit(actorId, "jobs.daily", "System", null, result);
   return result;
 }
