@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { trackEvent } from "@/lib/web-analytics";
 import type { ActionState } from "@/lib/action-result";
+import { addToGuestCart, ensureGuestToken } from "@/lib/guest-cart";
 
 /**
  * «Добавить весь образ в корзину»: в форме приходят поля variant_<productId> с выбранным размером.
@@ -15,7 +16,6 @@ import type { ActionState } from "@/lib/action-result";
 export async function addLookToCartAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
   const slug = String(formData.get("slug") ?? "");
-  if (!user) redirect(`/login?next=${encodeURIComponent(`/lookbook/${slug}`)}`);
 
   const look = await db.look.findUnique({ where: { slug }, include: { items: { select: { productId: true } } } });
   if (!look || !look.isPublished) return { error: "Образ не найден" };
@@ -30,6 +30,24 @@ export async function addLookToCartAction(_: ActionState, formData: FormData): P
   }
   if (variantIds.length === 0) return { error: "Выберите размер хотя бы для одной вещи" };
 
+  if (!user) {
+    // гость: те же проверки остатка внутри addToGuestCart
+    const token = await ensureGuestToken();
+    const added: string[] = [];
+    const skipped: string[] = [];
+    for (const id of variantIds) {
+      try {
+        const v = await addToGuestCart(token, id);
+        await trackEvent("ADD_TO_CART", { productId: v.productId });
+        added.push(v.product.name);
+      } catch {
+        skipped.push(id);
+      }
+    }
+    if (added.length === 0) return { error: "Не удалось добавить образ: вещи закончились" };
+    revalidatePath("/", "layout");
+    redirect("/cart");
+  }
   const variants = await db.productVariant.findMany({ where: { id: { in: variantIds } }, include: { product: true } });
   const inCart = await db.cartItem.findMany({ where: { userId: user.id, variantId: { in: variantIds } } });
   const cartQty = new Map(inCart.map((c) => [c.variantId, c.quantity]));

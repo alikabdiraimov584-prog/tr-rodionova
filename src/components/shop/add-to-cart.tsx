@@ -7,7 +7,7 @@ import { subscribeStockAction } from "@/app/actions/waitlist";
 
 type V = { id: string; size: string; color: string | null; colorHex: string | null; available: number };
 
-export function AddToCart({ slug, variants, loggedIn, preorder = false }: { slug: string; variants: V[]; loggedIn: boolean; preorder?: boolean }) {
+export function AddToCart({ slug, variants, preorder = false }: { slug: string; variants: V[]; loggedIn?: boolean; preorder?: boolean }) {
   const colors = [...new Map(variants.map((v) => [v.color ?? "", v])).values()];
   const [color, setColor] = useState(colors[0]?.color ?? "");
   const sizes = variants.filter((v) => (v.color ?? "") === color);
@@ -66,7 +66,7 @@ export function AddToCart({ slug, variants, loggedIn, preorder = false }: { slug
           <input type="hidden" name="variantId" value={variantId} />
           <input type="hidden" name="slug" value={slug} />
           <button className="btn-primary w-full" disabled={pending || !variantId}>
-            {pending ? "Добавляем…" : !loggedIn ? "Войти и добавить в корзину" : preorder ? "Оформить предзаказ" : "Добавить в корзину"}
+            {pending ? "Добавляем…" : preorder ? "Оформить предзаказ" : "Добавить в корзину"}
           </button>
           {state?.message && (
             <p className="text-xs text-success">

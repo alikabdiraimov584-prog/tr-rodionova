@@ -14,6 +14,8 @@ import type { ActionState } from "@/lib/action-result";
 import { homeFor } from "@/lib/permissions";
 import { recordConsent } from "@/lib/consent";
 import { trackEvent } from "@/lib/web-analytics";
+import { sendVia } from "@/lib/notifications";
+import { createHash, randomInt } from "node:crypto";
 
 function safeNext(next: FormDataEntryValue | null, fallback: string) {
   const n = typeof next === "string" ? next : "";
@@ -104,4 +106,48 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
 export async function logoutAction() {
   await logout();
   redirect("/");
+}
+
+
+const CODE_TTL_MIN = 10;
+const codeHash = (email: string, code: string) => createHash("sha256").update(`${email}:${code}:${process.env.AUTH_SECRET ?? ""}`).digest("hex");
+
+/** Шаг 1 входа по коду: письмо с 6-значным кодом. Ответ одинаковый, есть аккаунт или нет. */
+export async function requestLoginCodeAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "Неверный email" };
+  const ip = await clientIp();
+  const [byIp, byEmail] = await Promise.all([checkRate(`code:ip:${ip ?? "unknown"}`, { limit: 20, windowSec: 600, lockSec: 900 }), checkRate(`code:email:${email}`, { limit: 5, windowSec: 600, lockSec: 900 })]);
+  if (!byIp.ok || !byEmail.ok) return { error: "Слишком много запросов. Попробуйте через 15 минут." };
+  const channel = await db.channelIntegration.findUnique({ where: { channel: "EMAIL" }, select: { enabled: true } });
+  if (!channel?.enabled) return { error: "Вход по коду пока недоступен: войдите по паролю или восстановите его." };
+  const user = await db.user.findUnique({ where: { email }, select: { id: true, isActive: true, firstName: true } });
+  if (user?.isActive) {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    await db.loginCode.create({ data: { email, codeHash: codeHash(email, code), expiresAt: new Date(Date.now() + CODE_TTL_MIN * 60_000) } });
+    const brand = await getSetting("brand");
+    await sendVia("EMAIL", email, `${user.firstName}, здравствуйте.\n\nКод для входа на сайт ${brand.name}: ${code}\nДействует ${CODE_TTL_MIN} минут. Если вы не запрашивали вход, просто не используйте код.`, `Код входа: ${code}`);
+  }
+  return { ok: true, message: "Если аккаунт с этим e-mail существует, код отправлен на почту" };
+}
+
+/** Шаг 2: проверка кода, не более 5 попыток на код. */
+export async function verifyLoginCodeAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const code = String(formData.get("code") ?? "").replace(/\D/g, "");
+  if (code.length !== 6) return { error: "Введите 6 цифр из письма" };
+  const rec = await db.loginCode.findFirst({ where: { email, usedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: "desc" } });
+  if (!rec || rec.attempts >= 5) return { error: "Код устарел. Запросите новый." };
+  if (rec.codeHash !== codeHash(email, code)) {
+    await db.loginCode.update({ where: { id: rec.id }, data: { attempts: { increment: 1 } } });
+    return { error: "Неверный код" };
+  }
+  const user = await db.user.findUnique({ where: { email } });
+  if (!user || !user.isActive) return { error: "Аккаунт не найден" };
+  await db.loginCode.update({ where: { id: rec.id }, data: { usedAt: new Date() } });
+  if (isStaff(user.role)) return { error: "Сотрудники входят по паролю и коду из приложения" };
+  await loginAs(user.id, user.role, user.sessionVersion);
+  await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
+  await audit(user.id, "auth.login", "User", user.id, { via: "code" });
+  redirect(safeNext(formData.get("next"), "/account"));
 }

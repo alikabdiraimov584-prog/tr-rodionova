@@ -9,6 +9,7 @@ import { errorMessage, type ActionState } from "@/lib/action-result";
 import { toKopecks } from "@/lib/money";
 import { audit } from "@/lib/audit";
 import type { DeliveryMethod, OrderStatus, PaymentMethod } from "@/generated/prisma/enums";
+import { notifyOrder } from "@/lib/notifications";
 
 export async function changeOrderStatusAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireSection("ordersEdit");
@@ -106,4 +107,17 @@ export async function createManualOrderAction(_: ActionState, formData: FormData
   }
   revalidatePath("/crm", "layout");
   redirect(`/crm/orders/${id}`);
+}
+
+
+/** «Курьер будет в течение часа»: SMS и письмо клиентке из карточки заказа. */
+export async function courierSoonAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireSection("ordersEdit");
+  const orderId = String(formData.get("orderId"));
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });
+  if (!order || !["PACKING", "SHIPPED"].includes(order.status)) return { error: "Сообщение отправляется заказу в сборке или в доставке" };
+  await notifyOrder(orderId, "COURIER_SOON");
+  await db.$transaction((tx) => addOrderEvent(tx, orderId, "Клиентке отправлено: курьер будет в течение часа", null, staff.id));
+  revalidatePath(`/crm/orders/${orderId}`);
+  return { ok: true, message: "Клиентка предупреждена" };
 }

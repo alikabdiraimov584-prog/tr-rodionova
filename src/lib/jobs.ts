@@ -8,6 +8,7 @@ import { runDueCampaigns } from "@/lib/campaigns";
 import { notifyAbandonedCarts, notifyExpiringPoints, notifyPoints, notifyReviewRequests, notifyUnpaidOrders } from "@/lib/notifications";
 import { cancelOrder } from "@/lib/orders";
 import { purgeRateLimits } from "@/lib/ratelimit";
+import { purgeGuestCarts } from "@/lib/guest-cart";
 
 /** Завершить заказы, у которых прошёл срок возврата. При завершении начисляются баллы. */
 export async function completeDeliveredOrders(now = new Date()) {
@@ -122,13 +123,14 @@ export async function runDailyJobs(actorId: string | null = null) {
   const cartReminders = await notifyAbandonedCarts();
   const reviewRequests = await notifyReviewRequests();
   const purged = await purgeRateLimits();
+  const guestCarts = await purgeGuestCarts();
   const shipments = await syncAllCdekShipments();
   // веб-аналитика старше 24 месяцев удаляется: срок хранения по политике ПДн
   const analyticsBorder = new Date(Date.now() - 730 * 86_400_000);
   await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: analyticsBorder } } });
   const oldSessions = await db.visitorSession.deleteMany({ where: { startedAt: { lt: analyticsBorder } } });
   const hourly = await runHourlyJobs();
-  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, reviewRequests, ...hourly, purged, shipments, oldSessions: oldSessions.count };
+  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, reviewRequests, ...hourly, purged, guestCarts, shipments, oldSessions: oldSessions.count };
   await audit(actorId, "jobs.daily", "System", null, result);
   return result;
 }

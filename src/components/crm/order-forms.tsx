@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { changeOrderStatusAction, partialReturnAction } from "@/app/actions/crm-orders";
+import { changeOrderStatusAction, partialReturnAction, courierSoonAction } from "@/app/actions/crm-orders";
 import { ORDER_STATUS } from "@/lib/labels";
 import type { OrderStatus } from "@/generated/prisma/enums";
 
@@ -57,6 +57,19 @@ export function ReturnForm({ orderId, items }: { orderId: string; items: { id: s
       <button className="btn-outline w-full" disabled={pending}>Оформить возврат</button>
       {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       {state?.message && <p className="text-sm text-success">{state.message}</p>}
+    </form>
+  );
+}
+
+
+export function CourierSoonForm({ orderId }: { orderId: string }) {
+  const [state, action, pending] = useActionState(courierSoonAction, undefined);
+  return (
+    <form action={action} className="mt-3 flex flex-wrap items-center gap-2">
+      <input type="hidden" name="orderId" value={orderId} />
+      <button className="btn-outline btn-sm" disabled={pending}>{pending ? "Отправляем…" : "Сообщить: курьер будет в течение часа"}</button>
+      {state?.error && <span className="text-xs text-danger">{state.error}</span>}
+      {state?.message && <span className="text-xs text-success">{state.message}</span>}
     </form>
   );
 }

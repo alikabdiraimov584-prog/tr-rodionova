@@ -1,4 +1,4 @@
-export type ActionState = { ok?: boolean; error?: string; message?: string } | undefined;
+export type ActionState = { ok?: boolean; error?: string; message?: string; code?: string } | undefined;
 
 export function errorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;

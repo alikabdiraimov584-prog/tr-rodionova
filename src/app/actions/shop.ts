@@ -12,13 +12,33 @@ import { createOrderFromCart, cancelOrder } from "@/lib/orders";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 import { trackEvent } from "@/lib/web-analytics";
+import { addToGuestCart, ensureGuestToken, getGuestToken, setGuestCartQuantity } from "@/lib/guest-cart";
+import { hashPassword, loginAs } from "@/lib/auth";
+import { addPoints, recalcTier } from "@/lib/loyalty";
+import { getSetting } from "@/lib/settings";
+import { recordConsent } from "@/lib/consent";
+import { audit } from "@/lib/audit";
+import { checkRate, clientIp } from "@/lib/ratelimit";
+import { activeIntegration } from "@/lib/integrations/store";
+import { ingestWebsite } from "@/lib/support/inbox";
+import { randomBytes } from "node:crypto";
 
 export async function addToCartAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
-  const slug = String(formData.get("slug") ?? "");
-  if (!user) redirect(`/login?next=/product/${slug}`);
   const variantId = String(formData.get("variantId") ?? "");
   if (!variantId) return { error: "Выберите размер" };
+  if (!user) {
+    // корзина без входа: регистрация понадобится только при оформлении
+    try {
+      const token = await ensureGuestToken();
+      const variant = await addToGuestCart(token, variantId);
+      await trackEvent("ADD_TO_CART", { productId: variant.productId });
+    } catch (e) {
+      return { error: errorMessage(e) };
+    }
+    revalidatePath("/", "layout");
+    return { ok: true, message: "Добавлено в корзину" };
+  }
   const variant = await db.productVariant.findUnique({ where: { id: variantId }, include: { product: true } });
   if (!variant || variant.product.status !== "ACTIVE") return { error: "Товар недоступен" };
   const inCart = await db.cartItem.findUnique({ where: { userId_variantId: { userId: user.id, variantId } } });
@@ -35,9 +55,15 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
 }
 
 export async function updateCartAction(formData: FormData) {
-  const user = await requireUser("/cart");
+  const user = await getCurrentUser();
   const variantId = String(formData.get("variantId"));
   const qty = Number(formData.get("quantity"));
+  if (!user) {
+    const token = await getGuestToken();
+    if (token) await setGuestCartQuantity(token, variantId, qty);
+    revalidatePath("/", "layout");
+    return;
+  }
   if (!Number.isFinite(qty) || qty <= 0) {
     await db.cartItem.deleteMany({ where: { userId: user.id, variantId } });
   } else {
@@ -73,16 +99,65 @@ const CheckoutSchema = z.object({
   addressText: z.string().trim().optional(),
   comment: z.string().trim().max(500).optional(),
   fittingRequested: z.string().optional(),
+  deliverySlot: z.string().trim().max(40).optional(),
+  consent: z.string().optional(),
+  offer: z.string().optional(),
+  marketingConsent: z.string().optional(),
   promoCode: z.string().trim().optional(),
   pointsToUse: z.coerce.number().int().min(0).optional(),
   giftCode: z.string().trim().max(32).optional(),
 });
 
+/**
+ * Гость оформляет заказ без пароля: аккаунт Circle создаётся с первым заказом, вход выполняется сразу.
+ * Пароль можно задать позже по ссылке «Забыли пароль» или войти по коду из письма.
+ */
+async function createAccountForGuest(d: { email: string; phone: string; firstName: string; lastName?: string; marketingConsent?: string }) {
+  const ip = await clientIp();
+  const rl = await checkRate(`register:ip:${ip ?? "unknown"}`, { limit: 10, windowSec: 3600, lockSec: 3600 });
+  if (!rl.ok) throw new Error("Слишком много регистраций с этого адреса. Попробуйте позже.");
+  const s = await getSetting("loyalty");
+  const user = await db.$transaction(async (tx) => {
+    const u = await tx.user.create({
+      data: {
+        email: d.email.toLowerCase(),
+        phone: d.phone,
+        firstName: d.firstName,
+        lastName: d.lastName || null,
+        passwordHash: await hashPassword(randomBytes(24).toString("base64url")),
+        source: "Оформление заказа",
+        marketingConsent: d.marketingConsent === "on",
+      },
+    });
+    await recordConsent(tx, u.id, "PERSONAL_DATA", true);
+    await recordConsent(tx, u.id, "OFFER", true);
+    if (d.marketingConsent === "on") await recordConsent(tx, u.id, "MARKETING", true);
+    await recalcTier(tx, u.id);
+    await addPoints(tx, u.id, "EARN_WELCOME", s.welcomePoints, { comment: "Добро пожаловать в T.Rodionova Circle" });
+    await audit(u.id, "auth.register", "User", u.id, { via: "checkout" }, tx);
+    return u;
+  });
+  await loginAs(user.id, user.role, user.sessionVersion);
+  await trackEvent("REGISTER", { userId: user.id });
+  return user;
+}
+
 export async function checkoutAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  const user = await requireUser("/checkout");
   const parsed = CheckoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  let user = await getCurrentUser();
+  if (!user) {
+    if (d.consent !== "on" || d.offer !== "on") return { error: "Нужно согласие на обработку данных и условия оферты" };
+    const email = d.email.toLowerCase();
+    const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
+    if (existing) return { error: "Этот e-mail уже зарегистрирован. Войдите по коду из письма или по паролю — корзина сохранится.", code: "EXISTS" };
+    try {
+      user = (await createAccountForGuest(d)) as unknown as NonNullable<typeof user>;
+    } catch (e) {
+      return { error: errorMessage(e) };
+    }
+  }
   let orderId: string;
   try {
     const order = await createOrderFromCart(user.id, {
@@ -94,6 +169,7 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
       promoCode: d.promoCode || null,
       giftCode: d.giftCode || null,
       fittingRequested: d.deliveryMethod === "COURIER" && d.fittingRequested === "on",
+      deliverySlot: d.deliveryMethod === "COURIER" || d.deliveryMethod === "YANDEX" ? d.deliverySlot || null : null,
     });
     orderId = order.id;
   } catch (e) {
@@ -154,6 +230,7 @@ export async function leaveReviewAction(_: ActionState, formData: FormData): Pro
 }
 
 export type QuoteView = {
+  lines: { variantId: string; productName: string; size: string; color: string | null; quantity: number; price: number }[];
   subtotal: number;
   discount: number;
   promoError: string | null;
@@ -170,11 +247,12 @@ export type QuoteView = {
 };
 
 export async function quoteAction(input: { promoCode?: string; pointsToUse?: number; deliveryMethod: DeliveryMethod; giftCode?: string }): Promise<QuoteView> {
-  const user = await requireUser("/checkout");
-  const { quoteCart } = await import("@/lib/orders");
-  const q = await quoteCart(user.id, input);
-  const pct = user.loyaltyTier?.cashbackPct ?? 3;
+  const user = await getCurrentUser();
+  const { quoteCart, quoteGuestCart } = await import("@/lib/orders");
+  const q = user ? await quoteCart(user.id, input) : await quoteGuestCart(await getGuestToken(), input);
+  const pct = user?.loyaltyTier?.cashbackPct ?? 3;
   return {
+    lines: q.lines.map((l) => ({ variantId: l.variantId, productName: l.productName, size: l.size, color: l.color, quantity: l.quantity, price: l.price })),
     subtotal: q.subtotal,
     discount: q.discount,
     promoError: q.promo && !q.promo.ok ? q.promo.error : null,
@@ -189,4 +267,41 @@ export async function quoteAction(input: { promoCode?: string; pointsToUse?: num
     giftApplied: q.giftApplied,
     giftError: q.giftError,
   };
+}
+
+
+/** Подсказки адреса DaData (CRM → Интеграции → DaData). Без ключа возвращает пустой список. */
+export async function suggestAddressAction(query: string): Promise<{ value: string; city: string | null; postcode: string | null }[]> {
+  const q = query.trim();
+  if (q.length < 3) return [];
+  const i = await activeIntegration("dadata");
+  if (!i?.config.token) return [];
+  try {
+    const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Token ${i.config.token}` },
+      body: JSON.stringify({ query: q, count: 6, locations: [{ country_iso_code: "RU" }] }),
+      signal: AbortSignal.timeout(6_000),
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { suggestions?: { value: string; data?: { city?: string | null; settlement?: string | null; postal_code?: string | null } }[] };
+    return (json.suggestions ?? []).map((x) => ({ value: x.value, city: x.data?.city ?? x.data?.settlement ?? null, postcode: x.data?.postal_code ?? null }));
+  } catch {
+    return [];
+  }
+}
+
+/** Обмен размера после получения: заявка уходит в службу заботы как сообщение от клиентки. */
+export async function requestExchangeAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser("/account/orders");
+  const itemId = String(formData.get("orderItemId") ?? "");
+  const size = String(formData.get("size") ?? "").trim();
+  if (!itemId || !size) return { error: "Выберите размер" };
+  const item = await db.orderItem.findUnique({ where: { id: itemId }, include: { order: { select: { id: true, number: true, userId: true, status: true, deliveredAt: true } } } });
+  if (!item || item.order.userId !== user.id) return { error: "Позиция не найдена" };
+  if (!["DELIVERED", "COMPLETED"].includes(item.order.status)) return { error: "Обмен доступен после получения заказа" };
+  if (item.order.deliveredAt && Date.now() - item.order.deliveredAt.getTime() > 14 * 86_400_000) return { error: "Срок обмена 14 дней истёк — напишите в службу заботы" };
+  await ingestWebsite(user.id, `Обмен размера по заказу №${item.order.number}: «${item.productName}», ${item.size} → ${size}. Прошу организовать обмен курьером.`);
+  revalidatePath(`/account/orders/${item.order.id}`);
+  return { ok: true, message: `Заявка на обмен ${item.size} → ${size} принята, менеджер свяжется с вами` };
 }

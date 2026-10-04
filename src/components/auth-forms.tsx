@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { loginAction, registerAction } from "@/app/actions/auth";
+import { useState } from "react";
+import { loginAction, registerAction, requestLoginCodeAction, verifyLoginCodeAction } from "@/app/actions/auth";
 
 export function LoginForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(loginAction, undefined);
@@ -56,5 +57,34 @@ export function RegisterForm({ next, refCode, referrerName }: { next?: string; r
       <button className="btn-primary w-full" disabled={pending}>{pending ? "Создаём…" : "Создать аккаунт"}</button>
       <p className="text-center text-sm text-muted">Уже есть аккаунт? <Link href="/login" className="text-ink underline">Войти</Link></p>
     </form>
+  );
+}
+
+
+/** Вход без пароля: код из письма. Доступен, когда подключён канал e-mail. */
+export function CodeLoginForm({ next, email: presetEmail }: { next?: string; email?: string }) {
+  const [email, setEmail] = useState(presetEmail ?? "");
+  const [requested, requestAction, requesting] = useActionState(requestLoginCodeAction, undefined);
+  const [verified, verifyAction, verifying] = useActionState(verifyLoginCodeAction, undefined);
+  const sent = !!requested?.ok;
+  return (
+    <div className="space-y-4">
+      {!sent ? (
+        <form action={requestAction} className="space-y-4">
+          <label className="block"><span className="label">Email</span><input name="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" /></label>
+          {requested?.error && <p className="text-sm text-danger">{requested.error}</p>}
+          <button className="btn-primary w-full" disabled={requesting}>{requesting ? "Отправляем…" : "Получить код на почту"}</button>
+        </form>
+      ) : (
+        <form action={verifyAction} className="space-y-4">
+          <input type="hidden" name="next" value={next ?? ""} />
+          <input type="hidden" name="email" value={email} />
+          <p className="text-sm text-muted">{requested?.message}</p>
+          <label className="block"><span className="label">Код из письма</span><input name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required className="input text-center tracking-[0.3em]" /></label>
+          {verified?.error && <p className="text-sm text-danger">{verified.error}</p>}
+          <button className="btn-primary w-full" disabled={verifying}>{verifying ? "Проверяем…" : "Войти"}</button>
+        </form>
+      )}
+    </div>
   );
 }

@@ -7,28 +7,22 @@ import { formatMoney } from "@/lib/money";
 import { getSetting } from "@/lib/settings";
 import { Empty, PageTitle } from "@/components/ui";
 import { updateCartAction } from "@/app/actions/shop";
+import { getGuestToken, guestCartItems } from "@/lib/guest-cart";
 
 export const metadata: Metadata = { title: "Корзина" };
 
 export default async function CartPage() {
   const user = await getCurrentUser();
-  if (!user) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-16">
-        <Empty title="Корзина доступна после входа" action={<Link href="/login?next=/cart" className="btn-primary">Войти</Link>}>
-          Войдите или зарегистрируйтесь — и получите 2 000 приветственных баллов.
-        </Empty>
-      </div>
-    );
-  }
-  const items = await db.cartItem.findMany({
-    where: { userId: user.id },
-    include: { variant: { include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 } } } } } },
-    orderBy: { id: "asc" },
-  });
+  const items = user
+    ? await db.cartItem.findMany({
+        where: { userId: user.id },
+        include: { variant: { include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 } } } } } },
+        orderBy: { id: "asc" },
+      })
+    : await guestCartItems(await getGuestToken());
   const delivery = await getSetting("delivery");
   const subtotal = items.reduce((s, i) => s + (i.variant.price ?? i.variant.product.price) * i.quantity, 0);
-  const pts = Math.floor((subtotal * (user.loyaltyTier?.cashbackPct ?? 3)) / 100 / 100);
+  const pts = Math.floor((subtotal * (user?.loyaltyTier?.cashbackPct ?? 3)) / 100 / 100);
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
       <PageTitle title="Корзина" />
@@ -79,10 +73,10 @@ export default async function CartPage() {
             <div className="flex justify-between text-sm"><span>Товары</span><span>{formatMoney(subtotal)}</span></div>
             <div className="mt-2 flex justify-between text-sm text-muted">
               <span>Доставка</span>
-              <span>{user.loyaltyTier?.freeShipping || subtotal >= delivery.freeFrom ? "бесплатно" : "при оформлении"}</span>
+              <span>{user?.loyaltyTier?.freeShipping || subtotal >= delivery.freeFrom ? "бесплатно" : "при оформлении"}</span>
             </div>
             <div className="mt-4 border-t border-line pt-4 text-xs text-taupe-dark">
-              +{pts.toLocaleString("ru-RU")} баллов после получения заказа · баланс {user.pointsBalance.toLocaleString("ru-RU")} баллов
+              +{pts.toLocaleString("ru-RU")} баллов после получения заказа{user ? ` · баланс ${user.pointsBalance.toLocaleString("ru-RU")} баллов` : " · 2 000 приветственных баллов при первом заказе"}
             </div>
             <Link href="/checkout" className="btn-primary mt-6 w-full">Оформить заказ</Link>
           </aside>

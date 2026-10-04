@@ -158,6 +158,20 @@ export const INTEGRATIONS: IntegrationDef[] = [
     },
   },
   {
+    key: "dadata",
+    group: "delivery",
+    name: "DaData: подсказки адреса",
+    summary: "Подсказки адреса при оформлении заказа: меньше ошибок в доставке, индекс и город подставляются сами.",
+    effect: "Поле адреса в оформлении начинает предлагать варианты по мере ввода (бесплатно до 10 000 запросов в день).",
+    fields: [{ key: "token", label: "API-ключ", secret: true, hint: "dadata.ru → Кабинет → API-ключи" }],
+    guide: ["Зарегистрируйтесь на dadata.ru (бесплатный тариф) и скопируйте API-ключ.", "Нажмите «Проверить подключение»."],
+    test: async (c) => {
+      if (!c.token) return { ok: false, error: "Укажите API-ключ" };
+      const r = await json<{ suggestions?: unknown[] }>("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Token ${c.token}` }, body: JSON.stringify({ query: "Москва, Тверская 1", count: 1 }) });
+      return r.status === 200 ? { ok: true, info: "Подсказки работают" } : { ok: false, error: `DaData ответила HTTP ${r.status}` };
+    },
+  },
+  {
     key: "metrika",
     group: "analytics",
     name: "Яндекс Метрика",

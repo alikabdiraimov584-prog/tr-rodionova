@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { getGuestToken, guestCartCount } from "@/lib/guest-cart";
 import { getSettingOrDefault } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { Logo } from "@/components/ui";
@@ -16,7 +17,7 @@ const NAV = [
 export async function ShopHeader() {
   const user = await getCurrentUser();
   const [cartCount, categories] = await Promise.all([
-    user ? db.cartItem.aggregate({ where: { userId: user.id }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : 0,
+    user ? db.cartItem.aggregate({ where: { userId: user.id }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount),
     db.category.findMany({ orderBy: { order: "asc" }, where: { products: { some: { status: "ACTIVE" } } } }),
   ]);
   return (

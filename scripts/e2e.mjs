@@ -14,7 +14,7 @@ const step = async (name, fn) => {
     const info = await fn();
     results.push(`PASS ${name}${info ? ` — ${info}` : ""}`);
   } catch (e) {
-    results.push(`FAIL ${name} — ${String(e.message ?? e).split("\n")[0]}`);
+    const lines = String(e.message ?? e).split("\n"); results.push(`FAIL ${name} — ${lines[0]} ${(lines.find((l) => l.includes("waiting for")) ?? "").trim()}`);
   }
 };
 const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
@@ -64,18 +64,27 @@ await step("Товар в корзину", async () => {
 
 await step("Оформление заказа: промокод WELCOME10 + баллы", async () => {
   await page.goto(`${base}/checkout`);
+  // шаг 1: доставка СДЭК с адресом
+  await page.locator('label:has(input[name="deliveryMethod"][value="CDEK"])').click();
+  await page.waitForTimeout(500);
+  await page.fill('textarea[name="addressText"]', "Москва, ул. Тверская, д. 1, кв. 1, 125009");
+  await page.locator('button:has-text("Далее")').first().click();
+  await page.waitForTimeout(500);
+  // шаг 2: промокод, оплата картой, баллы
+  await page.locator("summary:has-text('Промокод')").click();
   await page.locator('input[placeholder="WELCOME10"]').fill("WELCOME10");
   await page.locator('button:has-text("Применить")').first().click();
   await page.waitForTimeout(1500);
-  await page.locator('label:has(input[name="deliveryMethod"][value="PICKUP"])').click();
-  await page.waitForTimeout(500);
   await page.locator('label:has(input[name="paymentMethod"][value="CARD"])').click();
   await page.waitForTimeout(500);
   await page.locator('button:has-text("Макс.")').click();
   await page.waitForTimeout(1500);
+  await page.locator('button:has-text("Далее")').first().click();
+  await page.waitForTimeout(500);
   await shot("03-checkout");
-  await page.click('button:has-text("Подтвердить заказ")');
-  await page.waitForURL(/\/account\/orders\/[^/?]+/, { timeout: 20000 });
+  // редирект из server action: не ждём завершения навигации внутри click, ждём URL отдельно
+  await page.locator('button:has-text("Подтвердить заказ")').first().click({ noWaitAfter: true });
+  await page.waitForURL(/\/account\/orders\/[^/?]+/, { timeout: 30000 });
   orderId = page.url().match(/orders\/([^/?]+)/)[1];
   const o = await sql.query('SELECT number, status, subtotal, discount, "pointsUsed", total, "promoCodeId" FROM "Order" WHERE id=$1', [orderId]);
   const r = o.rows[0];

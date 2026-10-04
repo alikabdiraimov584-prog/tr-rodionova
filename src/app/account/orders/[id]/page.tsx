@@ -7,6 +7,7 @@ import { DELIVERY_METHOD, ORDER_STATUS, PAYMENT_METHOD } from "@/lib/labels";
 import { Alert, Badge, PageTitle } from "@/components/ui";
 import { ConfirmButton } from "@/components/form";
 import { ReviewForm } from "@/components/account/review-form";
+import { ExchangeForm } from "@/components/account/exchange-form";
 import { cancelOwnOrderAction } from "@/app/actions/shop";
 import { PayButton } from "@/components/account/pay-button";
 import { syncOrderPayment, paymentsEnabled } from "@/lib/payments/provider";
@@ -23,7 +24,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
   if (sp.paid && (await db.order.count({ where: { id, userId: user.id } }))) await syncOrderPayment(id);
   const order = await db.order.findUnique({
     where: { id },
-    include: { items: { include: { variant: { include: { product: true } } } }, payments: true, history: { orderBy: { createdAt: "asc" } }, address: true },
+    include: { items: { include: { variant: { include: { product: { include: { variants: { select: { size: true, color: true, stock: true, reserved: true } } } } } } } }, payments: true, history: { orderBy: { createdAt: "asc" } }, address: true },
   });
   if (!order || order.userId !== user.id) notFound();
   const reviewed = new Set((await db.review.findMany({ where: { userId: user.id }, select: { productId: true } })).map((r) => r.productId));
@@ -91,6 +92,9 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
                 <Link href={`/product/${i.variant.product.slug}`} className="text-sm">{i.productName}</Link>
                 <div className="text-xs text-muted">{i.color} · {i.size} · {i.quantity} шт. {i.returnedQty ? `· возвращено ${i.returnedQty}` : ""}</div>
                 {canReview && !reviewed.has(i.variant.productId) && <div className="mt-2"><ReviewForm productId={i.variant.productId} productName={i.productName} /></div>}
+                {canReview && returnUntil && returnUntil > new Date() && i.quantity - i.returnedQty > 0 && (
+                  <ExchangeForm orderItemId={i.id} currentSize={i.size} sizes={i.variant.product.variants.filter((v) => (v.color ?? "") === (i.variant.color ?? "") && v.stock - v.reserved > 0).map((v) => v.size)} />
+                )}
               </div>
               <div className="shrink-0 text-sm">{formatMoney(i.price * i.quantity)}</div>
             </div>
@@ -111,6 +115,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             {DELIVERY_METHOD[order.deliveryMethod].label}
             {order.address && <div>{[order.address.city, order.address.street, order.address.building, order.address.apartment && `кв. ${order.address.apartment}`].filter(Boolean).join(", ")}</div>}
             {order.addressText && <div>{order.addressText}</div>}
+            {order.deliverySlot && <div>Интервал: {order.deliverySlot}</div>}
+            {order.fittingRequested && <div>Примерка 15 минут</div>}
             {order.trackingNumber && (
               <div className="mt-1 text-ink">
                 Трек-номер: {trackingUrl(order.deliveryMethod, order.trackingNumber) ? <a href={trackingUrl(order.deliveryMethod, order.trackingNumber)!} target="_blank" rel="noopener" className="underline">{order.trackingNumber} ↗</a> : order.trackingNumber}

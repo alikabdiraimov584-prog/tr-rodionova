@@ -6,7 +6,7 @@ import { ORDER_TRANSITIONS } from "@/lib/orders";
 import { formatDate, formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, STOCK_MOVEMENT, LEDGER_TYPE, TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle } from "@/components/ui";
-import { StatusForm, ReturnForm } from "@/components/crm/order-forms";
+import { StatusForm, ReturnForm, CourierSoonForm } from "@/components/crm/order-forms";
 import { SubmitButton } from "@/components/form";
 import { updateOrderInfoAction } from "@/app/actions/crm-orders";
 import { can } from "@/lib/permissions";
@@ -101,7 +101,9 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               <div className="text-muted">
                 {order.address ? [order.address.city, order.address.street, order.address.building, order.address.apartment && `кв. ${order.address.apartment}`].filter(Boolean).join(", ") : order.addressText ?? "—"}
               </div>
+              {order.deliverySlot && <div className="text-muted">Интервал: {order.deliverySlot}</div>}
               {track && <a href={track} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs underline">Отследить {order.trackingNumber}</a>}
+              {canEdit && (order.deliveryMethod === "COURIER" || order.deliveryMethod === "YANDEX") && ["PACKING", "SHIPPED"].includes(order.status) && <CourierSoonForm orderId={order.id} />}
               {order.payments.map((p) => (
                 <div key={p.id} className="mt-2 flex items-center justify-between">
                   <span>{PAYMENT_METHOD[p.method]} · {formatMoney(p.amount)}</span>

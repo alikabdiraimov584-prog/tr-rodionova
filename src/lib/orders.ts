@@ -201,7 +201,39 @@ export type CheckoutInput = {
   pointsToUse?: number;
   giftCode?: string | null;
   fittingRequested?: boolean;
+  deliverySlot?: string | null;
 };
+
+/** Котировка корзины гостя: без баллов и уровня, промокод и сертификат работают. */
+export async function quoteGuestCart(token: string | null, input: { promoCode?: string | null; deliveryMethod: DeliveryMethod; giftCode?: string | null }) {
+  const { guestCartItems } = await import("@/lib/guest-cart");
+  const items = await guestCartItems(token);
+  const lines: CartLine[] = items
+    .filter((i) => i.variant.product.status === "ACTIVE")
+    .map((i) => ({
+      variantId: i.variantId,
+      quantity: i.quantity,
+      price: i.variant.price ?? i.variant.product.price,
+      costPrice: i.variant.product.costPrice,
+      productName: i.variant.product.name,
+      size: i.variant.size,
+      color: i.variant.color,
+      sku: i.variant.sku,
+      available: i.variant.product.isPreorder ? 999 : i.variant.stock - i.variant.reserved,
+      isPreorder: i.variant.product.isPreorder,
+    }));
+  const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
+  const promo = await evaluatePromo(input.promoCode, subtotal, null);
+  const discount = promo?.ok ? promo.discount : 0;
+  const afterDiscount = subtotal - discount;
+  const delivery = await deliveryCost(input.deliveryMethod, afterDiscount, { freeShipping: !!(promo?.ok && promo.freeShipping) });
+  const toPay = afterDiscount + delivery;
+  const gift = await evaluateGift(input.giftCode);
+  const giftApplied = gift?.ok ? Math.min(gift.card.balance, toPay) : 0;
+  const total = toPay - giftApplied;
+  const quote: Quote = { lines, subtotal, discount, promo, pointsMax: 0, pointsUsed: 0, pointsValue: 0, delivery, total, freeShippingByTier: false, giftCode: gift?.ok ? gift.card.code : null, giftCardId: gift?.ok ? gift.card.id : null, giftApplied, giftError: gift && !gift.ok ? gift.error : null };
+  return quote;
+}
 
 export async function createOrderFromCart(userId: string, input: CheckoutInput) {
   const quote = await quoteCart(userId, input);
@@ -253,6 +285,7 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
         promoCodeId: quote.promo?.ok ? quote.promo.promo.id : null,
         comment: input.comment ?? null,
         fittingRequested: !!input.fittingRequested,
+        deliverySlot: input.deliverySlot ?? null,
         items: {
           create: quote.lines.map((l) => ({
             variantId: l.variantId,

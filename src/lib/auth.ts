@@ -67,6 +67,13 @@ export async function verifyPasswordOrDummy(password: string, hash: string | nul
 
 export async function loginAs(userId: string, role: Role, sessionVersion: number) {
   await createSession(userId, role, sessionVersion);
+  // корзина, собранная до входа, переезжает в аккаунт
+  try {
+    const { mergeGuestCart } = await import("@/lib/guest-cart");
+    await mergeGuestCart(userId);
+  } catch {
+    // слияние корзины не должно ломать вход
+  }
 }
 
 /** Завершить все сессии пользователя (смена пароля, блокировка, сброс пароля). */
