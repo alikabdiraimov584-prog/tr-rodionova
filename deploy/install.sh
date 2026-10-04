@@ -63,6 +63,7 @@ if [ ! -f "$APP_DIR/.env" ]; then
   cp "$APP_DIR/deploy/env.production.example" "$APP_DIR/.env"
   sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/" "$APP_DIR/.env"
   sed -i "s/^CRON_SECRET=.*/CRON_SECRET=$(openssl rand -hex 24)/" "$APP_DIR/.env"
+  sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$(openssl rand -hex 24)/" "$APP_DIR/.env"
   chown deploy:deploy "$APP_DIR/.env" && chmod 600 "$APP_DIR/.env"
 fi
 
@@ -72,7 +73,7 @@ echo "== Ежедневный бэкап базы в 02:30 МСК (23:30 UTC)"
 cat <<MSG
 
 Готово. Дальше:
-  1. Заполните $APP_DIR/.env: DOMAIN, APP_URL, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD, ключи S3.
+  1. Заполните $APP_DIR/.env: DOMAIN, APP_URL, NEXT_PUBLIC_SITE_URL, ADMIN_EMAIL, ADMIN_PASSWORD (база уже настроена локально; ключи S3 — для бэкапов).
   2. Направьте A-запись домена на IP этого сервера.
   3. Запустите:  cd $APP_DIR && sudo -u deploy docker compose up -d --build
   4. Проверьте:  https://<домен>  и  https://<домен>/crm

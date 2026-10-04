@@ -3,7 +3,7 @@
 ## Что купить
 1. **Домен** на reg.ru на ИП/ООО бренда, на 3+ года, с transfer lock и 2FA аккаунта. DNS reg.ru: `A @ → IP`, `A www → IP`, `CAA 0 issue "letsencrypt.org"`.
 2. **Сервер** Timeweb Cloud / Selectel в России: Ubuntu 24.04+, 2 vCPU, 4 ГБ, 50 ГБ NVMe, бэкапы, публичный IP, вход по SSH-ключу.
-3. **Управляемый PostgreSQL 16** у того же хостера, тот же регион, приватная сеть, бэкапы.
+3. **База данных.** На старте — PostgreSQL в контейнере на том же сервере (профиль `localdb`, включён по умолчанию в `.env`). При росте — управляемый PostgreSQL 16 у того же хостера (приватная сеть, бэкапы): убрать `COMPOSE_PROFILES` и вписать его `DATABASE_URL`.
 4. **S3-хранилище** (бакеты `tr-rodionova-media` для фото и `tr-rodionova-backups` для дампов).
 5. **Почта на домене** (Яндекс 360): care@…, SPF/DKIM/DMARC.
 
@@ -14,7 +14,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/alikabdiraimov584-prog/tr-ro
 ```
 Скрипт ставит обновления, файрвол (только 22/80/443), fail2ban, Docker, пользователя `deploy`, клонирует репозиторий в `/opt/tr-rodionova`, создаёт `.env` со случайными секретами и ежедневный бэкап.
 
-Затем заполните `/opt/tr-rodionova/.env` (DOMAIN, APP_URL, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD, S3) и запустите:
+Затем заполните `/opt/tr-rodionova/.env` (DOMAIN, APP_URL, NEXT_PUBLIC_SITE_URL, ADMIN_EMAIL, ADMIN_PASSWORD; S3 — для бэкапов) и запустите:
 ```bash
 cd /opt/tr-rodionova && sudo -u deploy docker compose up -d --build
 ```
