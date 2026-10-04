@@ -36,7 +36,7 @@ async function newPage(viewport) {
 }
 
 const skip = /\/(unsubscribe|go|api|_next|logout|data-export|export|print|reset|feed\.xml)\b|\.(xml|txt|json|pdf)$/;
-const noisy = /[?&](page|sort|size|color|material|price|q|new|period|dim|from|to|status|tab)=/;
+const noisy = /[?&](page|sort|size|color|material|price|q|new|period|dim|from|to|status|tab|next)=/;
 
 async function crawl(role, viewport, startPaths, login) {
   resetBudget(); // лимит времени — на каждый обход отдельно
