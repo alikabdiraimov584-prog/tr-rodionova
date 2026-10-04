@@ -139,6 +139,15 @@ async function guestJourney(viewport, label) {
     }
     return true;
   };
+  // «Далее»: нажать и дождаться открытия следующего шага; при холодном старте сервера повторить один раз
+  const clickNext = async (step) => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await page.locator("button:visible:has-text('Далее')").first().click();
+      const opened = await page.waitForFunction((n) => !document.querySelector(`section[data-step="${n}"]`)?.hasAttribute("hidden"), step, { timeout: 5000 }).then(() => true).catch(() => false);
+      if (opened) return;
+    }
+    throw new Error(`шаг ${step + 1} не открылся`);
+  };
   await step("главная", () => page.goto(base + "/", { waitUntil: "domcontentloaded" }));
   await step("cookie-баннер: только необходимые", () => page.locator("button:has-text('Только необходимые')").click({ timeout: 5000 }));
   await step("каталог", () => page.goto(base + "/catalog", { waitUntil: "domcontentloaded" }));
@@ -174,9 +183,8 @@ async function guestJourney(viewport, label) {
     await page.fill('input[name="phone"]', "+79990000000");
     await page.locator('label:has(input[name="deliveryMethod"][value="COURIER"])').click();
     await page.fill('textarea[name="addressText"]', "Москва, Тверская, 1");
-    await page.locator("button:visible:has-text('Далее')").first().click();
-    await page.waitForTimeout(400);
-    if (await page.locator('section[data-step="1"]').getAttribute("hidden") !== null) throw new Error("шаг 2 не открылся");
+    await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => null); // дождаться гидратации формы
+    await clickNext(1);
   });
   await step("оформление: шаг 2 (промокод, оплата)", async () => {
     await page.locator("summary:visible:has-text('Промокод')").first().click();
@@ -184,9 +192,7 @@ async function guestJourney(viewport, label) {
     await page.locator("button:visible:has-text('Применить')").first().click();
     await page.waitForTimeout(1200);
     await page.locator('label:has(input[name="paymentMethod"][value="SBP"])').click();
-    await page.locator("button:visible:has-text('Далее')").first().click();
-    await page.waitForTimeout(400);
-    if (await page.locator('section[data-step="2"]').getAttribute("hidden") !== null) throw new Error("шаг 3 не открылся");
+    await clickNext(2);
     if ((await page.locator("button:has-text('Подтвердить')").count()) === 0) throw new Error("нет кнопки подтверждения");
   });
   await step("корзина: удалить товар", async () => {
