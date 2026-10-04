@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { markOrderPaid } from "@/lib/orders";
 import { activateGiftCard } from "@/lib/gift-payment";
 import { activeIntegration } from "@/lib/integrations/store";
+import { customerReceipt, receiptLines } from "@/lib/payments/fiscal";
 
 /**
  * CloudPayments: платёжная страница по счёту (orders/create), чеки CloudKassir, вебхуки Pay/Fail/Refund
@@ -46,16 +47,9 @@ export async function testCredentials(publicId: string, apiSecret: string) {
   return r.Success ? { ok: true as const, info: r.Message ?? "Ключи приняты" } : { ok: false as const, error: r.Message ?? "CloudPayments отклонил ключи" };
 }
 
-/** Чек CloudKassir: НДС не облагается (vat null), признак способа расчёта method, предмета object. */
-function receipt(items: { label: string; price: number; quantity: number; object: number; method: number }[], customer: { email?: string | null; phone?: string | null }, taxationSystem: string) {
-  const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
-  return {
-    Items: items.map((i) => ({ label: i.label.slice(0, 128), price: i.price / 100, quantity: i.quantity, amount: (i.price * i.quantity) / 100, vat: null, method: i.method, object: i.object })),
-    ...(taxationSystem ? { taxationSystem: Number(taxationSystem) } : {}),
-    ...(customer.email ? { email: customer.email } : {}),
-    ...(customer.phone ? { phone: customer.phone.replace(/\D/g, "") } : {}),
-    amounts: { electronic: total / 100, advancePayment: 0, credit: 0, provision: 0 },
-  };
+/** Чек сертификата: аванс (method 3), предмет расчёта 10 — платёж. */
+function giftReceipt(amount: number, customer: { email?: string | null; phone?: string | null }, taxationSystem: string) {
+  return customerReceipt([{ label: "Подарочный сертификат", price: amount, quantity: 1, amount, object: 10, method: 3 }], customer, taxationSystem, { electronic: amount, advancePayment: 0 });
 }
 
 type CpOrder = { Id: string; Number: number; Amount: number; Url: string };
@@ -85,14 +79,8 @@ export async function createOrderPayment(orderId: string, returnUrl: string) {
       orderId,
       paymentId: payment.id,
       cloudPayments: {
-        customerReceipt: receipt(
-          [
-            ...order.items.map((i) => ({ label: `${i.productName} ${i.size}`, price: i.price, quantity: i.quantity, object: 1, method: 4 })),
-            ...(order.deliveryCost ? [{ label: "Доставка", price: order.deliveryCost, quantity: 1, object: 4, method: 4 }] : []),
-          ],
-          { email: order.email, phone: order.phone },
-          c.taxationSystem,
-        ),
+        // первый чек: предоплата 100% за товары к доставке; второй (полный расчёт) уйдёт при вручении — src/lib/payments/fiscal.ts
+        customerReceipt: customerReceipt(receiptLines(order, 1), { email: order.email, phone: order.phone }, c.taxationSystem, { electronic: order.total, advancePayment: order.giftUsed }),
       },
     },
   });
@@ -122,7 +110,7 @@ export async function createGiftCardPayment(cardId: string, returnUrl: string) {
     FailRedirectUrl: returnUrl,
     JsonData: {
       giftCardId: card.id,
-      cloudPayments: { customerReceipt: receipt([{ label: "Подарочный сертификат", price: card.amount, quantity: 1, object: 10, method: 3 }], { email: card.purchaser?.email, phone: card.purchaser?.phone }, c.taxationSystem) },
+      cloudPayments: { customerReceipt: giftReceipt(card.amount, { email: card.purchaser?.email, phone: card.purchaser?.phone }, c.taxationSystem) },
     },
   });
   const url = r.Model?.Url;

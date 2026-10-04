@@ -1,0 +1,34 @@
+# Наблюдение за доступностью во время обновления: раз в 5 секунд опрашивает /api/health и считает сбои.
+# Запуск вручную сразу после push в main: автообновление сервера пройдёт в окно наблюдения, и отчёт покажет,
+# был ли простой и сменился ли коммит сборки.
+name: Watch health
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: Сколько минут наблюдать
+        default: "14"
+      base_url:
+        description: Адрес сайта
+        default: https://tr-rodionova.ru
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Опрос /api/health
+        env:
+          BASE: ${{ github.event.inputs.base_url || 'https://tr-rodionova.ru' }}
+          MINUTES: ${{ github.event.inputs.minutes || '14' }}
+        run: |
+          end=$((SECONDS + MINUTES * 60)); ok=0; bad=0; prev=""
+          while [ $SECONDS -lt $end ]; do
+            body=$(curl -sS -m 8 -w '\n%{http_code}' "$BASE/api/health" 2>/dev/null || echo -e "\n000")
+            code=$(echo "$body" | tail -1); json=$(echo "$body" | head -1)
+            commit=$(echo "$json" | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p')
+            if [ "$code" = "200" ]; then ok=$((ok+1)); else bad=$((bad+1)); echo "$(date -u +%T) сбой: HTTP $code"; fi
+            if [ -n "$commit" ] && [ "$commit" != "$prev" ]; then echo "$(date -u +%T) сборка: $commit"; prev=$commit; fi
+            sleep 5
+          done
+          echo "Итог: успешных ответов $ok, сбоев $bad"
+          [ "$bad" -eq 0 ]

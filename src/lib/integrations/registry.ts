@@ -7,7 +7,7 @@ import "server-only";
 
 export type IntegrationGroup = "payments" | "delivery" | "analytics" | "search" | "messaging";
 
-export type IntegrationField = { key: string; label: string; secret?: boolean; hint?: string; placeholder?: string };
+export type IntegrationField = { key: string; label: string; secret?: boolean; hint?: string; placeholder?: string; multiline?: boolean };
 
 export type IntegrationDef = {
   key: string;
@@ -92,6 +92,35 @@ export const INTEGRATIONS: IntegrationDef[] = [
       const auth = Buffer.from(`${c.publicId}:${c.apiSecret}`).toString("base64");
       const r = await json<{ Success?: boolean; Message?: string | null }>("https://api.cloudpayments.ru/test", { method: "POST", headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" }, body: "{}" });
       return r.body.Success ? { ok: true, info: r.body.Message ?? "Ключи приняты" } : { ok: false, error: r.body.Message ?? `CloudPayments ответил HTTP ${r.status}` };
+    },
+  },
+  {
+    key: "dolyame",
+    group: "payments",
+    name: "Долями",
+    summary: "Оплата четырьмя частями без переплаты (Т-Банк) по прямому договору: кнопка «Частями» в оформлении ведёт на страницу Долями.",
+    effect: "При включении способ «Частями» в оформлении обрабатывается напрямую через Долями (комиссия по вашему договору), остальные способы — через CloudPayments или ЮKassa. Если выключено, «Частями» идёт через платёжную страницу кассы.",
+    fields: [
+      { key: "login", label: "Логин API", hint: "Выдаёт персональный менеджер Долями (partners@dolyame.ru)" },
+      { key: "password", label: "Пароль API", secret: true },
+      { key: "cert", label: "Клиентский сертификат (PEM)", secret: true, multiline: true, hint: "Кабинет Т-Бизнес → T-API → сертификат для Долями; вставьте файл целиком, с BEGIN CERTIFICATE" },
+      { key: "key", label: "Закрытый ключ сертификата (PEM)", secret: true, multiline: true, hint: "Файл private.key из того же архива; никому не передаётся, хранится зашифрованным" },
+      { key: "autoCommit", label: "Автоподтверждение заявки (пусто или 1 — да, 0 — вручную из карточки заказа)", placeholder: "1" },
+      { key: "fiscalize", label: "Чеки через CloudKassir (1 — да)", hint: "Если 1, чеки предоплаты и полного расчёта пробивает наша касса; иначе фискализацию выполняют Долями по настройкам в их кабинете" },
+      { key: "minAmount", label: "Минимальная сумма заказа, ₽", placeholder: "1000" },
+      { key: "maxAmount", label: "Максимальная сумма заказа, ₽", placeholder: "150000" },
+      { key: "baseUrl", label: "Адрес API (пусто — боевой)", placeholder: "https://partner.dolyame.ru" },
+    ],
+    guide: [
+      "Заключите договор с Долями (dolyame.ru/business) и получите у менеджера логин и пароль API.",
+      "В кабинете Т-Бизнес (T-API) выпустите сертификат для Долями, скачайте архив: сертификат и закрытый ключ вставьте сюда целиком.",
+      "Нажмите «Проверить подключение»: запрос к API подтвердит пароль и сертификат.",
+      "Адрес для уведомлений передаётся в каждой заявке автоматически (ниже), отдельно настраивать не нужно. Проверьте тестовой заявкой с суммой от минимальной.",
+    ],
+    webhookPath: "/api/payments/dolyame",
+    test: async (c) => {
+      const { testCredentials } = await import("@/lib/payments/dolyame");
+      return testCredentials(c);
     },
   },
   {

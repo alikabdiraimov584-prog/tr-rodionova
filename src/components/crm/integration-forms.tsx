@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { saveIntegrationAction, testIntegrationAction } from "@/app/actions/crm-integrations";
 import type { ActionState } from "@/lib/action-result";
 
-type Field = { key: string; label: string; secret?: boolean; hint?: string; placeholder?: string };
+type Field = { key: string; label: string; secret?: boolean; hint?: string; placeholder?: string; multiline?: boolean };
 
 function Msg({ s }: { s: ActionState }) {
   if (!s) return null;
@@ -19,16 +19,28 @@ export function IntegrationForm({ integrationKey, fields, filled, enabled, hasTe
       <form action={save} className="grid gap-3 sm:grid-cols-2">
         <input type="hidden" name="key" value={integrationKey} />
         {fields.map((f) => (
-          <label key={f.key} className={f.key === "verification" || fields.length === 1 ? "sm:col-span-2" : ""}>
+          <label key={f.key} className={f.key === "verification" || f.multiline || fields.length === 1 ? "sm:col-span-2" : ""}>
             <span className="label">{f.label}</span>
-            <input
-              name={f.key}
-              type={f.secret ? "password" : "text"}
-              autoComplete="off"
-              defaultValue={f.secret ? "" : ((filled[f.key] as string | undefined) ?? "")}
-              placeholder={f.secret && filled[f.key] ? "•••••• сохранён, введите новый чтобы заменить" : f.placeholder}
-              className="input py-2 font-mono text-xs"
-            />
+            {f.multiline ? (
+              <textarea
+                name={f.key}
+                rows={4}
+                autoComplete="off"
+                spellCheck={false}
+                defaultValue={f.secret ? "" : ((filled[f.key] as string | undefined) ?? "")}
+                placeholder={f.secret && filled[f.key] ? "•••••• сохранён, вставьте новый чтобы заменить" : f.placeholder}
+                className="input py-2 font-mono text-xs"
+              />
+            ) : (
+              <input
+                name={f.key}
+                type={f.secret ? "password" : "text"}
+                autoComplete="off"
+                defaultValue={f.secret ? "" : ((filled[f.key] as string | undefined) ?? "")}
+                placeholder={f.secret && filled[f.key] ? "•••••• сохранён, введите новый чтобы заменить" : f.placeholder}
+                className="input py-2 font-mono text-xs"
+              />
+            )}
             {f.hint && <span className="mt-1 block text-xs text-muted">{f.hint}</span>}
             {f.secret && filled[f.key] && <label className="mt-1 flex items-center gap-2 text-xs text-muted"><input type="checkbox" name={`clear_${f.key}`} className="accent-black" /> удалить сохранённое значение</label>}
           </label>

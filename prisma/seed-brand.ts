@@ -14,6 +14,7 @@ export async function seedBrand(db: PrismaClient) {
   const items = [
     {
       slug: "bodi-tr-01",
+      care: "Ручная или деликатная стирка при 30°, без отбеливания. Сушить горизонтально, не выкручивать. Хранить в сложенном виде.",
       sku: "TR-BD-101",
       name: "Боди TR 01",
       category: "bodysuits",
@@ -31,6 +32,7 @@ export async function seedBrand(db: PrismaClient) {
     },
     {
       slug: "bryuki-tr-palazzo",
+      care: "Сухая чистка один-два раза в сезон. Складки убирать паром. Хранить на плечиках с зажимами за пояс, в чехле.",
       sku: "TR-TR-101",
       name: "Брюки TR Palazzo",
       category: "trousers",
@@ -48,6 +50,7 @@ export async function seedBrand(db: PrismaClient) {
     },
     {
       slug: "yubka-tr-01",
+      care: "Сухая чистка. Складки убирать паром, утюг только через влажную ткань на режиме «шерсть». Хранить на плечиках с зажимами.",
       sku: "TR-SK-101",
       name: "Юбка TR 01",
       category: "skirts",
@@ -64,6 +67,7 @@ export async function seedBrand(db: PrismaClient) {
     },
     {
       slug: "zhaket-tr-noir",
+      care: "Только сухая чистка, не чаще раза в сезон. Между носками — на широких плечиках по форме плеча, в тканевом чехле.",
       sku: "TR-JK-101",
       name: "Жакет TR Noir",
       category: "jackets",
@@ -81,6 +85,7 @@ export async function seedBrand(db: PrismaClient) {
     },
     {
       slug: "plate-tr-halter",
+      care: "Сухая чистка; съёмный шарф отстёгивать перед чисткой. Хранить на мягких плечиках, корсаж не складывать.",
       sku: "TR-DR-101",
       name: "Платье TR Halter",
       category: "dresses",
@@ -100,7 +105,7 @@ export async function seedBrand(db: PrismaClient) {
   for (const it of items) {
     const product = await db.product.upsert({
       where: { slug: it.slug },
-      update: { name: it.name, price: it.price * RUB, costPrice: it.cost * RUB, description: it.description, composition: it.composition, material: it.material, sizeChart: it.sizeChart, isPreorder: !!it.preorder, preorderShipAt: it.preorder ? new Date(Date.now() + 35 * 86_400_000) : null },
+      update: { name: it.name, price: it.price * RUB, costPrice: it.cost * RUB, description: it.description, composition: it.composition, material: it.material, sizeChart: it.sizeChart, care: it.care, isPreorder: !!it.preorder, preorderShipAt: it.preorder ? new Date(Date.now() + 35 * 86_400_000) : null },
       create: {
         slug: it.slug,
         sku: it.sku,
@@ -109,7 +114,7 @@ export async function seedBrand(db: PrismaClient) {
         composition: it.composition,
         material: it.material,
         sizeChart: it.sizeChart,
-        care: "Сухая чистка. Хранить на плечиках.",
+        care: it.care,
         price: it.price * RUB,
         costPrice: it.cost * RUB,
         isNew: true,

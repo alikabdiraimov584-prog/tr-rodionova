@@ -6,7 +6,7 @@ import { ORDER_TRANSITIONS } from "@/lib/orders";
 import { formatDate, formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, STOCK_MOVEMENT, LEDGER_TYPE, TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle } from "@/components/ui";
-import { StatusForm, ReturnForm, CourierSoonForm } from "@/components/crm/order-forms";
+import { StatusForm, ReturnForm, CourierSoonForm, ReceiptForm } from "@/components/crm/order-forms";
 import { SubmitButton } from "@/components/form";
 import { updateOrderInfoAction } from "@/app/actions/crm-orders";
 import { can } from "@/lib/permissions";
@@ -104,12 +104,27 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               {order.deliverySlot && <div className="text-muted">Интервал: {order.deliverySlot}</div>}
               {track && <a href={track} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs underline">Отследить {order.trackingNumber}</a>}
               {canEdit && (order.deliveryMethod === "COURIER" || order.deliveryMethod === "YANDEX") && ["PACKING", "SHIPPED"].includes(order.status) && <CourierSoonForm orderId={order.id} />}
-              {order.payments.map((p) => (
-                <div key={p.id} className="mt-2 flex items-center justify-between">
-                  <span>{PAYMENT_METHOD[p.method]} · {formatMoney(p.amount)}</span>
-                  <Badge tone={PAYMENT_STATUS[p.status].tone}>{PAYMENT_STATUS[p.status].label}</Badge>
-                </div>
-              ))}
+              {order.payments.map((p) => {
+                const payload = (p.payload as { provider?: string; receipts?: Record<string, { id: string | null }>; committedAt?: string } | null) ?? {};
+                const online = p.method === "CARD" || p.method === "SBP" || p.method === "INSTALLMENT";
+                return (
+                  <div key={p.id} className="mt-2">
+                    <div className="flex items-center justify-between">
+                      <span>{PAYMENT_METHOD[p.method]}{payload.provider ? ` · ${payload.provider === "dolyame" ? "Долями" : payload.provider === "cloudpayments" ? "CloudPayments" : payload.provider}` : ""} · {formatMoney(p.amount)}</span>
+                      <Badge tone={PAYMENT_STATUS[p.status].tone}>{PAYMENT_STATUS[p.status].label}</Badge>
+                    </div>
+                    {payload.receipts && (
+                      <div className="text-xs text-muted">Чеки: {payload.receipts.prepayment ? "предоплата ✓" : "предоплата —"} · {payload.receipts.settlement ? "полный расчёт ✓" : "полный расчёт —"}</div>
+                    )}
+                    {canEdit && online && p.status === "SUCCEEDED" && payload.provider === "dolyame" && !payload.receipts?.prepayment && ["PAID", "CONFIRMED", "PACKING", "SHIPPED"].includes(order.status) && (
+                      <ReceiptForm orderId={order.id} kind="prepayment" label="Отправить чек предоплаты" />
+                    )}
+                    {canEdit && online && (p.status === "SUCCEEDED" || p.status === "PARTIALLY_REFUNDED") && !payload.receipts?.settlement && ["DELIVERED", "COMPLETED"].includes(order.status) && (
+                      <ReceiptForm orderId={order.id} kind="settlement" label="Отправить чек полного расчёта" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

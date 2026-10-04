@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { changeOrderStatusAction, partialReturnAction, courierSoonAction } from "@/app/actions/crm-orders";
+import { changeOrderStatusAction, partialReturnAction, courierSoonAction, issueReceiptAction } from "@/app/actions/crm-orders";
 import { ORDER_STATUS } from "@/lib/labels";
 import type { OrderStatus } from "@/generated/prisma/enums";
 
@@ -68,6 +68,20 @@ export function CourierSoonForm({ orderId }: { orderId: string }) {
     <form action={action} className="mt-3 flex flex-wrap items-center gap-2">
       <input type="hidden" name="orderId" value={orderId} />
       <button className="btn-outline btn-sm" disabled={pending}>{pending ? "Отправляем…" : "Сообщить: курьер будет в течение часа"}</button>
+      {state?.error && <span className="text-xs text-danger">{state.error}</span>}
+      {state?.message && <span className="text-xs text-success">{state.message}</span>}
+    </form>
+  );
+}
+
+/** Чеки 54-ФЗ: повторная отправка чека предоплаты или полного расчёта в CloudKassir. */
+export function ReceiptForm({ orderId, kind, label }: { orderId: string; kind: "prepayment" | "settlement"; label: string }) {
+  const [state, action, pending] = useActionState(issueReceiptAction, undefined);
+  return (
+    <form action={action} className="mt-2 flex flex-wrap items-center gap-2">
+      <input type="hidden" name="orderId" value={orderId} />
+      <input type="hidden" name="kind" value={kind} />
+      <button className="btn-outline btn-sm" disabled={pending}>{pending ? "Отправляем…" : label}</button>
       {state?.error && <span className="text-xs text-danger">{state.error}</span>}
       {state?.message && <span className="text-xs text-success">{state.message}</span>}
     </form>

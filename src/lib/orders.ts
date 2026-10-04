@@ -417,6 +417,8 @@ export async function cancelOrder(orderId: string, opts: { reason?: string; crea
     await audit(opts.createdBy ?? null, "order.cancel", "Order", orderId, { reason: opts.reason ?? null }, tx);
   });
   void notifyOrder(orderId, "ORDER_CANCELLED");
+  // заявка Долями (если была) снимается, пока не подтверждена
+  void import("@/lib/payments/provider").then((p) => p.onOrderCancelled(orderId));
 }
 
 export async function setOrderStatus(orderId: string, status: OrderStatus, opts: { createdBy?: string | null; trackingNumber?: string | null; note?: string } = {}) {
@@ -459,6 +461,8 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
   });
   const notifyFor: Partial<Record<OrderStatus, Parameters<typeof notifyOrder>[1]>> = { SHIPPED: "ORDER_SHIPPED", DELIVERED: "ORDER_DELIVERED", COMPLETED: "ORDER_COMPLETED" };
   if (notifyFor[status]) void notifyOrder(orderId, notifyFor[status]);
+  // 54-ФЗ: при вручении предоплаченного заказа — второй чек «полный расчёт» с зачётом предоплаты
+  if (status === "DELIVERED") void import("@/lib/payments/fiscal").then((m) => m.issueReceiptInBackground(orderId, "settlement", opts.createdBy));
 }
 
 /** Частичный возврат отдельных позиций (из CRM). */

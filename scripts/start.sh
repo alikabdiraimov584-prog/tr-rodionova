@@ -11,4 +11,8 @@ else
 fi
 # Вещи бренда и их фото обновляются при каждом старте (идемпотентно)
 npx tsx scripts/seed-brand.ts && npx tsx scripts/attach-brand-photos.ts
+# Статьи журнала: добавляются недостающие, правки из CRM сохраняются
+npx tsx scripts/seed-journal.ts || echo "journal seed skipped"
+# Черновики первых рассылок (CRM → Рассылки)
+npx tsx scripts/seed-campaigns.ts || echo "campaigns seed skipped"
 exec npx next start -p "${PORT:-3000}"

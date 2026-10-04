@@ -121,3 +121,15 @@ export async function courierSoonAction(_: ActionState, formData: FormData): Pro
   revalidatePath(`/crm/orders/${orderId}`);
   return { ok: true, message: "Клиентка предупреждена" };
 }
+
+/** Повторная отправка чека в CloudKassir (если при вручении касса не ответила). */
+export async function issueReceiptAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireSection("ordersEdit");
+  const orderId = String(formData.get("orderId"));
+  const kind = String(formData.get("kind")) === "prepayment" ? "prepayment" : "settlement";
+  const { issueReceipt } = await import("@/lib/payments/fiscal");
+  const r = await issueReceipt(orderId, kind, { createdBy: staff.id });
+  revalidatePath(`/crm/orders/${orderId}`);
+  if (!r.ok) return { error: r.error };
+  return { ok: true, message: r.skipped ? `Чек не отправлен: ${r.skipped}` : `Чек отправлен в кассу${r.id ? ` (${r.id})` : ""}` };
+}
