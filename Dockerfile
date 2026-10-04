@@ -11,6 +11,8 @@ COPY prisma ./prisma
 RUN npm ci --include=dev
 
 FROM deps AS build
+ARG GIT_SHA=unknown
+ARG BUILD_AT=
 COPY . .
 # при сборке базы нет: витрина рендерится на запрос, страницы с БД динамические
 RUN npm run build
@@ -19,6 +21,9 @@ FROM base AS runner
 RUN groupadd -r app && useradd -r -g app -d /app app
 COPY --from=build --chown=app:app /app ./
 RUN mkdir -p /app/public/uploads && chown -R app:app /app/public/uploads
+ARG GIT_SHA=unknown
+ARG BUILD_AT=
+ENV GIT_SHA=$GIT_SHA BUILD_AT=$BUILD_AT
 USER app
 EXPOSE 3000
 ENV PORT=3000

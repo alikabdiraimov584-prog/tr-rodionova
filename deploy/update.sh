@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 git fetch origin main && git reset --hard origin/main
-docker compose build web
+GIT_SHA=$(git rev-parse --short HEAD) BUILD_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build web
 docker compose up -d web cron
 docker image prune -f >/dev/null
 echo "Обновлено: $(git log --oneline -1)"

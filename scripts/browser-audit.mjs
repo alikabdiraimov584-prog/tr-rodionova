@@ -2,16 +2,24 @@
 // Запуск: BASE_URL=https://tr-rodionova.ru [CRM_EMAIL=... CRM_PASSWORD=...] [CHROME_PATH=...] node scripts/browser-audit.mjs
 // На боевом сайте ничего не создаёт и не удаляет: заказ не подтверждается, в CRM только чтение и фильтры.
 import { chromium } from "playwright-core";
+import { mkdir } from "node:fs/promises";
 
 const base = (process.env.BASE_URL ?? "http://localhost:3100").replace(/\/$/, "");
 const crmEmail = process.env.CRM_EMAIL;
 const crmPassword = process.env.CRM_PASSWORD;
-const maxPages = Number(process.env.MAX_PAGES ?? 500);
+const maxPages = Number(process.env.MAX_PAGES ?? 120);
+const perTemplate = Number(process.env.PER_TEMPLATE ?? 4); // сколько страниц одного шаблона (/product/*, /journal/*) обходить
+const budgetMs = Number(process.env.TIME_BUDGET_MIN ?? 20) * 60_000;
+const startedAt = Date.now();
+const overBudget = () => Date.now() - startedAt > budgetMs;
+const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
+// шаблон маршрута: /product/abc → /product/*, /crm/orders/123 → /crm/orders/*
+const template = (path) => path.replace(/\/(product|journal|lookbook|orders|customers|products|returns|tickets|collections|staff|promos|reviews|stock|notifications)\/[^/?]+/g, "/$1/*");
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 
 const problems = [];
 const stats = { pages: 0, buttonsClicked: 0, forms: 0, links: 0 };
-const note = (kind, where, detail) => problems.push({ kind, where, detail: String(detail).slice(0, 200) });
+const note = (kind, where, detail) => problems.push({ kind, where, detail: String(detail).slice(0, 400) });
 
 // кнопки, которые меняют данные — на боевом сайте не нажимаем
 const DESTRUCTIVE = /удал|отмен|оплат|подтвер|отправ|сохран|создать|примен|выйти|отключ|включ|сброс|обезлич|заверш|принять|опубл|списать|начисл|возврат|перевести|заверш|обновить|добавить|загруз|импорт|экспорт|запрос|назнач|закрыть|ответ|повтор|применить|оформ|зарегистр|войти|получить код|сообщить/i;
@@ -45,17 +53,24 @@ async function crawl(role, viewport, startPaths, login) {
     }
   }
   const seen = new Set();
+  const perTpl = new Map();
   const queue = [...startPaths];
   while (queue.length && seen.size < maxPages) {
+    if (overBudget()) { note("budget", role, `лимит времени исчерпан, осталось в очереди ${queue.length}`); break; }
     const path = queue.shift();
     if (seen.has(path) || skip.test(path) || noisy.test(path)) continue;
+    const tpl = template(path);
+    const nTpl = (perTpl.get(tpl) ?? 0) + 1;
+    perTpl.set(tpl, nTpl);
+    if (tpl !== path && nTpl > perTemplate) continue;
     seen.add(path);
+    log(`${role} [${seen.size}] ${path}`);
     errors.length = 0;
     let status = 0;
     try {
       const r = await page.goto(base + path, { waitUntil: "domcontentloaded", timeout: 30000 });
       status = r?.status() ?? 0;
-      await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => null);
+      await page.waitForLoadState("networkidle", { timeout: 2500 }).catch(() => null);
     } catch (e) {
       note("navigation", `${role} ${path}`, e.message.split("\n")[0]);
       continue;
@@ -76,8 +91,9 @@ async function crawl(role, viewport, startPaths, login) {
       if (u && !seen.has(u)) queue.push(u);
     }
     // безопасные кнопки: type=button вне форм с данными, без «опасных» слов
-    const buttons = await page.locator('button:visible, [role="button"]:visible, summary:visible').all().catch(() => []);
+    const buttons = nTpl > 1 ? [] : await page.locator('button:visible, [role="button"]:visible, summary:visible').all().catch(() => []);
     for (const b of buttons.slice(0, 40)) {
+      if (overBudget()) break;
       const text = ((await b.textContent().catch(() => "")) ?? "").trim();
       const type = await b.getAttribute("type").catch(() => null);
       const tag = await b.evaluate((el) => el.tagName.toLowerCase()).catch(() => "");
@@ -105,11 +121,18 @@ async function crawl(role, viewport, startPaths, login) {
 /** Гостевой путь: товар → корзина → изменение количества → оформление до шага «Проверка» (без подтверждения). */
 async function guestJourney(viewport, label) {
   const { ctx, page, errors } = await newPage(viewport);
+  let shot = 0;
   const step = async (name, fn) => {
     try {
       await fn();
     } catch (e) {
-      note("journey", `${label} ${name}`, e.message.split("\n")[0]);
+      // диагностика: адрес, заголовок и начало текста страницы + скриншот в audit-shots/
+      const where = page.url().replace(base, "");
+      const text = ((await page.textContent("body").catch(() => "")) ?? "").replace(/\s+/g, " ").slice(0, 160);
+      const file = `audit-shots/${label}-${++shot}.png`;
+      await mkdir("audit-shots", { recursive: true }).catch(() => null);
+      await page.screenshot({ path: file, fullPage: true }).catch(() => null);
+      note("journey", `${label} ${name}`, `${e.message.split("\n")[0]} | url ${where} | «${text}» | ${file}`);
       return false;
     }
     return true;
@@ -138,10 +161,12 @@ async function guestJourney(viewport, label) {
   await step("корзина: изменить количество", async () => {
     await page.locator("select[name='quantity']").first().selectOption("1");
     await page.locator("button:has-text('Обновить')").first().click();
+    await page.waitForTimeout(1500);
     await page.waitForLoadState("networkidle");
   });
   await step("оформление: шаг 1", async () => {
     await page.goto(base + "/checkout", { waitUntil: "networkidle" });
+    await page.locator('input[name="firstName"]').waitFor({ timeout: 15000 });
     await page.fill('input[name="firstName"]', "Тест");
     await page.fill('input[name="email"]', "audit@example.com");
     await page.fill('input[name="phone"]', "+79990000000");
@@ -164,9 +189,11 @@ async function guestJourney(viewport, label) {
   });
   await step("корзина: удалить товар", async () => {
     await page.goto(base + "/cart", { waitUntil: "networkidle" });
+    const before = await page.locator("select[name='quantity']").count();
     await page.locator("button:has-text('Удалить')").first().click();
-    await page.waitForLoadState("networkidle");
-    if ((await page.locator("select[name='quantity']").count()) !== 0) throw new Error("товар не удалился");
+    // ждём, пока серверное действие перерисует корзину
+    await page.waitForFunction((n) => document.querySelectorAll("select[name='quantity']").length < n, before, { timeout: 15000 }).catch(() => null);
+    if ((await page.locator("select[name='quantity']").count()) !== before - 1) throw new Error("товар не удалился");
   });
   await step("вход: неверный пароль показывает ошибку", async () => {
     await page.goto(base + "/login");
@@ -244,11 +271,13 @@ async function crmAudit() {
   console.log(`CRM: пройдено страниц ${n ?? 0}`);
 }
 
-console.log("Аудит:", base);
+console.log("Аудит:", base, `(лимит ${maxPages} страниц, ${budgetMs / 60000} мин)`);
 const siteDesktop = await crawl("site-desktop", { width: 1366, height: 900 }, ["/"]);
 const siteMobile = await crawl("site-mobile", { width: 390, height: 844 }, ["/", "/catalog", "/cart", "/login", "/register", "/journal", "/lookbook", "/gift", "/circle"]);
+log("гостевой путь");
 await guestJourney({ width: 1366, height: 900 }, "desktop");
 await guestJourney({ width: 390, height: 844 }, "mobile");
+log("CRM");
 await crmAudit();
 await browser.close();
 

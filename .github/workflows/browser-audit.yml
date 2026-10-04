@@ -26,3 +26,10 @@ jobs:
           CRM_EMAIL: ${{ secrets.CRM_TEST_EMAIL }}
           CRM_PASSWORD: ${{ secrets.CRM_TEST_PASSWORD }}
         run: node scripts/browser-audit.mjs
+      - name: Скриншоты сбоев
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-shots
+          path: audit-shots/
+          if-no-files-found: ignore

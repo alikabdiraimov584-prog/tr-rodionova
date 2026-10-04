@@ -78,7 +78,7 @@ cat <<MSG
 Готово. Дальше:
   1. Заполните $APP_DIR/.env: DOMAIN, APP_URL, NEXT_PUBLIC_SITE_URL, ADMIN_EMAIL, ADMIN_PASSWORD (база уже настроена локально; ключи S3 — для бэкапов).
   2. Направьте A-запись домена на IP этого сервера.
-  3. Запустите:  cd $APP_DIR && sudo -u deploy docker compose up -d --build
+  3. Запустите:  cd $APP_DIR && sudo -u deploy bash deploy/update.sh
   4. Проверьте:  https://<домен>  и  https://<домен>/crm
 Обновление после изменений в репозитории:  cd $APP_DIR && sudo -u deploy bash deploy/update.sh
 MSG

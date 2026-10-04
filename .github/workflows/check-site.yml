@@ -33,6 +33,7 @@ jobs:
             printf '%-14s %s\n' "$p" "$(curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}' "https://$D$p" 2>&1 || true)"
           done
           echo "== headers"; curl -sSI -m 30 "https://$D/" | grep -iE "^(HTTP|strict-transport|content-security|x-frame|server)" || true
+          echo "== версия"; curl -sS -m 30 "https://$D/api/health" || true; echo
           echo "== title"; curl -sS -m 30 "https://$D/" | grep -oE "<title>[^<]*" | head -1
           echo "== http→https"; curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}\n' "http://$D/" || true
       - name: Итог

@@ -44,3 +44,4 @@ src/generated
 
 # рабочие копии фоновых агентов
 .claude/worktrees/
+audit-shots/
