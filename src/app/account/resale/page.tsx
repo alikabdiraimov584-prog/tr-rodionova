@@ -85,7 +85,7 @@ export default async function ResalePage() {
                       <div className="mt-1 text-xs">Предложение бренда: <span className="text-ink">{formatPoints(r.offerPoints)}</span></div>
                     )}
                     {r.managerNote && (r.status === "OFFERED" || r.status === "DECLINED") && <div className="mt-1 text-xs text-muted">Комментарий менеджера: {r.managerNote}</div>}
-                    {r.status === "ACCEPTED" && <div className="mt-1 text-xs text-muted">Передайте вещь курьеру или в шоурум (Большая Никитская 14). Баллы придут после проверки.</div>}
+                    {r.status === "ACCEPTED" && <div className="mt-1 text-xs text-muted">Передайте вещь курьеру (вызов оформит менеджер). Баллы придут после проверки.</div>}
                     {r.status === "LISTED" && <div className="mt-1 text-xs text-muted">Вещь на <Link href="/preloved" className="underline">витрине pre-loved</Link>.</div>}
                   </div>
                   <div className="flex items-center gap-3">

@@ -14,7 +14,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       {process.env.NODE_ENV !== "production" && (
         <div className="mt-10 border border-dashed border-line p-4 text-xs text-muted">
           <div className="eyebrow mb-2">Демо-доступы</div>
-          admin@t-rodionova.ru / admin12345<br />manager@t-rodionova.ru / manager12345<br />anna@example.com / anna12345
+          admin@tr-rodionova.ru / admin12345<br />manager@tr-rodionova.ru / manager12345<br />anna@example.com / anna12345
         </div>
       )}
     </>

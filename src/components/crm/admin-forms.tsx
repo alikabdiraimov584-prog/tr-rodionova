@@ -106,7 +106,7 @@ export function TelegramWebhookForm({ baseUrl }: { baseUrl: string }) {
   const [state, action, pending] = useActionState(telegramSetWebhookAction, undefined);
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
-      <input name="baseUrl" defaultValue={baseUrl} placeholder="https://t-rodionova.ru" className="input w-72 py-2" />
+      <input name="baseUrl" defaultValue={baseUrl} placeholder="https://tr-rodionova.ru" className="input w-72 py-2" />
       <button className="btn-outline btn-sm" disabled={pending}>Установить вебхук</button>
       <Msg s={state} />
     </form>

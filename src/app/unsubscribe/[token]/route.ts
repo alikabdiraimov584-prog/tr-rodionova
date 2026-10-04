@@ -12,7 +12,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/unsubscribe/[token]
   const user = await db.user.findUnique({ where: { unsubscribeToken: token }, select: { id: true } });
   const html = user
     ? page("Отписаться от рассылок?", "Рекламные письма перестанут приходить. Сообщения о заказах продолжат приходить.", `<form method="post"><button type="submit">Отписаться</button></form>`)
-    : page("Ссылка не найдена", "Возможно, ссылка устарела. Напишите на care@t-rodionova.ru.");
+    : page("Ссылка не найдена", "Возможно, ссылка устарела. Напишите на care@tr-rodionova.ru.");
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
@@ -24,6 +24,6 @@ export async function POST(_req: Request, ctx: RouteContext<"/unsubscribe/[token
     await db.user.update({ where: { id: user.id }, data: { marketingConsent: false } });
     await db.consent.create({ data: { userId: user.id, type: "MARKETING", granted: false, version: "link" } });
   }
-  const html = user ? page("Вы отписаны", "Рекламные письма больше не придут. Сообщения о заказах продолжат приходить.") : page("Ссылка не найдена", "Возможно, ссылка устарела. Напишите на care@t-rodionova.ru.");
+  const html = user ? page("Вы отписаны", "Рекламные письма больше не придут. Сообщения о заказах продолжат приходить.") : page("Ссылка не найдена", "Возможно, ссылка устарела. Напишите на care@tr-rodionova.ru.");
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }

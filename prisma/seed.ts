@@ -96,7 +96,7 @@ async function main() {
       name: "T.Rodionova",
       tagline: "Premium womenswear",
       phone: "+7 (495) 000-00-00",
-      email: "care@t-rodionova.ru",
+      email: "care@tr-rodionova.ru",
       telegram: "https://t.me/trodionova",
     },
   };
@@ -111,10 +111,10 @@ async function main() {
   // ── Сотрудники и демо-клиент ──
   const passwordHash = await bcrypt.hash("admin12345", 10);
   await db.user.upsert({
-    where: { email: "admin@t-rodionova.ru" },
+    where: { email: "admin@tr-rodionova.ru" },
     update: {},
     create: {
-      email: "admin@t-rodionova.ru",
+      email: "admin@tr-rodionova.ru",
       passwordHash,
       firstName: "Татьяна",
       lastName: "Родионова",
@@ -123,10 +123,10 @@ async function main() {
     },
   });
   await db.user.upsert({
-    where: { email: "manager@t-rodionova.ru" },
+    where: { email: "manager@tr-rodionova.ru" },
     update: {},
     create: {
-      email: "manager@t-rodionova.ru",
+      email: "manager@tr-rodionova.ru",
       passwordHash: await bcrypt.hash("manager12345", 10),
       firstName: "Мария",
       role: "MANAGER",
@@ -448,9 +448,9 @@ async function main() {
 
   // ── Поддержка: сотрудник, каналы, шаблоны ──
   await db.user.upsert({
-    where: { email: "support@t-rodionova.ru" },
+    where: { email: "support@tr-rodionova.ru" },
     update: {},
-    create: { email: "support@t-rodionova.ru", passwordHash: await bcrypt.hash("support12345", 10), firstName: "Ольга", lastName: "Белова", role: "SUPPORT" },
+    create: { email: "support@tr-rodionova.ru", passwordHash: await bcrypt.hash("support12345", 10), firstName: "Ольга", lastName: "Белова", role: "SUPPORT" },
   });
   const channels = [
     ["TELEGRAM", "Telegram"],
@@ -511,7 +511,7 @@ async function seedDemo(baseTierId: string) {
   const sizes = ["XS", "S", "S", "M", "M", "L"];
 
   const variants = await db.productVariant.findMany({ include: { product: true } });
-  const manager = await db.user.findUniqueOrThrow({ where: { email: "manager@t-rodionova.ru" } });
+  const manager = await db.user.findUniqueOrThrow({ where: { email: "manager@tr-rodionova.ru" } });
   const anna = await db.user.findUniqueOrThrow({ where: { email: "anna@example.com" } });
   const pwd = await bcrypt.hash("demo12345", 10);
 
@@ -745,8 +745,8 @@ async function seedDemo(baseTierId: string) {
 
 async function seedSupportDemo() {
   if ((await db.conversation.count()) > 0) return;
-  const support = await db.user.findUniqueOrThrow({ where: { email: "support@t-rodionova.ru" } });
-  const manager = await db.user.findUniqueOrThrow({ where: { email: "manager@t-rodionova.ru" } });
+  const support = await db.user.findUniqueOrThrow({ where: { email: "support@tr-rodionova.ru" } });
+  const manager = await db.user.findUniqueOrThrow({ where: { email: "manager@tr-rodionova.ru" } });
   const customers = await db.user.findMany({ where: { role: "CUSTOMER", orders: { some: {} } }, include: { orders: { orderBy: { createdAt: "desc" }, take: 1 }, loyaltyTier: true }, orderBy: { lifetimeSpent: "desc" }, take: 6 });
   const min = 60_000;
   const now = Date.now();

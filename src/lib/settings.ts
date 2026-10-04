@@ -31,6 +31,13 @@ export type SellerSettings = {
   address: string; // адрес регистрации
   hours: string; // режим работы
   showroom: string; // адрес шоурума (если есть)
+  // банковские реквизиты: оплата переводом, накладные, оферта
+  bank: string;
+  bik: string;
+  account: string; // расчётный счёт
+  corrAccount: string; // корреспондентский счёт
+  responsible: string; // ответственный за обработку ПДн (политика, 152-ФЗ)
+  claimsAddress: string; // почтовый адрес для претензий и возвратов
 };
 
 export type SupportSettings = {
@@ -44,7 +51,20 @@ export type SupportSettings = {
 };
 
 const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings; seller: SellerSettings } = {
-  seller: { name: "", inn: "", ogrn: "", address: "", hours: "ежедневно 10:00–21:00", showroom: "" },
+  seller: {
+    name: "ИП Родионова Татьяна Ивановна",
+    inn: "211501713609",
+    ogrn: "325210000063620",
+    address: "429909, Россия, Чувашская Республика, Цивильский район, д. Елюккасы, ул. Луговая, д. 9",
+    hours: "ежедневно 10:00–21:00",
+    showroom: "",
+    bank: "АО «ТБанк»",
+    bik: "044525974",
+    account: "40802810600008690404",
+    corrAccount: "30101810145250000974",
+    responsible: "Родионова Татьяна Ивановна",
+    claimsAddress: "429909, Россия, Чувашская Республика, Цивильский район, д. Елюккасы, ул. Луговая, д. 9",
+  },
   support: {
     workFrom: 10,
     workTo: 21,
@@ -66,7 +86,7 @@ const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: 
     name: "T.Rodionova",
     tagline: "Premium womenswear",
     phone: "+7 (495) 000-00-00",
-    email: "care@t-rodionova.ru",
+    email: "care@tr-rodionova.ru",
     telegram: "https://t.me/trodionova",
   },
 };

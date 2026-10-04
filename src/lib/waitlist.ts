@@ -10,7 +10,7 @@ export async function notifyWaitlist(variantId: string) {
   if (v.stock - v.reserved <= 0) return 0;
   const subs = await db.stockSubscription.findMany({ where: { variantId, notifiedAt: null }, include: { user: { include: { loyaltyTier: true } } } });
   for (const s of subs) {
-    const text = `${s.user.firstName}, «${v.product.name}» в размере ${v.size}${v.color ? `, ${v.color}` : ""} снова в наличии. Отложить для вас? Ответьте на это сообщение. https://t-rodionova.ru/product/${v.product.slug}`;
+    const text = `${s.user.firstName}, «${v.product.name}» в размере ${v.size}${v.color ? `, ${v.color}` : ""} снова в наличии. Отложить для вас? Ответьте на это сообщение. https://tr-rodionova.ru/product/${v.product.slug}`;
     const contact = await db.contact.upsert({
       where: { channel_externalId: { channel: "WEBSITE", externalId: s.userId } },
       update: {},

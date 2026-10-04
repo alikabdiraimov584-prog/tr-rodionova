@@ -122,7 +122,10 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
       await setSetting("brand", next);
     } else if (section === "seller") {
       const f = (k: string) => String(formData.get(k) ?? "").trim();
-      await setSetting("seller", { name: f("name"), inn: f("inn").replace(/\D/g, ""), ogrn: f("ogrn").replace(/\D/g, ""), address: f("address"), hours: f("hours"), showroom: f("showroom") });
+      await setSetting("seller", {
+        name: f("name"), inn: f("inn").replace(/\D/g, ""), ogrn: f("ogrn").replace(/\D/g, ""), address: f("address"), hours: f("hours"), showroom: f("showroom"),
+        bank: f("bank"), bik: f("bik").replace(/\D/g, ""), account: f("account").replace(/\D/g, ""), corrAccount: f("corrAccount").replace(/\D/g, ""), responsible: f("responsible"), claimsAddress: f("claimsAddress"),
+      });
     } else if (section === "delivery") {
       const r = (k: string) => toKopecks(String(formData.get(k) ?? "0"));
       await setSetting("delivery", { freeFrom: r("freeFrom"), courier: r("courier"), cdek: r("cdek"), boxberry: r("boxberry"), yandex: r("yandex") });

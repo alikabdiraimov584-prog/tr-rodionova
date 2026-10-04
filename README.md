@@ -24,9 +24,9 @@ npm run dev                      # http://localhost:3000
 
 | Роль | Email | Пароль | Куда попадает |
 |---|---|---|---|
-| Администратор | admin@t-rodionova.ru | admin12345 | /crm |
-| Менеджер | manager@t-rodionova.ru | manager12345 | /crm |
-| Поддержка | support@t-rodionova.ru | support12345 | /crm/support |
+| Администратор | admin@tr-rodionova.ru | admin12345 | /crm |
+| Менеджер | manager@tr-rodionova.ru | manager12345 | /crm |
+| Поддержка | support@tr-rodionova.ru | support12345 | /crm/support |
 | Клиентка | anna@example.com | anna12345 | /account |
 
 Ежедневные задачи лояльности (завершение заказов и начисление баллов, подарки ко дню рождения, сгорание, пересчёт уровней) запускаются планировщиком:

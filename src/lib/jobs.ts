@@ -90,7 +90,7 @@ export async function runDailyJobs(actorId: string | null = null) {
   const birthdays = await grantBirthdayBonuses();
   const expired = await db.$transaction((tx) => expirePoints(tx), { timeout: 60_000 });
   const tiers = await recalcAllTiers();
-  const campaigns = await runDueCampaigns(process.env.APP_URL ?? "https://t-rodionova.ru");
+  const campaigns = await runDueCampaigns(process.env.APP_URL ?? "https://tr-rodionova.ru");
   const expiringNotified = await notifyExpiringPoints(7);
   const cartReminders = await notifyAbandonedCarts();
   const purged = await purgeRateLimits();

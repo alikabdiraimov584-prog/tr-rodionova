@@ -18,7 +18,7 @@ export type OrderEventKind = "ORDER_CREATED" | "ORDER_PAID" | "ORDER_SHIPPED" | 
 const SMS_EVENTS: OrderEventKind[] = ["ORDER_SHIPPED", "ORDER_DELIVERED"];
 
 function siteUrl() {
-  return process.env.APP_URL ?? "https://t-rodionova.ru";
+  return process.env.APP_URL ?? "https://tr-rodionova.ru";
 }
 
 export async function sendVia(channel: Channel, address: string, text: string, subject: string | null): Promise<{ status: "SENT" | "FAILED" | "SKIPPED"; error?: string }> {

@@ -88,7 +88,7 @@ export async function createManualOrderAction(_: ActionState, formData: FormData
       userId: customer?.id ?? null,
       firstName,
       lastName: customer?.lastName ?? null,
-      email: email || "showroom@t-rodionova.ru",
+      email: email || "showroom@tr-rodionova.ru",
       phone,
       lines,
       paymentMethod: String(formData.get("paymentMethod") ?? "CARD") as PaymentMethod,

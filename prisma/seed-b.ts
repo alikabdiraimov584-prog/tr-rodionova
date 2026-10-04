@@ -3,7 +3,7 @@ import type { PrismaClient } from "../src/generated/prisma/client";
 /** Демо-данные: заявки на выкуп, pre-loved товары, подборки стилиста, мерки клиенток. Идемпотентно. */
 export async function seedB(db: PrismaClient) {
   const anna = await db.user.findUnique({ where: { email: "anna@example.com" } });
-  const manager = await db.user.findUnique({ where: { email: "manager@t-rodionova.ru" } });
+  const manager = await db.user.findUnique({ where: { email: "manager@tr-rodionova.ru" } });
   if (!anna || !manager) return;
 
   // ── Мерки для 10 клиенток (по размеру из профиля) ──

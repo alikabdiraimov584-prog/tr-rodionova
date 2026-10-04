@@ -10,6 +10,7 @@ import { ReviewForm } from "@/components/account/review-form";
 import { cancelOwnOrderAction } from "@/app/actions/shop";
 import { PayButton } from "@/components/account/pay-button";
 import { syncOrderPayment, paymentsEnabled } from "@/lib/payments/provider";
+import { getSettingOrDefault } from "@/lib/settings";
 import { trackingUrl } from "@/lib/delivery";
 
 const STEPS = ["NEW", "PAID", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
@@ -50,6 +51,26 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
           </div>
         </div>
       )}
+
+      {order.status === "NEW" && payment?.method === "MANUAL" && (await (async () => {
+        const seller = await getSettingOrDefault("seller");
+        if (!seller.account) return null;
+        return (
+          <div className="card p-5 text-sm">
+            <div className="eyebrow">Реквизиты для перевода</div>
+            <dl className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-[auto_1fr]">
+              <dt className="text-muted">Получатель</dt><dd>{seller.name}</dd>
+              <dt className="text-muted">ИНН</dt><dd>{seller.inn}</dd>
+              <dt className="text-muted">Банк</dt><dd>{seller.bank}, БИК {seller.bik}</dd>
+              <dt className="text-muted">Расчётный счёт</dt><dd className="select-all">{seller.account}</dd>
+              <dt className="text-muted">Корр. счёт</dt><dd>{seller.corrAccount}</dd>
+              <dt className="text-muted">Сумма</dt><dd>{formatMoney(order.total)}</dd>
+              <dt className="text-muted">Назначение</dt><dd className="select-all">Оплата заказа №{order.number}, без НДС</dd>
+            </dl>
+            <p className="mt-3 text-xs text-muted">После поступления денег менеджер подтвердит оплату, и заказ перейдёт в сборку. Резерв действует 24 часа.</p>
+          </div>
+        );
+      })())}
 
       {stepIdx >= 0 && (
         <ol className="grid grid-cols-6 gap-1 text-center text-[0.6rem] uppercase tracking-[0.12em]">

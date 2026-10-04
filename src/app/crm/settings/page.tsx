@@ -40,6 +40,12 @@ export default async function Settings() {
                   <label className="sm:col-span-2"><span className="label">Адрес регистрации</span><input name="address" defaultValue={seller.address} className="input py-2" /></label>
                   <label><span className="label">Режим работы</span><input name="hours" defaultValue={seller.hours} className="input py-2" /></label>
                   <label><span className="label">Шоурум (адрес, часы)</span><input name="showroom" defaultValue={seller.showroom} className="input py-2" /></label>
+                  <label className="sm:col-span-2"><span className="label">Адрес для претензий и возвратов</span><input name="claimsAddress" defaultValue={seller.claimsAddress} className="input py-2" /></label>
+                  <label><span className="label">Банк</span><input name="bank" defaultValue={seller.bank} className="input py-2" /></label>
+                  <label><span className="label">БИК</span><input name="bik" defaultValue={seller.bik} className="input py-2" /></label>
+                  <label><span className="label">Расчётный счёт</span><input name="account" defaultValue={seller.account} className="input py-2" /></label>
+                  <label><span className="label">Корреспондентский счёт</span><input name="corrAccount" defaultValue={seller.corrAccount} className="input py-2" /></label>
+                  <label className="sm:col-span-2"><span className="label">Ответственный за обработку персональных данных</span><input name="responsible" defaultValue={seller.responsible} className="input py-2" /></label>
                 </div>
               </SettingsForm>
             </div>

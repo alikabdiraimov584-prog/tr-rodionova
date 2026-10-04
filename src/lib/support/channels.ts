@@ -314,7 +314,7 @@ export const CHANNEL_FIELDS: Record<Exclude<Channel, "WEBSITE">, { key: string; 
     { key: "secret", label: "Секретный ключ Callback API", secret: true },
   ],
   EMAIL: [
-    { key: "from", label: "Адрес отправителя", hint: "care@t-rodionova.ru" },
+    { key: "from", label: "Адрес отправителя", hint: "care@tr-rodionova.ru" },
     { key: "postmarkToken", label: "Postmark server token", secret: true },
   ],
   SMS: [
