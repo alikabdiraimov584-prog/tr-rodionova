@@ -1,0 +1,28 @@
+# Браузерный аудит боевого сайта и CRM с сервера GitHub: обход страниц, кнопки, формы, гостевой путь, CRM под тестовым сотрудником.
+# Секреты (необязательно, для CRM): CRM_TEST_EMAIL, CRM_TEST_PASSWORD — отдельный сотрудник с ролью MANAGER без 2FA.
+name: Browser audit
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Адрес сайта
+        default: https://tr-rodionova.ru
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright
+        run: |
+          npm i --no-save playwright-core@1.63.0 playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Аудит
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://tr-rodionova.ru' }}
+          CRM_EMAIL: ${{ secrets.CRM_TEST_EMAIL }}
+          CRM_PASSWORD: ${{ secrets.CRM_TEST_PASSWORD }}
+        run: node scripts/browser-audit.mjs
