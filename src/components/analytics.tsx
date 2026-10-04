@@ -29,7 +29,7 @@ export function Analytics() {
   const consent = useSyncExternalStore(subscribe, readConsent, () => "pending");
 
   useEffect(() => {
-    if (consent !== "all") return;
+    if (consent === "pending") return;
     const utm: Record<string, string> = {};
     for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
       const v = params.get(k);
@@ -50,7 +50,7 @@ export function Analytics() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ivory/95 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-[0.72rem] leading-snug backdrop-blur sm:py-2.5">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <p className="min-w-0 flex-1 basis-60 text-muted">
-            Cookie: необходимые для работы сайта и, с вашего согласия, собственная аналитика без третьих лиц.{" "}
+            Сайт ведёт обезличенную статистику посещений без передачи третьим лицам. С вашего согласия запоминаем ваш браузер между визитами и подключаем счётчик Яндекс Метрики.{" "}
             <Link href="/privacy#section-14" className="underline">Подробнее</Link>
           </p>
           <div className="flex shrink-0 gap-2">

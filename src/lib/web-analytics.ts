@@ -52,8 +52,9 @@ export async function recordHit(hit: Hit, cookie: { visitorId: string | null; se
   const ua = parseUA(hit.ua);
   if (ua.bot) return null;
   const now = new Date();
-  const visitorId = cookie.visitorId ?? crypto.randomUUID();
   let session = cookie.sessionId ? await db.visitorSession.findUnique({ where: { id: cookie.sessionId } }) : null;
+  // без согласия на долгоживущий cookie идентификатор посетителя живёт только в рамках визита
+  const visitorId = cookie.visitorId ?? session?.visitorId ?? crypto.randomUUID();
   const expired = session && now.getTime() - session.lastSeenAt.getTime() > SESSION_TTL_MIN * 60_000;
   // новая UTM-метка в середине сессии = новый визит (новая кампания)
   const newCampaign = session && hit.utm.source && (session.source !== hit.utm.source.toLowerCase() || (hit.utm.campaign ?? null) !== (session.campaign ?? null));

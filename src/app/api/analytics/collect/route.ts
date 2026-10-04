@@ -5,7 +5,9 @@ import { recordHit, VISITOR_COOKIE, SESSION_COOKIE_A, CONSENT_COOKIE } from "@/l
 const YEAR = 365 * 24 * 3600;
 
 export async function POST(req: NextRequest) {
-  if (req.cookies.get(CONSENT_COOKIE)?.value !== "all") return new NextResponse(null, { status: 204 });
+  // Собственная обезличенная статистика ведётся всегда (законный интерес, IP не хранится).
+  // Согласие «all» включает только долгоживущий cookie посетителя (повторные визиты) и внешние счётчики.
+  const consentAll = req.cookies.get(CONSENT_COOKIE)?.value === "all";
   let body: { path?: string; referrer?: string; utm?: Record<string, string> };
   try {
     body = await req.json();
@@ -26,12 +28,13 @@ export async function POST(req: NextRequest) {
       userId: auth?.userId ?? null,
       trackingLinkId: req.cookies.get("tr_link")?.value ?? null,
     },
-    { visitorId: req.cookies.get(VISITOR_COOKIE)?.value ?? null, sessionId: req.cookies.get(SESSION_COOKIE_A)?.value ?? null },
+    { visitorId: consentAll ? (req.cookies.get(VISITOR_COOKIE)?.value ?? null) : null, sessionId: req.cookies.get(SESSION_COOKIE_A)?.value ?? null },
   );
   const out = new NextResponse(null, { status: 204 });
   if (res) {
     const secure = process.env.NODE_ENV === "production";
-    out.cookies.set(VISITOR_COOKIE, res.visitorId, { maxAge: YEAR, sameSite: "lax", secure, httpOnly: true, path: "/" });
+    if (consentAll) out.cookies.set(VISITOR_COOKIE, res.visitorId, { maxAge: YEAR, sameSite: "lax", secure, httpOnly: true, path: "/" });
+    else if (req.cookies.get(VISITOR_COOKIE)) out.cookies.delete(VISITOR_COOKIE);
     out.cookies.set(SESSION_COOKIE_A, res.sessionId, { maxAge: 30 * 60, sameSite: "lax", secure, httpOnly: true, path: "/" });
     if (req.cookies.get("tr_link")) out.cookies.delete("tr_link");
   }
