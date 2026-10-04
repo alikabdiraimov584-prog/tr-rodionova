@@ -1,0 +1,58 @@
+# Продакшен на одном сервере: Caddy (TLS) → приложение. База — управляемый PostgreSQL хостера (DATABASE_URL в .env).
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=3000
+    volumes:
+      - uploads:/app/public/uploads
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/robots.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Ежедневные задачи: баллы, уведомления, рассылки, очистка — вызов /api/cron в 03:10 МСК
+  cron:
+    image: curlimages/curl:latest
+    restart: unless-stopped
+    depends_on:
+      - web
+    env_file: .env
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          now=$$(date -u +%H%M)
+          if [ "$$now" = "0010" ]; then
+            curl -fsS -H "Authorization: Bearer $$CRON_SECRET" http://web:3000/api/cron || echo "cron failed"
+            sleep 60
+          fi
+          sleep 30
+        done
+
+volumes:
+  uploads:
+  caddy_data:
+  caddy_config:

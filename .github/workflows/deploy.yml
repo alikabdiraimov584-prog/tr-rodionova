@@ -1,0 +1,19 @@
+# Автодеплой на продакшен-сервер при push в main. Секреты в GitHub → Settings → Secrets:
+#   DEPLOY_HOST (IP), DEPLOY_USER (deploy), DEPLOY_SSH_KEY (приватный ключ, которому разрешён вход под deploy)
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Обновить сервер
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: cd /opt/tr-rodionova && bash deploy/update.sh
