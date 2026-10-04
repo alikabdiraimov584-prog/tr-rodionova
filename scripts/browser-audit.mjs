@@ -139,13 +139,13 @@ async function guestJourney(viewport, label) {
     }
     return true;
   };
-  await step("главная", () => page.goto(base + "/", { waitUntil: "networkidle" }));
+  await step("главная", () => page.goto(base + "/", { waitUntil: "domcontentloaded" }));
   await step("cookie-баннер: только необходимые", () => page.locator("button:has-text('Только необходимые')").click({ timeout: 5000 }));
-  await step("каталог", () => page.goto(base + "/catalog", { waitUntil: "networkidle" }));
+  await step("каталог", () => page.goto(base + "/catalog", { waitUntil: "domcontentloaded" }));
   const hrefs = await page.locator("a[href^='/product/']").evaluateAll((a) => [...new Set(a.map((x) => x.getAttribute("href")))]).catch(() => []);
   let added = false;
   for (const href of hrefs.slice(0, 10)) {
-    await page.goto(base + href, { waitUntil: "networkidle" }).catch(() => null);
+    await page.goto(base + href, { waitUntil: "domcontentloaded" }).catch(() => null);
     const size = page.locator("button.min-w-12:not([disabled])").first();
     if (await size.count()) await size.click().catch(() => null);
     const btn = page.locator("button:has-text('Добавить в корзину')");
@@ -157,7 +157,7 @@ async function guestJourney(viewport, label) {
   }
   if (!added) note("journey", `${label} добавление в корзину`, "ни у одного из первых 10 товаров нет кнопки «Добавить в корзину» или она не сработала");
   await step("корзина открывается с товаром", async () => {
-    await page.goto(base + "/cart", { waitUntil: "networkidle" });
+    await page.goto(base + "/cart", { waitUntil: "domcontentloaded" });
     if ((await page.locator("select[name='quantity']").count()) === 0) throw new Error("корзина пуста после добавления");
   });
   await step("корзина: изменить количество", async () => {
@@ -167,30 +167,30 @@ async function guestJourney(viewport, label) {
     await page.waitForLoadState("networkidle");
   });
   await step("оформление: шаг 1", async () => {
-    await page.goto(base + "/checkout", { waitUntil: "networkidle" });
+    await page.goto(base + "/checkout", { waitUntil: "domcontentloaded" });
     await page.locator('input[name="firstName"]').waitFor({ timeout: 15000 });
     await page.fill('input[name="firstName"]', "Тест");
     await page.fill('input[name="email"]', "audit@example.com");
     await page.fill('input[name="phone"]', "+79990000000");
     await page.locator('label:has(input[name="deliveryMethod"][value="COURIER"])').click();
     await page.fill('textarea[name="addressText"]', "Москва, Тверская, 1");
-    await page.locator("button:has-text('Далее')").first().click();
+    await page.locator("button:visible:has-text('Далее')").first().click();
     await page.waitForTimeout(400);
     if (await page.locator('section[data-step="1"]').getAttribute("hidden") !== null) throw new Error("шаг 2 не открылся");
   });
   await step("оформление: шаг 2 (промокод, оплата)", async () => {
-    await page.locator("summary:has-text('Промокод')").click();
+    await page.locator("summary:visible:has-text('Промокод')").first().click();
     await page.fill('input[placeholder="WELCOME10"]', "WELCOME10");
-    await page.locator("button:has-text('Применить')").first().click();
+    await page.locator("button:visible:has-text('Применить')").first().click();
     await page.waitForTimeout(1200);
     await page.locator('label:has(input[name="paymentMethod"][value="SBP"])').click();
-    await page.locator("button:has-text('Далее')").first().click();
+    await page.locator("button:visible:has-text('Далее')").first().click();
     await page.waitForTimeout(400);
     if (await page.locator('section[data-step="2"]').getAttribute("hidden") !== null) throw new Error("шаг 3 не открылся");
     if ((await page.locator("button:has-text('Подтвердить')").count()) === 0) throw new Error("нет кнопки подтверждения");
   });
   await step("корзина: удалить товар", async () => {
-    await page.goto(base + "/cart", { waitUntil: "networkidle" });
+    await page.goto(base + "/cart", { waitUntil: "domcontentloaded" });
     const before = await page.locator("select[name='quantity']").count();
     await page.locator("button:has-text('Удалить')").first().click();
     // ждём, пока серверное действие перерисует корзину
@@ -212,12 +212,12 @@ async function guestJourney(viewport, label) {
     if (/Application error|Internal Server Error/.test((await page.textContent("body")) ?? "")) throw new Error("ошибка страницы");
   });
   await step("поиск и фильтры каталога", async () => {
-    await page.goto(base + "/catalog?q=платье", { waitUntil: "networkidle" });
-    await page.goto(base + "/catalog?sort=price_asc&size=S", { waitUntil: "networkidle" });
+    await page.goto(base + "/catalog?q=платье", { waitUntil: "domcontentloaded" });
+    await page.goto(base + "/catalog?sort=price_asc&size=S", { waitUntil: "domcontentloaded" });
   });
   await step("мобильное меню", async () => {
     if (viewport.width > 700) return;
-    await page.goto(base + "/", { waitUntil: "networkidle" });
+    await page.goto(base + "/", { waitUntil: "domcontentloaded" });
     await page.locator("header button").first().click();
     await page.locator("a[href='/cart']").first().waitFor({ timeout: 5000 });
   });
@@ -240,30 +240,30 @@ async function crmAudit() {
   await page.click("form button.btn-primary");
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => null);
   const check = async (name, fn) => { try { await fn(); } catch (e) { note("crm", name, e.message.split("\n")[0]); } };
-  await check("поиск по заказам", async () => { await page.goto(`${base}/crm/orders?q=1`, { waitUntil: "networkidle" }); });
-  await check("фильтр заказов по статусу", async () => { await page.goto(`${base}/crm/orders?status=PAID`, { waitUntil: "networkidle" }); });
+  await check("поиск по заказам", async () => { await page.goto(`${base}/crm/orders?q=1`, { waitUntil: "domcontentloaded" }); });
+  await check("фильтр заказов по статусу", async () => { await page.goto(`${base}/crm/orders?status=PAID`, { waitUntil: "domcontentloaded" }); });
   await check("карточка заказа и печать", async () => {
-    await page.goto(`${base}/crm/orders`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/crm/orders`, { waitUntil: "domcontentloaded" });
     const link = page.locator("a[href^='/crm/orders/']:not([href$='/new'])").first();
     if (!(await link.count())) return;
     const href = await link.getAttribute("href");
-    await page.goto(base + href, { waitUntil: "networkidle" });
+    await page.goto(base + href, { waitUntil: "domcontentloaded" });
     const r = await page.request.get(base + href + "/print");
     if (r.status() !== 200) throw new Error("печать: HTTP " + r.status());
   });
   await check("карточка клиентки", async () => {
-    await page.goto(`${base}/crm/customers`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/crm/customers`, { waitUntil: "domcontentloaded" });
     const link = page.locator("a[href^='/crm/customers/']:not([href*='export'])").first();
-    if (await link.count()) await page.goto(base + (await link.getAttribute("href")), { waitUntil: "networkidle" });
+    if (await link.count()) await page.goto(base + (await link.getAttribute("href")), { waitUntil: "domcontentloaded" });
   });
   await check("карточка товара", async () => {
-    await page.goto(`${base}/crm/products`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/crm/products`, { waitUntil: "domcontentloaded" });
     const link = page.locator("a[href^='/crm/products/']:not([href*='export']):not([href$='/new'])").first();
-    if (await link.count()) await page.goto(base + (await link.getAttribute("href")), { waitUntil: "networkidle" });
+    if (await link.count()) await page.goto(base + (await link.getAttribute("href")), { waitUntil: "domcontentloaded" });
   });
-  await check("аналитика за 90 дней", async () => { await page.goto(`${base}/crm/analytics?period=90`, { waitUntil: "networkidle" }); });
+  await check("аналитика за 90 дней", async () => { await page.goto(`${base}/crm/analytics?period=90`, { waitUntil: "domcontentloaded" }); });
   await check("выход", async () => {
-    await page.goto(`${base}/crm`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/crm`, { waitUntil: "domcontentloaded" });
     await page.locator("summary").first().click();
     await page.locator("button:has-text('Выйти')").click();
     await page.waitForURL((u) => !u.pathname.startsWith("/crm"), { timeout: 15000 });
@@ -274,13 +274,16 @@ async function crmAudit() {
 }
 
 console.log("Аудит:", base, `(лимит ${maxPages} страниц, ${budgetMs / 60000} мин)`);
-const siteDesktop = await crawl("site-desktop", { width: 1366, height: 900 }, ["/"]);
-const siteMobile = await crawl("site-mobile", { width: 390, height: 844 }, ["/", "/catalog", "/cart", "/login", "/register", "/journal", "/lookbook", "/gift", "/circle"]);
+const only = process.env.ONLY ?? ""; // ONLY=journey|crm — запустить одну часть
+const siteDesktop = only && only !== "site" ? 0 : await crawl("site-desktop", { width: 1366, height: 900 }, ["/"]);
+const siteMobile = only && only !== "site" ? 0 : await crawl("site-mobile", { width: 390, height: 844 }, ["/", "/catalog", "/cart", "/login", "/register", "/journal", "/lookbook", "/gift", "/circle"]);
 log("гостевой путь");
-await guestJourney({ width: 1366, height: 900 }, "desktop");
-await guestJourney({ width: 390, height: 844 }, "mobile");
+if (!only || only === "journey") {
+  await guestJourney({ width: 1366, height: 900 }, "desktop");
+  await guestJourney({ width: 390, height: 844 }, "mobile");
+}
 log("CRM");
-await crmAudit();
+if (!only || only === "crm") await crmAudit();
 await browser.close();
 
 console.log(`Страниц: сайт ${siteDesktop ?? 0} (десктоп) + ${siteMobile ?? 0} (телефон); всего загрузок ${stats.pages}; ссылок ${stats.links}; безопасных кнопок нажато ${stats.buttonsClicked}; форм на страницах ${stats.forms}`);
