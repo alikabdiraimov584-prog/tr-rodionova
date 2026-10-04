@@ -95,7 +95,7 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
 
         <div className="card space-y-4 p-5">
           <div className="flex flex-wrap items-center gap-3"><div className="eyebrow">Аудитория</div>
-            <select className="ml-auto border border-line bg-white px-2 py-1 text-xs" value="" onChange={(e) => { const p = opts.presets.find((x) => x.key === e.target.value); if (p) setSeg(p.segment); }}>
+            <select className="ml-auto min-w-0 max-w-full border border-line bg-white px-2 py-1 text-xs" value="" onChange={(e) => { const p = opts.presets.find((x) => x.key === e.target.value); if (p) setSeg(p.segment); }}>
               <option value="">Готовые сегменты…</option>
               {opts.presets.map((p) => <option key={p.key} value={p.key}>{p.name} — {p.hint}</option>)}
             </select>

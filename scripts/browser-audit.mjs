@@ -104,7 +104,9 @@ async function crawl(role, viewport, startPaths, login) {
       if (!(tag === "summary" || (type === "button" && !DESTRUCTIVE.test(text)) || (tag === "button" && !inForm && !DESTRUCTIVE.test(text)))) continue;
       const before = page.url();
       try {
-        await page.locator(SEL).nth(i).click({ timeout: 2000 });
+        // после раскрытия <details> индексы сдвигаются — ищем элемент по тексту, индекс только для безымянных
+        const target = text ? page.locator(SEL).filter({ hasText: text.slice(0, 40) }).first() : page.locator(SEL).nth(i);
+        await target.click({ timeout: 2000 });
         stats.buttonsClicked++;
         await page.waitForTimeout(150);
         if (page.url() !== before) await page.goBack({ waitUntil: "domcontentloaded" }).catch(() => null);

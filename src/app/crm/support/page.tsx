@@ -122,9 +122,9 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
         </details>
       )}
 
-      <div className="grid min-h-[calc(100vh-120px)] lg:grid-cols-[320px_1fr] xl:grid-cols-[340px_1fr] 2xl:grid-cols-[340px_1fr_320px]">
+      <div className="grid min-h-[calc(100vh-120px)] lg:grid-cols-[320px_1fr] xl:grid-cols-[340px_1fr] 2xl:grid-cols-[340px_1fr_320px] [&>*]:min-w-0">
         {/* Список диалогов */}
-        <aside className={`border-r border-line bg-white ${conv ? "hidden lg:block" : ""}`}>
+        <aside className={`min-w-0 overflow-hidden border-r border-line bg-white ${conv ? "hidden lg:block" : ""}`}>
           <div className="space-y-2 border-b border-line p-3">
             <div className="flex flex-wrap gap-1 text-[0.65rem] uppercase tracking-[0.12em]">
               {[["mine", `Мои · ${counts[0]}`], ["unassigned", `Без ответственного · ${counts[1]}`], ["all", "Все"]].map(([k, v]) => (
