@@ -31,7 +31,12 @@ export async function demoPaymentsAllowed() {
   return process.env.NODE_ENV !== "production" || process.env.ALLOW_DEMO_PAYMENTS === "1";
 }
 
-const METHODS: Partial<Record<PaymentMethod, string>> = { CARD: "bank_card", SBP: "sbp", INSTALLMENT: "installments" };
+/**
+ * Способ оплаты для ЮKassa. Для карты и рассрочки тип не фиксируем: умная платёжная страница ЮKassa сама покажет
+ * всё, что подключено в кабинете магазина (карта, SberPay, T-Pay, Mir Pay, «Плати частями» sber_bnpl, Сплит, Долями).
+ * Старый тип "installments" ЮKassa отключила с 1 июля 2024 года.
+ */
+const METHODS: Partial<Record<PaymentMethod, string>> = { SBP: "sbp" };
 
 async function api<T>(path: string, body?: unknown, idempotenceKey?: string): Promise<T> {
   const c = await credentials();

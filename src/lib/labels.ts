@@ -29,7 +29,7 @@ export type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "gold
 export const PAYMENT_METHOD: Record<PaymentMethod, string> = {
   CARD: "Банковская карта",
   SBP: "СБП",
-  INSTALLMENT: "Рассрочка",
+  INSTALLMENT: "Частями: Сплит, Долями, Сбер",
   CASH_ON_DELIVERY: "При получении",
   MANUAL: "Перевод по реквизитам",
 };
