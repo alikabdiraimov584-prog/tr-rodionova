@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { createOrderPayment, paymentsEnabled } from "@/lib/payments/provider";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser, requireUser } from "@/lib/auth";
@@ -97,6 +100,20 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
     return { error: errorMessage(e) };
   }
   revalidatePath("/", "layout");
+  // онлайн-оплата: сразу на платёжную страницу, без лишнего экрана между подтверждением и оплатой
+  if (d.paymentMethod === "CARD" || d.paymentMethod === "SBP" || d.paymentMethod === "INSTALLMENT") {
+    if (await paymentsEnabled()) {
+      try {
+        const h = await headers();
+        const base = process.env.APP_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+        const url = await createOrderPayment(orderId, `${base}/account/orders/${orderId}?paid=1`);
+        redirect(url);
+      } catch (e) {
+        if (isRedirectError(e)) throw e;
+        // провайдер не ответил: заказ создан, оплатить можно со страницы заказа
+      }
+    }
+  }
   redirect(`/account/orders/${orderId}?created=1`);
 }
 
