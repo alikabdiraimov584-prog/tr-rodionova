@@ -6,6 +6,9 @@ import { activeIntegration } from "@/lib/integrations/store";
 const grotesk = Hanken_Grotesk({ variable: "--font-grotesk", subsets: ["latin", "latin-ext"], weight: ["300", "400", "500"] });
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"] });
 
+// CSP с nonce на каждый запрос: ни одна страница не может быть статической, иначе её скрипты останутся без nonce
+export const dynamic = "force-dynamic";
+
 const siteUrl = (process.env.APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
 export async function generateMetadata(): Promise<Metadata> {

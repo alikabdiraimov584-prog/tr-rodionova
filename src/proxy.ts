@@ -22,7 +22,7 @@ async function readSession(req: NextRequest) {
 function csp(nonce: string, dev: boolean) {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://mc.yandex.ru https://www.googletagmanager.com${dev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://mc.yandex.ru https://www.googletagmanager.com${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
@@ -40,7 +40,8 @@ function csp(nonce: string, dev: boolean) {
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const policy = csp(nonce, process.env.NODE_ENV !== "production");
+  // апгрейд http→https только когда сайт действительно обслуживается по https (APP_URL)
+  const policy = csp(nonce, !(process.env.APP_URL ?? "").startsWith("https://"));
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", policy);
