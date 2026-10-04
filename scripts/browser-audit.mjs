@@ -187,6 +187,7 @@ async function guestJourney(viewport, label) {
   await step("оформление: шаг 1", async () => {
     await page.goto(base + "/checkout", { waitUntil: "domcontentloaded" });
     await page.locator('input[name="firstName"]').waitFor({ timeout: 15000 });
+    await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => null); // как живой покупатель: заполняем после загрузки скриптов
     await page.fill('input[name="firstName"]', "Тест");
     await page.fill('input[name="email"]', "audit@example.com");
     await page.fill('input[name="phone"]', "+79990000000");

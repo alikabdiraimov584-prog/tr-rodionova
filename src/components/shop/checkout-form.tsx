@@ -38,6 +38,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   const [quoting, startQuote] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressRef = useRef<HTMLTextAreaElement>(null);
 
   const deliveryMethods = (Object.keys(DELIVERY_METHOD) as DeliveryMethod[]).filter((m) => m !== "PICKUP" || showroom);
   const visibleDelivery = moreDelivery || !PRIMARY_DELIVERY.includes(delivery) ? deliveryMethods : deliveryMethods.filter((m) => PRIMARY_DELIVERY.includes(m));
@@ -76,7 +77,10 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
         return;
       }
     }
-    if (step === 0 && needsAddress && !addressId && addressText.trim().length < 5) {
+    // адрес берём из поля, а не из состояния: текст, набранный до загрузки скриптов, не должен теряться
+    const typedAddress = section?.querySelector<HTMLTextAreaElement>('textarea[name="addressText"]')?.value ?? addressText;
+    if (typedAddress !== addressText) setAddressText(typedAddress);
+    if (step === 0 && needsAddress && !addressId && typedAddress.trim().length < 5) {
       setStepError("Укажите адрес доставки");
       return;
     }
@@ -179,12 +183,12 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
                   <div className="relative">
                     <label className="block">
                       <span className="label">{delivery === "CDEK" || delivery === "BOXBERRY" ? "Адрес или пункт выдачи" : "Адрес доставки"}</span>
-                      <textarea name="addressText" rows={2} value={addressText} onChange={(e) => onAddressInput(e.target.value)} autoComplete="street-address" className="input" placeholder="Город, улица, дом, квартира, индекс" />
+                      <textarea name="addressText" rows={2} ref={addressRef} defaultValue={addressText} onChange={(e) => onAddressInput(e.target.value)} autoComplete="street-address" className="input" placeholder="Город, улица, дом, квартира, индекс" />
                     </label>
                     {hints.length > 0 && (
                       <ul className="absolute inset-x-0 z-10 mt-1 border border-line bg-white text-sm shadow-lg">
                         {hints.map((h) => (
-                          <li key={h.value}><button type="button" onClick={() => { setAddressText(h.value); setHints([]); }} className="block w-full px-3 py-2 text-left hover:bg-sand">{h.value}</button></li>
+                          <li key={h.value}><button type="button" onClick={() => { setAddressText(h.value); if (addressRef.current) addressRef.current.value = h.value; setHints([]); }} className="block w-full px-3 py-2 text-left hover:bg-sand">{h.value}</button></li>
                         ))}
                       </ul>
                     )}
