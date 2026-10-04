@@ -67,8 +67,11 @@ if [ ! -f "$APP_DIR/.env" ]; then
   chown deploy:deploy "$APP_DIR/.env" && chmod 600 "$APP_DIR/.env"
 fi
 
-echo "== Ежедневный бэкап базы в 02:30 МСК (23:30 UTC)"
-( crontab -u deploy -l 2>/dev/null | grep -v backup.sh; echo "30 23 * * * cd $APP_DIR && bash deploy/backup.sh >> /home/deploy/backup.log 2>&1" ) | crontab -u deploy -
+echo "== Планировщик: бэкап базы в 02:30 МСК (23:30 UTC) и автообновление из GitHub каждые 10 минут"
+apt-get install -yq cron >/dev/null && systemctl enable --now cron >/dev/null
+( crontab -u deploy -l 2>/dev/null | grep -vE "backup.sh|autoupdate.sh"
+  echo "30 23 * * * cd $APP_DIR && bash deploy/backup.sh >> /home/deploy/backup.log 2>&1"
+  echo "*/10 * * * * cd $APP_DIR && bash deploy/autoupdate.sh >> /home/deploy/autoupdate.log 2>&1" ) | crontab -u deploy -
 
 cat <<MSG
 

@@ -1,18 +1,22 @@
 # Внешняя проверка продакшена: DNS, сертификат, ответ сайта и CRM. Запуск вручную (Actions → Check site).
 name: Check site
 on:
+  schedule:
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       domain:
         description: Домен
         default: tr-rodionova.ru
+env:
+  DOMAIN: ${{ github.event.inputs.domain || 'tr-rodionova.ru' }}
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - name: DNS
         run: |
-          D="${{ github.event.inputs.domain }}"
+          D="$DOMAIN"
           echo "== A @8.8.8.8:   $(dig +short "$D" @8.8.8.8 | tr '\n' ' ')"
           echo "== A www:        $(dig +short "www.$D" @8.8.8.8 | tr '\n' ' ')"
           echo "== NS:           $(dig +short NS "$D" | tr '\n' ' ')"
@@ -20,14 +24,18 @@ jobs:
           echo "== A @ns1.reg.ru: $(dig +short "$D" @ns1.reg.ru | tr '\n' ' ')"
       - name: TLS
         run: |
-          D="${{ github.event.inputs.domain }}"
+          D="$DOMAIN"
           echo | openssl s_client -servername "$D" -connect "$D:443" 2>/dev/null | openssl x509 -noout -subject -issuer -dates -ext subjectAltName || echo "TLS: нет соединения"
       - name: HTTP
         run: |
-          D="${{ github.event.inputs.domain }}"
+          D="$DOMAIN"
           for p in / /collections /journal /crm /login /robots.txt /sitemap.xml; do
-            printf '%-14s %s\n' "$p" "$(curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}' "https://$D$p" 2>&1)"
+            printf '%-14s %s\n' "$p" "$(curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}' "https://$D$p" 2>&1 || true)"
           done
           echo "== headers"; curl -sSI -m 30 "https://$D/" | grep -iE "^(HTTP|strict-transport|content-security|x-frame|server)" || true
           echo "== title"; curl -sS -m 30 "https://$D/" | grep -oE "<title>[^<]*" | head -1
-          echo "== http→https"; curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}\n' "http://$D/"
+          echo "== http→https"; curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}\n' "http://$D/" || true
+      - name: Итог
+        run: |
+          code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' "https://$DOMAIN/" || echo 000)
+          echo "Главная: HTTP $code"; [ "$code" = "200" ]

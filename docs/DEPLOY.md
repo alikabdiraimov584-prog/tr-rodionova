@@ -21,7 +21,10 @@ cd /opt/tr-rodionova && sudo -u deploy docker compose up -d --build
 Caddy получит TLS-сертификат сам, как только A-запись домена укажет на сервер. Приложение применит миграции, создаст администратора и загрузит вещи бренда.
 
 ## Обновления
-`cd /opt/tr-rodionova && sudo -u deploy bash deploy/update.sh` — или автодеплой: в GitHub добавьте секреты `DEPLOY_HOST`, `DEPLOY_USER=deploy`, `DEPLOY_SSH_KEY` и переменную `DEPLOY_ENABLED=true`.
+Автоматически: `deploy/autoupdate.sh` в cron пользователя `deploy` раз в 10 минут проверяет `main` и при новых коммитах пересобирает приложение (лог `/home/deploy/autoupdate.log`). Вручную: `cd /opt/tr-rodionova && sudo -u deploy bash deploy/update.sh`. Альтернатива через GitHub Actions (push → ssh): секреты `DEPLOY_HOST`, `DEPLOY_USER=deploy`, `DEPLOY_SSH_KEY` и переменная `DEPLOY_ENABLED=true`.
+
+## Проверка снаружи
+GitHub Actions → «Check site»: DNS, сертификат, коды ответов витрины и CRM. Запускается вручную и каждый час; при падении GitHub шлёт письмо владельцу репозитория.
 
 ## После запуска
 - CRM → Интеграции: ЮKassa, доставка, Метрика, Вебмастер; CRM → Настройки: реквизиты продавца; каждому сотруднику включить 2FA.
