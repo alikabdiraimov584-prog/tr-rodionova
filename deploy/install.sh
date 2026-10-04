@@ -34,10 +34,14 @@ findtime = 10m
 JAIL
 systemctl enable --now fail2ban
 
-echo "== SSH: только ключи, без root по паролю"
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
-systemctl reload ssh || systemctl reload sshd || true
+echo "== SSH: вход по паролю отключается только если на сервере уже есть SSH-ключ (иначе можно потерять доступ)"
+if [ -s /root/.ssh/authorized_keys ]; then
+  sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+  systemctl reload ssh || systemctl reload sshd || true
+else
+  echo "   SSH-ключ не найден: вход по паролю оставлен. Добавьте ключ и выполните: sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && systemctl reload ssh"
+fi
 
 echo "== Docker"
 if ! command -v docker >/dev/null; then
