@@ -330,6 +330,10 @@ model Order {
   addressText   String?
   trackingNumber String?
   deliveryCost  Int            @default(0)
+  // Отправление в службе доставки (СДЭК): идентификатор, последний статус службы и время сверки
+  shipmentId    String?
+  shipmentStatus String?
+  shipmentSyncedAt DateTime?
   // Суммы в копейках
   subtotal      Int
   discount      Int            @default(0)

@@ -10,6 +10,9 @@ import { StatusForm, ReturnForm } from "@/components/crm/order-forms";
 import { SubmitButton } from "@/components/form";
 import { updateOrderInfoAction } from "@/app/actions/crm-orders";
 import { can } from "@/lib/permissions";
+import { cdekConfig, cdekStatusLabel } from "@/lib/delivery/cdek";
+import { trackingUrl } from "@/lib/delivery";
+import { CdekShipmentForm } from "@/components/crm/shipment-forms";
 
 export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">) {
   const me = await requireSection("orders");
@@ -31,6 +34,8 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
   if (!order) notFound();
   const staff = await db.user.findMany({ where: { id: { in: order.history.map((h) => h.createdBy).filter((x): x is string => !!x) } }, select: { id: true, firstName: true } });
   const staffName = new Map(staff.map((s) => [s.id, s.firstName]));
+  const cdek = order.deliveryMethod === "CDEK" ? await cdekConfig() : null;
+  const track = trackingUrl(order.deliveryMethod, order.trackingNumber);
   const cogs = order.items.reduce((s, i) => s + (i.costPrice ?? 0) * (i.quantity - i.returnedQty), 0);
   const margin = order.total - order.deliveryCost - cogs;
   return (
@@ -96,6 +101,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               <div className="text-muted">
                 {order.address ? [order.address.city, order.address.street, order.address.building, order.address.apartment && `кв. ${order.address.apartment}`].filter(Boolean).join(", ") : order.addressText ?? "—"}
               </div>
+              {track && <a href={track} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs underline">Отследить {order.trackingNumber}</a>}
               {order.payments.map((p) => (
                 <div key={p.id} className="mt-2 flex items-center justify-between">
                   <span>{PAYMENT_METHOD[p.method]} · {formatMoney(p.amount)}</span>
@@ -104,6 +110,23 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               ))}
             </div>
           </div>
+
+          {order.deliveryMethod === "CDEK" && (cdek || order.shipmentId) && <div className="card p-5">
+            <Eyebrow>Отправление СДЭК{cdek?.testMode ? " · тестовый контур" : ""}</Eyebrow>
+            <div className="mt-3">
+              {canEdit ? (
+                <CdekShipmentForm
+                  orderId={order.id}
+                  shipmentId={order.shipmentId}
+                  statusLabel={cdekStatusLabel(order.shipmentStatus)}
+                  syncedAt={order.shipmentSyncedAt ? formatDate(order.shipmentSyncedAt, true) : null}
+                  canCreate={!!cdek && ["PAID", "CONFIRMED", "PACKING"].includes(order.status)}
+                />
+              ) : (
+                <p className="text-sm">Статус СДЭК: {cdekStatusLabel(order.shipmentStatus)}</p>
+              )}
+            </div>
+          </div>}
 
           {canEdit && <div className="card p-5">
             <Eyebrow>Трек-номер и заметка менеджера</Eyebrow>

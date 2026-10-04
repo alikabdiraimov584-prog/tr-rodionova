@@ -73,19 +73,29 @@ export const INTEGRATIONS: IntegrationDef[] = [
     key: "cdek",
     group: "delivery",
     name: "СДЭК",
-    summary: "Пункты выдачи и курьер по России. Трек-ссылки в кабинете клиентки.",
-    effect: "После проверки заказы со способом «СДЭК» получают ссылку на отслеживание по трек-номеру.",
+    summary: "Пункты выдачи и курьер по России. Отправления создаются из карточки заказа, статусы и накладные подтягиваются сами.",
+    effect: "Кнопка «Создать отправление» в заказах со способом «СДЭК», автоматический перевод в «В доставке» и «Доставлен», трек-ссылка в кабинете клиентки.",
     fields: [
       { key: "account", label: "Account (client_id)", hint: "Договор СДЭК → Интеграция → API" },
       { key: "securePassword", label: "Secure password (client_secret)", secret: true },
-      { key: "senderCity", label: "Код города отправителя", placeholder: "44 — Москва" },
+      { key: "senderCity", label: "Код города отправителя", placeholder: "44 — Москва, 137 — Санкт-Петербург" },
+      { key: "tariffCode", label: "Тариф", placeholder: "137 — склад-дверь (курьер), 136 — склад-склад (ПВЗ)" },
+      { key: "senderName", label: "Отправитель (название)", placeholder: "T.Rodionova" },
+      { key: "senderPhone", label: "Телефон отправителя", placeholder: "+7 ..." },
+      { key: "itemWeightGrams", label: "Вес одной вещи, г", placeholder: "700" },
+      { key: "testMode", label: "Тестовый контур (1 — да)", hint: "api.edu.cdek.ru с тестовыми ключами СДЭК; для боевых ключей оставьте пустым" },
     ],
-    guide: ["Запросите доступ к API v2 у менеджера СДЭК по договору.", "Вставьте account и secure password, нажмите «Проверить подключение».", "Код города отправителя нужен для расчёта тарифов (44 — Москва, 137 — Санкт-Петербург)."],
+    guide: [
+      "Запросите доступ к API v2 у менеджера СДЭК по договору (или возьмите тестовые ключи из документации СДЭК и поставьте «Тестовый контур» = 1).",
+      "Вставьте account и secure password, укажите код города и тариф, нажмите «Проверить подключение».",
+      "После включения в оплаченном заказе со способом «СДЭК» появится кнопка «Создать отправление»; ночная задача сверяет статусы.",
+    ],
     test: async (c) => {
       if (!c.account || !c.securePassword) return { ok: false, error: "Укажите account и secure password" };
+      const test = c.testMode === "1" || c.testMode === "true" || c.testMode === "да";
       const params = new URLSearchParams({ grant_type: "client_credentials", client_id: c.account, client_secret: c.securePassword });
-      const r = await json<{ access_token?: string; error_description?: string }>(`https://api.cdek.ru/v2/oauth/token?${params}`, { method: "POST" });
-      return r.body.access_token ? { ok: true, info: "Токен получен, API v2 доступен" } : { ok: false, error: r.body.error_description ?? `СДЭК ответил HTTP ${r.status}` };
+      const r = await json<{ access_token?: string; error_description?: string }>(`https://${test ? "api.edu.cdek.ru" : "api.cdek.ru"}/v2/oauth/token?${params}`, { method: "POST" });
+      return r.body.access_token ? { ok: true, info: `Токен получен, API v2 доступен${test ? " (тестовый контур)" : ""}` } : { ok: false, error: r.body.error_description ?? `СДЭК ответил HTTP ${r.status}` };
     },
   },
   {

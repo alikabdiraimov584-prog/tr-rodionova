@@ -1,3 +1,4 @@
+import { syncAllCdekShipments } from "@/lib/delivery/cdek";
 import "server-only";
 import { db } from "@/lib/db";
 import { addPoints, expirePoints } from "@/lib/loyalty";
@@ -93,11 +94,12 @@ export async function runDailyJobs(actorId: string | null = null) {
   const expiringNotified = await notifyExpiringPoints(7);
   const cartReminders = await notifyAbandonedCarts();
   const purged = await purgeRateLimits();
+  const shipments = await syncAllCdekShipments();
   // веб-аналитика старше 24 месяцев удаляется: срок хранения по политике ПДн
   const analyticsBorder = new Date(Date.now() - 730 * 86_400_000);
   await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: analyticsBorder } } });
   const oldSessions = await db.visitorSession.deleteMany({ where: { startedAt: { lt: analyticsBorder } } });
-  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, purged, oldSessions: oldSessions.count };
+  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, purged, shipments, oldSessions: oldSessions.count };
   await audit(actorId, "jobs.daily", "System", null, result);
   return result;
 }
