@@ -51,6 +51,8 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
     ] },
   ];
   const visible = groups.map((g) => ({ ...g, items: g.items.filter((i) => can(user.role, i.section)) })).filter((g) => g.items.length);
+  // 2FA и смена пароля доступны любому сотруднику: отдельная группа без проверки раздела
+  visible.push({ title: "Аккаунт", items: [{ href: "/crm/security", label: "Безопасность входа", section: "dashboard" }] });
   const initials = `${user.firstName[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase();
   return (
     <div className="crm flex min-h-screen flex-col bg-ivory text-ink">
