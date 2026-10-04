@@ -147,7 +147,15 @@ async function guestJourney(viewport, label) {
       const opened = await page.waitForFunction((n) => !document.querySelector(`section[data-step="${n}"]`)?.hasAttribute("hidden"), step, { timeout: 5000 }).then(() => true).catch(() => false);
       if (opened) return;
     }
-    throw new Error(`шаг ${step + 1} не открылся`);
+    // диагностика: невалидные поля текущего шага и сообщение об ошибке
+    const diag = await page.evaluate((n) => {
+      const sec = document.querySelector(`section[data-step="${n - 1}"]`);
+      const invalid = sec ? [...sec.querySelectorAll(":invalid")].map((el) => `${el.name || el.tagName}:${el.validationMessage}`) : ["нет секции"];
+      const err = document.querySelector("p.text-danger")?.textContent?.trim() ?? "";
+      const hydrated = !!document.querySelector("form[data-hydrated], form") && typeof window.__next_f !== "undefined";
+      return { invalid, err, hydrated, steps: [...document.querySelectorAll("section[data-step]")].map((s) => `${s.dataset.step}:${s.hasAttribute("hidden") ? "hidden" : "shown"}`) };
+    }, step).catch((e) => ({ invalid: [e.message] }));
+    throw new Error(`шаг ${step + 1} не открылся: ${JSON.stringify(diag)}`);
   };
   await step("главная", () => page.goto(base + "/", { waitUntil: "domcontentloaded" }));
   await step("cookie-баннер: только необходимые", () => page.locator("button:has-text('Только необходимые')").click({ timeout: 5000 }));
