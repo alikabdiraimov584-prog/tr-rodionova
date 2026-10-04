@@ -37,5 +37,5 @@ jobs:
           echo "== http→https"; curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}\n' "http://$D/" || true
       - name: Итог
         run: |
-          code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' "https://$DOMAIN/" || echo 000)
+          code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' "https://$DOMAIN/" 2>/dev/null || true)
           echo "Главная: HTTP $code"; [ "$code" = "200" ]
