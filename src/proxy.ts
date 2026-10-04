@@ -32,7 +32,8 @@ function csp(nonce: string, dev: boolean) {
     "form-action 'self' https://yoomoney.ru https://*.yookassa.ru",
     "base-uri 'self'",
     "object-src 'none'",
-    "upgrade-insecure-requests",
+    // по http (локальный стенд) апгрейд ломал бы запросы к самому себе
+    ...(dev ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 }
 
