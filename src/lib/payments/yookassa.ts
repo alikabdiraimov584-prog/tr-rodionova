@@ -3,29 +3,40 @@ import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { markOrderPaid } from "@/lib/orders";
 import { activateGiftCard } from "@/lib/gift-payment";
+import { activeIntegration } from "@/lib/integrations/store";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 
 /**
  * ЮKassa (API v3). Ключи: YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY.
  * Без ключей работает демо-режим: заказ отмечается оплаченным по кнопке в кабинете.
  */
-export function yookassaEnabled() {
-  return !!(process.env.YOOKASSA_SHOP_ID && process.env.YOOKASSA_SECRET_KEY);
+/** Ключи: CRM → Интеграции → ЮKassa (приоритет), иначе переменные окружения. */
+async function credentials() {
+  const i = await activeIntegration("yookassa");
+  if (i?.config.shopId && i.config.secretKey) return { shopId: i.config.shopId, secretKey: i.config.secretKey };
+  if (process.env.YOOKASSA_SHOP_ID && process.env.YOOKASSA_SECRET_KEY) return { shopId: process.env.YOOKASSA_SHOP_ID, secretKey: process.env.YOOKASSA_SECRET_KEY };
+  return null;
+}
+
+export async function yookassaEnabled() {
+  return !!(await credentials());
 }
 
 /**
  * Демо-оплата (кнопка «Оплатить (демо)») разрешена только вне продакшена или при явном
  * ALLOW_DEMO_PAYMENTS=1. В продакшене без ключей ЮKassa оплата недоступна, а не бесплатна.
  */
-export function demoPaymentsAllowed() {
-  if (yookassaEnabled()) return false;
+export async function demoPaymentsAllowed() {
+  if (await yookassaEnabled()) return false;
   return process.env.NODE_ENV !== "production" || process.env.ALLOW_DEMO_PAYMENTS === "1";
 }
 
 const METHODS: Partial<Record<PaymentMethod, string>> = { CARD: "bank_card", SBP: "sbp", INSTALLMENT: "installments" };
 
 async function api<T>(path: string, body?: unknown, idempotenceKey?: string): Promise<T> {
-  const auth = Buffer.from(`${process.env.YOOKASSA_SHOP_ID}:${process.env.YOOKASSA_SECRET_KEY}`).toString("base64");
+  const c = await credentials();
+  if (!c) throw new Error("ЮKassa не подключена: добавьте ключи в CRM → Интеграции");
+  const auth = Buffer.from(`${c.shopId}:${c.secretKey}`).toString("base64");
   const res = await fetch(`https://api.yookassa.ru/v3${path}`, {
     method: body ? "POST" : "GET",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json", ...(idempotenceKey ? { "Idempotence-Key": idempotenceKey } : {}) },
@@ -135,7 +146,7 @@ export async function handleYookassaEvent(body: { event?: string; object?: { id?
 
 /** То же для сертификата: при возврате с платёжной страницы подтянуть статус, если вебхук ещё не пришёл. */
 export async function syncGiftCardPayment(cardId: string) {
-  if (!yookassaEnabled()) return;
+  if (!(await yookassaEnabled())) return;
   const card = await db.giftCard.findFirst({ where: { id: cardId, status: "PENDING", paymentId: { not: null } } });
   if (!card?.paymentId) return;
   await handleYookassaEvent({ object: { id: card.paymentId } });
@@ -143,7 +154,7 @@ export async function syncGiftCardPayment(cardId: string) {
 
 /** Синхронизировать статус при возврате клиента с платёжной страницы (на случай задержки вебхука). */
 export async function syncOrderPayment(orderId: string) {
-  if (!yookassaEnabled()) return;
+  if (!(await yookassaEnabled())) return;
   const payment = await db.payment.findFirst({ where: { orderId, status: "PENDING", externalId: { not: null } } });
   if (!payment?.externalId) return;
   await handleYookassaEvent({ object: { id: payment.externalId } });

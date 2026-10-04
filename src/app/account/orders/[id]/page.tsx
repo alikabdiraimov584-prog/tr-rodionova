@@ -10,6 +10,7 @@ import { ReviewForm } from "@/components/account/review-form";
 import { cancelOwnOrderAction } from "@/app/actions/shop";
 import { PayButton } from "@/components/account/pay-button";
 import { syncOrderPayment, yookassaEnabled } from "@/lib/payments/yookassa";
+import { trackingUrl } from "@/lib/delivery";
 
 const STEPS = ["NEW", "PAID", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
 
@@ -41,7 +42,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             <div className="text-xs text-muted">{payment ? PAYMENT_METHOD[payment.method] : ""} · резерв действует 24 часа{order.isPreorder ? " · предзаказ" : ""}</div>
           </div>
           <div className="flex gap-2">
-            <PayButton orderId={order.id} live={yookassaEnabled()} />
+            <PayButton orderId={order.id} live={await yookassaEnabled()} />
             <form action={cancelOwnOrderAction}>
               <input type="hidden" name="orderId" value={order.id} />
               <ConfirmButton message="Отменить заказ? Списанные баллы вернутся на счёт.">Отменить</ConfirmButton>
@@ -89,7 +90,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             {DELIVERY_METHOD[order.deliveryMethod].label}
             {order.address && <div>{[order.address.city, order.address.street, order.address.building, order.address.apartment && `кв. ${order.address.apartment}`].filter(Boolean).join(", ")}</div>}
             {order.addressText && <div>{order.addressText}</div>}
-            {order.trackingNumber && <div className="mt-1 text-ink">Трек-номер: {order.trackingNumber}</div>}
+            {order.trackingNumber && (
+              <div className="mt-1 text-ink">
+                Трек-номер: {trackingUrl(order.deliveryMethod, order.trackingNumber) ? <a href={trackingUrl(order.deliveryMethod, order.trackingNumber)!} target="_blank" rel="noopener" className="underline">{order.trackingNumber} ↗</a> : order.trackingNumber}
+              </div>
+            )}
             {returnUntil && order.status === "DELIVERED" && returnUntil > new Date() && (
               <div className="mt-2">
                 Возврат возможен до {formatDate(returnUntil)}.{" "}

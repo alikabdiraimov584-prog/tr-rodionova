@@ -588,6 +588,21 @@ model ChannelIntegration {
   updatedAt     DateTime @updatedAt
 }
 
+/**
+ * Подключения внешних сервисов: оплата, доставка, аналитика, поисковики.
+ * Секретные поля config хранятся зашифрованными (см. src/lib/crypto.ts).
+ */
+model Integration {
+  key         String    @id // yookassa, cdek, boxberry, yandex_delivery, metrika, ga4, yandex_webmaster, google_search_console
+  enabled     Boolean   @default(false)
+  config      Json      @default("{}")
+  lastCheckAt DateTime?
+  lastCheckOk Boolean?
+  lastError   String?
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+}
+
 /** Одноразовая ссылка для восстановления пароля (хранится хеш токена). */
 model PasswordResetToken {
   id        String   @id @default(cuid())

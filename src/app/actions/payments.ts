@@ -16,8 +16,8 @@ export async function payOrderAction(_: ActionState, formData: FormData): Promis
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order || order.userId !== user.id) return { error: "Заказ не найден" };
   if (order.status !== "NEW") return { error: "Заказ уже оплачен" };
-  if (!yookassaEnabled()) {
-    if (!demoPaymentsAllowed()) return { error: "Оплата временно недоступна, напишите в службу заботы" };
+  if (!(await yookassaEnabled())) {
+    if (!(await demoPaymentsAllowed())) return { error: "Оплата временно недоступна, напишите в службу заботы" };
     await markOrderPaid(order.id, { createdBy: null, externalId: `demo_${Date.now()}` });
     revalidatePath(`/account/orders/${order.id}`);
     return { ok: true, message: "Демо-оплата прошла" };

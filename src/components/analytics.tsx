@@ -17,6 +17,8 @@ function subscribe(cb: () => void) {
 function setConsent(v: "all" | "necessary") {
   document.cookie = `${CONSENT}=${v}; max-age=${180 * 24 * 3600}; path=/; samesite=lax`;
   listeners.forEach((l) => l());
+  // сторонние счётчики (Метрика, GA) ставятся сервером только после согласия — перерисовываем страницу
+  if (v === "all") window.location.reload();
 }
 
 /** Собственный счётчик: отправляет просмотры на /api/analytics/collect только после согласия на cookie. */

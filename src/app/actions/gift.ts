@@ -89,7 +89,7 @@ export async function payGiftCardAction(_: ActionState, formData: FormData): Pro
     return { error: errorMessage(e) };
   }
   if (card.status !== "PENDING") return { error: "Сертификат уже оплачен или отменён" };
-  if (yookassaEnabled()) {
+  if (await yookassaEnabled()) {
     let url: string;
     try {
       const h = await headers();
@@ -100,7 +100,7 @@ export async function payGiftCardAction(_: ActionState, formData: FormData): Pro
     }
     redirect(url);
   }
-  if (!demoPaymentsAllowed()) return { error: "Оплата временно недоступна, напишите в службу заботы" };
+  if (!(await demoPaymentsAllowed())) return { error: "Оплата временно недоступна, напишите в службу заботы" };
   await activateGiftCard(card.id, `demo_${Date.now()}`, { createdBy: userId, demo: true });
   revalidatePath(`/account/giftcards/${card.id}`);
   revalidatePath("/account/giftcards");

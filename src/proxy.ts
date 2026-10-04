@@ -22,11 +22,12 @@ async function readSession(req: NextRequest) {
 function csp(nonce: string, dev: boolean) {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://mc.yandex.ru https://www.googletagmanager.com${dev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
+    "frame-src https://mc.yandex.ru https://mc.yandex.com",
     "frame-ancestors 'none'",
     "form-action 'self' https://yoomoney.ru https://*.yookassa.ru",
     "base-uri 'self'",

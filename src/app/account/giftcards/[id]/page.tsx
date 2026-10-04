@@ -34,7 +34,7 @@ export default async function GiftCardPage({ params, searchParams }: PageProps<"
             <div className="text-sm">Ожидает оплаты: {formatMoney(card.amount)}</div>
             <div className="text-xs text-muted">Код сертификата появится сразу после оплаты</div>
           </div>
-          <GiftPayButton cardId={card.id} live={yookassaEnabled()} />
+          <GiftPayButton cardId={card.id} live={await yookassaEnabled()} />
         </div>
       )}
       {card.status === "ACTIVE" && <Alert tone="success">Сертификат оплачен и активен. Перешлите код получателю — текст ниже можно скопировать.</Alert>}

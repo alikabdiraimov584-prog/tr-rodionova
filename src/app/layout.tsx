@@ -1,13 +1,26 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk, Manrope } from "next/font/google";
 import "./globals.css";
+import { activeIntegration } from "@/lib/integrations/store";
 
 const grotesk = Hanken_Grotesk({ variable: "--font-grotesk", subsets: ["latin", "latin-ext"], weight: ["300", "400", "500"] });
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"] });
 
 const siteUrl = (process.env.APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  // коды подтверждения Вебмастера и Search Console — из CRM → Интеграции
+  let verification: Metadata["verification"];
+  try {
+    const [ya, go] = await Promise.all([activeIntegration("yandex_webmaster"), activeIntegration("google_search_console")]);
+    verification = { ...(ya?.config.verification ? { yandex: ya.config.verification } : {}), ...(go?.config.verification ? { google: go.config.verification } : {}) };
+  } catch {
+    verification = undefined;
+  }
+  return { ...baseMetadata, verification };
+}
+
+const baseMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: "T.Rodionova — Premium womenswear", template: "%s — T.Rodionova" },
   description: "Женская одежда из шерсти, кашемира и шёлка. Сшито в Европе. Доставка по России, примерка курьером.",
