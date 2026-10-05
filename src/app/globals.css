@@ -10,6 +10,7 @@
   --panel: #ffffff;
   --ink: #1a1a1a;
   --muted: #6b6b66;
+  --muted-dark: #57574f; /* для мелкого текста на песочном фоне (бейджи): контраст ≥ 4.5:1 */
   --line: #d9d7d2;
   --line-soft: #e8e6e1;
   --sand: #e6e4df;
@@ -17,7 +18,7 @@
   --accent-fg: #f2f1ee;
   --champagne: #cdb58f; /* только для Circle */
   --champagne-ink: #7a6440; /* шампань для текста: контраст ≥ 4.5:1 на светлом фоне */
-  --success: #2f7d4f;
+  --success: #276b44; /* контраст ≥ 4.5:1 на светлом фоне для мелкого текста */;
   --danger: #b3261e;
   --warning: #8a5a00;
   --info: #2d4fb5;
@@ -51,6 +52,7 @@
   --color-taupe: #8b7f71;
   --color-taupe-dark: #6f655a;
   --color-champagne: var(--champagne);
+  --color-muted-dark: var(--muted-dark);
   --color-champagne-dark: #a98f66;
   --color-champagne-ink: var(--champagne-ink);
   --color-success: var(--success);

@@ -51,7 +51,7 @@ export default async function CartPage() {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <form action={updateCartAction} className="flex items-center gap-2">
                         <input type="hidden" name="variantId" value={i.variantId} />
-                        <select name="quantity" defaultValue={i.quantity} className="min-h-10 border border-line bg-white px-2 py-1 text-sm">
+                        <select name="quantity" defaultValue={i.quantity} aria-label="Количество" className="min-h-10 border border-line bg-white px-2 py-1 text-sm">
                           {Array.from({ length: Math.max(i.quantity, Math.min(5, Math.max(1, available))) }, (_, n) => n + 1).map((n) => (
                             <option key={n} value={n}>{n}</option>
                           ))}

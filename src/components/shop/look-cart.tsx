@@ -45,6 +45,7 @@ export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookC
                   <span className="label mb-0">Размер</span>
                   <select
                     name={`variant_${it.productId}`}
+                    aria-label={`Размер: ${it.name}`}
                     value={chosen[it.productId] ?? ""}
                     onChange={(e) => setChosen((c) => ({ ...c, [it.productId]: e.target.value }))}
                     className="input w-auto py-1.5 text-xs"
