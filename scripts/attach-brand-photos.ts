@@ -21,11 +21,13 @@ async function main() {
     const stale = product.images.filter((i) => i.url.startsWith(prefix) && !wanted.includes(i.url));
     if (stale.length) await db.productImage.deleteMany({ where: { id: { in: stale.map((i) => i.id) } } });
     const have = new Set(product.images.map((i) => i.url));
-    const missing = wanted.filter((u) => !have.has(u));
+    // владелица уже загрузила свои фото через CRM: папка больше ничего не добавляет (удалённое в CRM не возвращается), только убирает исчезнувшие файлы
+    const curated = product.images.some((i) => i.url.startsWith("/uploads/"));
+    const missing = curated ? [] : wanted.filter((u) => !have.has(u));
     let order = product.images.filter((i) => !stale.includes(i)).reduce((m, i) => Math.max(m, i.order + 1), 0);
     if (missing.length) await db.productImage.createMany({ data: missing.map((url) => ({ productId: product.id, url, alt: product.name, order: order++ })) });
     const crm = product.images.filter((i) => !i.url.startsWith(prefix)).length;
-    console.log(sku, "→ из папки", wanted.length, "добавлено", missing.length, "убрано", stale.length, crm ? `(из CRM: ${crm})` : "");
+    console.log(sku, "→ из папки", wanted.length, "добавлено", missing.length, "убрано", stale.length, crm ? `(из CRM: ${crm}, папка только убирает исчезнувшее)` : "");
   }
 }
 main().finally(() => db.$disconnect());
