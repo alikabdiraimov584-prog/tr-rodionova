@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, twoFactorMissing } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { customerStats } from "@/lib/analytics";
 import { rfmSegment } from "@/lib/rfm";
@@ -15,6 +15,7 @@ function csv(v: unknown) {
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user || !can(user.role, "customersExport")) return new Response("Forbidden", { status: 403 });
+  if (await twoFactorMissing(user)) return new Response("Forbidden: подтвердите второй фактор", { status: 403 });
   const url = new URL(request.url);
   const tier = url.searchParams.get("tier");
   const segment = url.searchParams.get("segment");

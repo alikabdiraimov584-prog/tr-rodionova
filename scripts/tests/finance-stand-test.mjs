@@ -61,9 +61,16 @@ const sf = p.locator('form:has(input[name="openingBalance"])');
 await sf.locator('input[name="openingBalance"]').fill("100000");
 await sf.locator('input[name="openingDate"]').fill(`${new Date().getFullYear()}-01-01`);
 await sf.locator("button").last().click();
-await p.waitForTimeout(1500);
+await sf.getByText("Сохранено").waitFor({ timeout: 15000 }).catch(() => {});
+await p.goto(`${base}/crm/finance?tab=cashflow`);
 t = await body();
 check("остаток на конец месяца считается", /Остаток на конец месяца/.test(t) && !/остаток не считается/.test(t));
+// ссылки с опечатками не роняют страницу
+for (const q of ["tab=expenses&type=EXPENSE", "tab=expenses&page=abc", "tab=expenses&page=99", "tab=pnl&month=2026-13"]) {
+  const r = await p.goto(`${base}/crm/finance?${q}`);
+  t = await body();
+  check(`адрес ?${q} открывается`, r.status() === 200 && !/Раздел не открылся|Произошла ошибка/.test(t), `HTTP ${r.status()}`);
+}
 
 // экспорт
 for (const rep of ["ledger", "cashflow", "pnl"]) {

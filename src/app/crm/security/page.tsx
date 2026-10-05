@@ -31,7 +31,7 @@ export default async function SecurityPage() {
       )}
       {staleSession && (
         <div className="rounded-lg border border-line bg-sand p-4 text-sm">
-          Защита включена, но текущая сессия выдана до обновления CRM. Обновите её, чтобы открыть остальные разделы.
+          Защита включена, но эта сессия ещё не подтверждена вторым фактором (например, после восстановления пароля). Введите код из приложения, чтобы открыть остальные разделы.
           <RefreshSessionForm />
         </div>
       )}

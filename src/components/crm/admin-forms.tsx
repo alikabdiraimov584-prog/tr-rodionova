@@ -29,7 +29,8 @@ export type LedgerInitial = { id: string; type: string; amount: number; date: st
 /** Ручная проводка: расход, прочий доход, взнос или вывод. В режиме правки заполнена существующей проводкой. */
 export function LedgerForm({ initial, categories = [], counterparties = [], cancelHref }: { initial?: LedgerInitial; categories?: string[]; counterparties?: string[]; cancelHref?: string }) {
   const [state, action, pending] = useActionState(addLedgerAction, undefined);
-  const today = new Date().toISOString().slice(0, 10);
+  // дата по Москве, а не по UTC: ночью UTC ещё показывает вчерашний день
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Moscow" });
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-[1.6fr_130px_150px_1fr_1fr_1.4fr_auto] xl:items-end">
       {initial && <input type="hidden" name="id" value={initial.id} />}
@@ -39,7 +40,7 @@ export function LedgerForm({ initial, categories = [], counterparties = [], canc
         </select>
       </label>
       <label><span className="label">Сумма, ₽</span><input name="amount" inputMode="decimal" defaultValue={initial ? (initial.amount / 100).toString() : ""} placeholder="12 500" required className="input py-2" /></label>
-      <label><span className="label">Дата оплаты</span><input aria-label="Дата оплаты" name="date" type="date" defaultValue={initial?.date ?? today} className="input py-2" /></label>
+      <label><span className="label">Дата оплаты</span><input aria-label="Дата оплаты" name="date" type="date" defaultValue={initial?.date ?? today} max={today} className="input py-2" /></label>
       <label><span className="label">Категория</span><input name="category" list="ledger-categories" defaultValue={initial?.category ?? ""} placeholder="Ткани, блогеры, СДЭК…" className="input py-2" /></label>
       <label><span className="label">Кому / от кого</span><input name="counterparty" list="ledger-counterparties" defaultValue={initial?.counterparty ?? ""} placeholder="Фабрика, ИП, сервис" className="input py-2" /></label>
       <label><span className="label">Комментарий</span><input name="comment" defaultValue={initial?.comment ?? ""} placeholder="Счёт №, за что" className="input py-2" /></label>

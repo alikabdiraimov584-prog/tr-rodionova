@@ -6,6 +6,7 @@ services:
       args:
         GIT_SHA: ${GIT_SHA:-unknown}
         BUILD_AT: ${BUILD_AT:-}
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}
     restart: unless-stopped
     env_file: .env
     environment:

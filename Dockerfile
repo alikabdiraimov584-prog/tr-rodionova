@@ -13,6 +13,10 @@ RUN npm ci --include=dev
 FROM deps AS build
 ARG GIT_SHA=unknown
 ARG BUILD_AT=
+# Постоянный ключ подписи серверных действий (из .env сервера): идентификаторы действий не меняются
+# от сборки к сборке, и кнопки в открытых до обновления вкладках продолжают работать
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=
+ENV GIT_SHA=$GIT_SHA NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 COPY . .
 # при сборке базы нет: витрина рендерится на запрос, страницы с БД динамические
 RUN npm run build

@@ -168,18 +168,20 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
                 {order.movements.length === 0 && <li className="text-muted">—</li>}
               </ul>
             </div>
-            <div className="card p-5">
-              <Eyebrow>Финансовые проводки</Eyebrow>
-              <ul className="mt-3 space-y-1 text-sm">
-                {order.ledger.map((l) => (
-                  <li key={l.id} className="flex justify-between gap-2">
-                    <span>{LEDGER_TYPE[l.type].label}</span>
-                    <span className={LEDGER_TYPE[l.type].sign > 0 ? "text-success" : "text-danger"}>{LEDGER_TYPE[l.type].sign > 0 ? "+" : "−"}{formatMoney(l.amount)}</span>
-                  </li>
-                ))}
-                {order.ledger.length === 0 && <li className="text-muted">—</li>}
-              </ul>
-            </div>
+            {can(me.role, "finance") && (
+              <div className="card p-5">
+                <Eyebrow>Финансовые проводки</Eyebrow>
+                <ul className="mt-3 space-y-1 text-sm">
+                  {order.ledger.map((l) => (
+                    <li key={l.id} className="flex justify-between gap-2">
+                      <span>{LEDGER_TYPE[l.type].label}</span>
+                      <span className={LEDGER_TYPE[l.type].sign > 0 ? "text-success" : "text-danger"}>{LEDGER_TYPE[l.type].sign > 0 ? "+" : "−"}{formatMoney(l.amount)}</span>
+                    </li>
+                  ))}
+                  {order.ledger.length === 0 && <li className="text-muted">—</li>}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 

@@ -85,10 +85,14 @@ export async function adminResetTotpAction(formData: FormData) {
   revalidatePath("/crm/staff");
 }
 
-/** Сессии, выданные до появления отметки о втором факторе: сотрудник с включённой 2FA обновляет её одной кнопкой. */
-export async function refreshStaffSessionAction() {
+/** Сессия без отметки о втором факторе (выдана до обновления CRM или после сброса пароля): подтверждается кодом из приложения, не кнопкой. */
+export async function refreshStaffSessionAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireStaff();
-  if (!me.totpSecret || !me.totpEnabledAt) return;
+  if (!me.totpSecret || !me.totpEnabledAt) return { error: "Защита не включена" };
+  const rl = await checkRate(`2fa:${me.id}`, { limit: 6, windowSec: 300, lockSec: 900 });
+  if (!rl.ok) return { error: "Слишком много попыток. Попробуйте через 15 минут." };
+  if (!verifyTotp(me.totpSecret, String(formData.get("code") ?? ""))) return { error: "Неверный код" };
   await loginAs(me.id, me.role, me.sessionVersion, true);
+  await audit(me.id, "auth.login2fa", "User", me.id, { refresh: true });
   redirect(homeFor(me.role));
 }

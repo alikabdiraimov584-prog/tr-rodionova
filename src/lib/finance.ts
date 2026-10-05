@@ -26,11 +26,15 @@ export type PnlRow = {
   operatingPct: number;
 };
 
+/** Проценты маржи имеют смысл только при положительной чистой выручке: в месяце одних возвратов минус на минус дал бы «плюс». */
+const pct = (part: number, netRevenue: number) => (netRevenue > 0 ? Math.round((part / netRevenue) * 100) : 0);
+
+/**
+ * P&L по начислению. Затраты на ткани и пошив (EXPENSE_PRODUCTION) — это вложение в запас: в P&L они входят
+ * через себестоимость проданного по цене закупки из карточки, а не отдельной строкой, иначе одна закупка списалась бы дважды.
+ */
 export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
-  const from = new Date();
-  from.setDate(1);
-  from.setHours(0, 0, 0, 0);
-  from.setMonth(from.getMonth() - (months - 1));
+  const from = monthRange(months);
   const rows = await db.$queryRaw<{ m: Date; type: LedgerType; amount: bigint }[]>`
     SELECT date_trunc('month', date) AS m, type, sum(amount)::bigint AS amount FROM "LedgerEntry"
     WHERE date >= ${from} GROUP BY 1, 2`;
@@ -50,7 +54,7 @@ export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
     const netRevenue = g("INCOME_SALE") + g("INCOME_OTHER") - g("REFUND");
     const cogs = g("EXPENSE_COGS") - g("COGS_REVERSAL");
     const gross = netRevenue - cogs;
-    const opex = g("EXPENSE_ACQUIRING") + g("EXPENSE_SHIPPING") + g("EXPENSE_MARKETING") + g("EXPENSE_PRODUCTION") + g("EXPENSE_SALARY") + g("EXPENSE_RENT") + g("EXPENSE_SERVICES") + g("EXPENSE_TAX") + g("EXPENSE_OTHER");
+    const opex = g("EXPENSE_ACQUIRING") + g("EXPENSE_SHIPPING") + g("EXPENSE_MARKETING") + g("EXPENSE_SALARY") + g("EXPENSE_RENT") + g("EXPENSE_SERVICES") + g("EXPENSE_TAX") + g("EXPENSE_OTHER");
     out.push({
       key,
       label: d.toLocaleDateString("ru-RU", { month: "short", year: "2-digit" }).replace(" г.", ""),
@@ -60,7 +64,7 @@ export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
       netRevenue,
       cogs,
       gross,
-      grossPct: netRevenue ? Math.round((gross / netRevenue) * 100) : 0,
+      grossPct: pct(gross, netRevenue),
       acquiring: g("EXPENSE_ACQUIRING"),
       shipping: g("EXPENSE_SHIPPING"),
       marketing: g("EXPENSE_MARKETING"),
@@ -72,7 +76,7 @@ export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
       tax: g("EXPENSE_TAX"),
       opex,
       operating: gross - opex,
-      operatingPct: netRevenue ? Math.round(((gross - opex) / netRevenue) * 100) : 0,
+      operatingPct: pct(gross - opex, netRevenue),
     });
     d.setMonth(d.getMonth() + 1);
   }
@@ -83,8 +87,8 @@ export function sumRows(rows: PnlRow[]): PnlRow {
   const keys = ["sales", "otherIncome", "refunds", "netRevenue", "cogs", "gross", "acquiring", "shipping", "marketing", "production", "salary", "rent", "services", "tax", "other", "opex", "operating"] as const;
   const t = { key: "total", label: "Итого", grossPct: 0, operatingPct: 0 } as PnlRow;
   for (const k of keys) t[k] = rows.reduce((s, r) => s + r[k], 0);
-  t.grossPct = t.netRevenue ? Math.round((t.gross / t.netRevenue) * 100) : 0;
-  t.operatingPct = t.netRevenue ? Math.round((t.operating / t.netRevenue) * 100) : 0;
+  t.grossPct = pct(t.gross, t.netRevenue);
+  t.operatingPct = pct(t.operating, t.netRevenue);
   return t;
 }
 
@@ -146,6 +150,17 @@ export async function balanceSheetLite() {
 /** Статьи, не являющиеся движением денег: себестоимость списывается при продаже, деньги за ткани и пошив идут через «Производство». */
 const NON_CASH: LedgerType[] = ["EXPENSE_COGS", "COGS_REVERSAL"];
 const OWNER_FLOWS: LedgerType[] = ["OWNER_WITHDRAWAL", "OWNER_CONTRIBUTION"];
+const cashSign = (t: LedgerType) => (t.startsWith("INCOME") || t === "OWNER_CONTRIBUTION" ? 1 : -1);
+const monthKeyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+/** Сумма денежных проводок за [from, to) со знаком. */
+async function cashNet(from: Date, to: Date) {
+  const rows = await db.$queryRaw<{ type: LedgerType; amount: bigint }[]>`
+    SELECT type, sum(amount)::bigint AS amount FROM "LedgerEntry" WHERE date >= ${from} AND date < ${to} GROUP BY 1`;
+  let net = 0;
+  for (const r of rows) if (!NON_CASH.includes(r.type)) net += Number(r.amount) * cashSign(r.type);
+  return net;
+}
 
 export type CashRow = {
   key: string;
@@ -187,10 +202,14 @@ export async function cashFlowByMonth(months: number, opening: { openingBalance:
     WHERE date >= ${from} GROUP BY 1, 2`;
   // остаток к началу периода: начальный остаток + все денежные проводки от даты начала учёта до начала периода
   let balance = opening.openingBalance;
-  if (openingAt) {
-    const before = await db.$queryRaw<{ type: LedgerType; amount: bigint }[]>`
-      SELECT type, sum(amount)::bigint AS amount FROM "LedgerEntry" WHERE date >= ${openingAt} AND date < ${from} GROUP BY 1`;
-    for (const r of before) if (!NON_CASH.includes(r.type)) balance += Number(r.amount) * (r.type.startsWith("INCOME") || r.type === "OWNER_CONTRIBUTION" ? 1 : -1);
+  // начальный остаток задан «на дату»: проводки с 1-го числа до этой даты в месяце начала учёта в нём уже сидят, их не прибавляем
+  let openingMonthKey: string | null = null;
+  let beforeOpening = 0;
+  if (openingAt && !Number.isNaN(openingAt.getTime())) {
+    if (openingAt < from) balance += await cashNet(openingAt, from);
+    const openingMonthStart = new Date(openingAt.getFullYear(), openingAt.getMonth(), 1);
+    openingMonthKey = monthKeyOf(openingMonthStart);
+    if (openingAt > openingMonthStart && openingAt >= from) beforeOpening = await cashNet(openingMonthStart, openingAt);
   }
   const map = new Map<string, Partial<Record<LedgerType, number>>>();
   for (const r of rows) {
@@ -233,8 +252,8 @@ export async function cashFlowByMonth(months: number, opening: { openingBalance:
     row.operating = row.inflow - row.outflow;
     row.net = row.operating + row.ownerIn - row.ownerOut;
     // остаток показывается только от даты начала учёта; без неё строка пустая, потоки считаются всё равно
-    const counted = !!openingAt && new Date(key + "-01") >= new Date(openingAt.getFullYear(), openingAt.getMonth(), 1);
-    balance = counted ? balance + row.net : balance;
+    const counted = !!openingMonthKey && key >= openingMonthKey;
+    balance = counted ? balance + row.net - (key === openingMonthKey ? beforeOpening : 0) : balance;
     row.balance = counted ? balance : NaN;
     out.push(row);
     d.setMonth(d.getMonth() + 1);
@@ -251,11 +270,11 @@ export function sumCash(rows: CashRow[]): CashRow {
   return t;
 }
 
-/** Расходы за период по статьям и категориям (что ввели вручную плюс эквайринг и доставка по заказам). */
+/** Денежные расходы за период по статьям и категориям: ручные проводки плюс эквайринг и доставка по заказам. Себестоимость (начисление) и потоки собственника не входят. */
 export async function expenseBreakdown(from: Date, to: Date) {
   const rows = await db.ledgerEntry.groupBy({
     by: ["type", "category"],
-    where: { date: { gte: from, lt: to }, type: { notIn: ["INCOME_SALE", "INCOME_OTHER", "REFUND", "COGS_REVERSAL", ...OWNER_FLOWS] } },
+    where: { date: { gte: from, lt: to }, type: { notIn: ["INCOME_SALE", "INCOME_OTHER", "REFUND", ...NON_CASH, ...OWNER_FLOWS] } },
     _sum: { amount: true },
     _count: true,
   });
@@ -281,9 +300,9 @@ export type StockMonth = { key: string; label: string; receiptQty: number; recei
 export async function stockReport(months: number) {
   const from = monthRange(months);
   const [items, moves] = await Promise.all([
+    // архивные вещи с остатком тоже лежат на складе и входят в запас — как и в balanceSheetLite
     db.product.findMany({
-      where: { status: { not: "ARCHIVED" } },
-      select: { id: true, name: true, sku: true, price: true, costPrice: true, isPreloved: true, category: { select: { name: true } }, variants: { select: { size: true, stock: true, reserved: true, price: true } } },
+      select: { id: true, name: true, sku: true, price: true, costPrice: true, isPreloved: true, status: true, category: { select: { name: true } }, variants: { select: { size: true, stock: true, reserved: true, price: true } } },
       orderBy: { name: "asc" },
     }),
     db.$queryRaw<{ m: Date; type: string; qty: bigint; cost: bigint }[]>`
@@ -298,7 +317,7 @@ export async function stockReport(months: number) {
       const reserved = p.variants.reduce((s, v) => s + v.reserved, 0);
       const retail = p.variants.reduce((s, v) => s + v.stock * (v.price ?? p.price), 0);
       const cost = qty * (p.costPrice ?? 0);
-      return { id: p.id, name: p.name, sku: p.sku, category: p.category?.name ?? "", isPreloved: p.isPreloved, qty, reserved, cost, retail, costPrice: p.costPrice, lowStock: p.variants.filter((v) => v.stock - v.reserved <= 1).map((v) => v.size) };
+      return { id: p.id, name: p.name, sku: p.sku, category: p.category?.name ?? "", isPreloved: p.isPreloved, archived: p.status === "ARCHIVED", qty, reserved, cost, retail, costPrice: p.costPrice, lowStock: p.variants.filter((v) => v.stock - v.reserved <= 1).map((v) => v.size) };
     })
     .filter((p) => p.qty > 0 || p.reserved > 0);
   const byMonth = new Map<string, StockMonth>();

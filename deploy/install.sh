@@ -64,6 +64,7 @@ if [ ! -f "$APP_DIR/.env" ]; then
   sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/" "$APP_DIR/.env"
   sed -i "s/^CRON_SECRET=.*/CRON_SECRET=$(openssl rand -hex 24)/" "$APP_DIR/.env"
   sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$(openssl rand -hex 24)/" "$APP_DIR/.env"
+  sed -i "s|^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=.*|NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(openssl rand -base64 32)|" "$APP_DIR/.env"
   chown deploy:deploy "$APP_DIR/.env" && chmod 600 "$APP_DIR/.env"
 fi
 

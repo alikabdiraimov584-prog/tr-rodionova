@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, twoFactorMissing } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { getSetting } from "@/lib/settings";
 import { formatDate, formatMoney } from "@/lib/money";
@@ -15,6 +15,7 @@ const esc = (s: unknown) => String(s ?? "").replace(/[<>&"]/g, (c) => ({ "<": "&
 export async function GET(_req: Request, ctx: RouteContext<"/crm/orders/[id]/print">) {
   const me = await getCurrentUser();
   if (!me || !can(me.role, "orders")) return new Response("Forbidden", { status: 403 });
+  if (await twoFactorMissing(me)) return new Response("Forbidden: подтвердите второй фактор", { status: 403 });
   const { id } = await ctx.params;
   const order = await db.order.findUnique({ where: { id }, include: { items: { include: { variant: true } }, payments: true, address: true } });
   if (!order) return new Response("Not found", { status: 404 });

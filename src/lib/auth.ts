@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getSession, createSession, deleteSession } from "@/lib/session";
 import type { Role } from "@/generated/prisma/enums";
 import { can, homeFor, type Section } from "@/lib/permissions";
+import { twoFactorRequired } from "@/lib/two-factor-policy";
 
 export const getCurrentUser = cache(async () => {
   const session = await getSession();
@@ -49,10 +50,23 @@ export async function requireStaff(): Promise<CurrentUser> {
   return user;
 }
 
-/** Проверка доступа к разделу CRM: на страницах — редирект, в server actions — тоже редирект (POST не пройдёт). */
+/** Отметка второго фактора в текущей сессии сотрудника. */
+export const twoFactorPassed = cache(async () => (await getSession())?.tf === true);
+
+/** Сессия сотрудника без обязательного второго фактора: в CRM ей можно только настроить защиту. */
+export async function twoFactorMissing(user: { role: Role }) {
+  return twoFactorRequired(user.role) && !(await twoFactorPassed());
+}
+
+/**
+ * Проверка доступа к разделу CRM: на страницах — редирект, в server actions — тоже редирект (POST не пройдёт).
+ * Второй фактор проверяется и здесь, а не только по адресу в proxy: действие можно вызвать с любого адреса,
+ * а сессия без кода (после восстановления пароля, до включения защиты) не должна ничего менять в CRM.
+ */
 export async function requireSection(section: Section): Promise<CurrentUser> {
   const user = await requireStaff();
   if (!can(user.role, section)) redirect(homeFor(user.role));
+  if (await twoFactorMissing(user)) redirect("/crm/security?required=1");
   return user;
 }
 

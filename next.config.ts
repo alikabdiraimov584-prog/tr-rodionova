@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
+// Идентификатор сборки для защиты от «разъезда версий» при обновлении без простоя: клиент со старой
+// вкладкой узнаёт о новой версии и перезагружает страницу вместо ошибки. На стенде не задаётся.
+const deploymentId = process.env.GIT_SHA && process.env.GIT_SHA !== "unknown" ? process.env.GIT_SHA : undefined;
+
 const nextConfig: NextConfig = {
+  deploymentId,
   // Фото отдаются через оптимизатор Next: под ширину экрана и в WebP, исходники любого размера (до 12 МБ из CRM)
   images: {
     localPatterns: [{ pathname: "/images/**", search: "" }, { pathname: "/uploads/**", search: "" }],

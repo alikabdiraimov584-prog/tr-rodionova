@@ -2,7 +2,8 @@ import { formatMoney } from "@/lib/money";
 
 /** Простой столбчатый график без зависимостей (SVG). Значения в копейках. */
 export function BarChart({ data, height = 180, money = true }: { data: { label: string; value: number; sub?: number }[]; height?: number; money?: boolean }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
+  // масштаб по обеим сериям: иначе столбик второй серии выше первой уходит за рамку и все месяцы выглядят одинаково
+  const max = Math.max(1, ...data.flatMap((d) => [d.value, d.sub ?? 0]));
   const w = 100 / Math.max(1, data.length);
   return (
     <div>
@@ -15,7 +16,11 @@ export function BarChart({ data, height = 180, money = true }: { data: { label: 
               <rect x={i * w + w * 0.18} y={height / 3 - h} width={w * 0.64} height={h} fill="var(--taupe)">
                 <title>{`${d.label}: ${money ? formatMoney(d.value) : d.value}`}</title>
               </rect>
-              {hs > 0 && <rect x={i * w + w * 0.18} y={height / 3 - hs} width={w * 0.64} height={hs} fill="var(--champagne)" opacity={0.9} />}
+              {hs > 0 && (
+                <rect x={i * w + w * 0.18} y={height / 3 - hs} width={w * 0.64} height={hs} fill="var(--champagne)" opacity={0.9}>
+                  <title>{`${d.label}: ${money ? formatMoney(d.sub ?? 0) : d.sub}`}</title>
+                </rect>
+              )}
             </g>
           );
         })}

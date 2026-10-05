@@ -15,6 +15,13 @@ main() {
   BUILD_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
   chmod 600 .env 2>/dev/null || true
+  # постоянный ключ подписи серверных действий: без него каждая сборка меняет идентификаторы действий,
+  # и кнопки в открытых до обновления вкладках CRM падают с «Раздел не открылся»
+  if ! grep -q '^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=' .env; then
+    printf '\n# Ключ подписи серверных действий Next.js (постоянный, не менять)\nNEXT_SERVER_ACTIONS_ENCRYPTION_KEY=%s\n' "$(openssl rand -base64 32)" >> .env
+  fi
+  export NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(sed -n 's/^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=//p' .env | tr -d '"\r' | head -1)
   docker compose build web
 
   local old new count status

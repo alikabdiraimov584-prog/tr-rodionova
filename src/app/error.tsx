@@ -3,12 +3,25 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { Logo } from "@/components/ui";
+import { isStaleBuildError, reloadOnceForStaleBuild } from "@/lib/stale-build";
 
 /** Внутренний сбой на витрине: покупательница видит страницу в стиле сайта, а не серый экран Next.js. */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const stale = isStaleBuildError(error);
   useEffect(() => {
     console.error(error);
-  }, [error]);
+    if (stale) reloadOnceForStaleBuild();
+  }, [error, stale]);
+  if (stale) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+        <Logo />
+        <h1 className="mt-10 text-2xl">Сайт обновился</h1>
+        <p className="mt-2 max-w-md text-sm text-muted">Эта страница была открыта до обновления. Она перезагружается; если не перезагрузилась сама, нажмите кнопку.</p>
+        <div className="mt-6"><button type="button" onClick={() => window.location.reload()} className="btn-primary">Перезагрузить</button></div>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
       <Logo />

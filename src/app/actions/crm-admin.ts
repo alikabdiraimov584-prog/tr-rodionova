@@ -11,12 +11,22 @@ import { decodeChannelConfig, encodeChannelConfig, loadChannel } from "@/lib/sup
 import { ADAPTERS } from "@/lib/support/channels";
 import { checkMailbox } from "@/lib/support/mail-imap";
 import { toKopecks } from "@/lib/money";
-import { MANUAL_LEDGER_TYPES } from "@/lib/labels";
+import { MANUAL_LEDGER_TYPES, isSystemLedgerEntry } from "@/lib/labels";
 import { audit } from "@/lib/audit";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import type { Channel, LedgerType, Role } from "@/generated/prisma/enums";
 
 // ───────────── Финансы ─────────────
+
+/** Предел суммы одной проводки: 20 000 000 ₽ (поле amount — Int в копейках, максимум 21 474 836,47 ₽). */
+const MAX_AMOUNT = 2_000_000_000;
+
+/** Сумма в рублях из формы → копейки; null, если это не число (toKopecks молча вернул бы 0). */
+function parseRubles(raw: string): number | null {
+  const s = raw.replace(/\s/g, "").replace(",", ".");
+  if (!/^-?\d{1,9}(\.\d{1,2})?$/.test(s)) return null;
+  return toKopecks(s);
+}
 
 const LedgerSchema = z.object({
   id: z.string().trim().optional(),
@@ -33,17 +43,21 @@ export async function addLedgerAction(_: ActionState, formData: FormData): Promi
   const me = await requireSection("finance");
   const parsed = LedgerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: `Заполните поле «${parsed.error.issues[0].message}»` };
-  const amount = toKopecks(parsed.data.amount);
+  const amount = parseRubles(parsed.data.amount);
+  if (amount === null) return { error: "Сумма — число в рублях, например 12 500 или 999,50" };
   if (amount <= 0) return { error: "Сумма должна быть больше нуля" };
+  if (amount > MAX_AMOUNT) return { error: "Сумма слишком большая: до 20 000 000 ₽ одной проводкой" };
   const date = parsed.data.date ? new Date(parsed.data.date) : new Date();
   if (Number.isNaN(date.getTime())) return { error: "Неверная дата" };
+  // проводка «из будущего» не попала бы ни в ДДС, ни в P&L: отчёты заканчиваются текущим месяцем
+  if (date.getTime() > Date.now() + 86_400_000) return { error: "Дата оплаты не может быть позже сегодняшней" };
   const data = { type: parsed.data.type as LedgerType, amount, date, category: parsed.data.category || null, counterparty: parsed.data.counterparty || null, comment: parsed.data.comment || null };
   if (parsed.data.id) {
     const cur = await db.ledgerEntry.findUnique({ where: { id: parsed.data.id } });
     if (!cur) return { error: "Проводка не найдена" };
-    if (cur.orderId) return { error: "Проводки по заказам меняются только через заказ" };
+    if (isSystemLedgerEntry(cur)) return { error: "Проводки по заказам, сертификатам и складу меняются только через них" };
     await db.ledgerEntry.update({ where: { id: cur.id }, data });
-    await audit(me.id, "ledger.update", "LedgerEntry", cur.id, { type: data.type, amount, was: cur.amount });
+    await audit(me.id, "ledger.update", "LedgerEntry", cur.id, { was: { type: cur.type, amount: cur.amount, date: cur.date, category: cur.category, counterparty: cur.counterparty, comment: cur.comment }, now: data });
     revalidatePath("/crm/finance");
     return { ok: true, message: "Проводка изменена" };
   }
@@ -57,9 +71,9 @@ export async function deleteLedgerAction(formData: FormData) {
   const me = await requireSection("finance");
   const id = String(formData.get("id"));
   const e = await db.ledgerEntry.findUniqueOrThrow({ where: { id } });
-  if (e.orderId) throw new Error("Проводки по заказам меняются только через заказ");
+  if (isSystemLedgerEntry(e)) throw new Error("Проводки по заказам, сертификатам и складу меняются только через них");
   await db.ledgerEntry.delete({ where: { id } });
-  await audit(me.id, "ledger.delete", "LedgerEntry", id, { type: e.type, amount: e.amount });
+  await audit(me.id, "ledger.delete", "LedgerEntry", id, { type: e.type, amount: e.amount, date: e.date, category: e.category, counterparty: e.counterparty, comment: e.comment });
   revalidatePath("/crm/finance");
 }
 
@@ -156,7 +170,10 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
       const balance = String(formData.get("openingBalance") ?? "").trim();
       const date = String(formData.get("openingDate") ?? "").trim();
       if (date && Number.isNaN(new Date(date).getTime())) return { error: "Неверная дата начала учёта" };
-      await setSetting("finance", { openingBalance: balance ? toKopecks(balance) : 0, openingDate: date });
+      const opening = balance ? parseRubles(balance) : 0;
+      if (opening === null) return { error: "Остаток на начало — число в рублях (можно со знаком минус)" };
+      if (Math.abs(opening) > MAX_AMOUNT) return { error: "Остаток на начало: до 20 000 000 ₽" };
+      await setSetting("finance", { openingBalance: opening, openingDate: date });
     } else if (section === "seller") {
       const f = (k: string) => String(formData.get(k) ?? "").trim();
       await setSetting("seller", {

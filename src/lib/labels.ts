@@ -94,6 +94,19 @@ export const LEDGER_TYPE: Record<LedgerType, { label: string; sign: 1 | -1 }> = 
 /** Статьи, которые сотрудник вводит вручную (остальные создаются заказами). */
 export const MANUAL_LEDGER_TYPES: LedgerType[] = ["EXPENSE_PRODUCTION", "EXPENSE_MARKETING", "EXPENSE_SHIPPING", "EXPENSE_SALARY", "EXPENSE_RENT", "EXPENSE_SERVICES", "EXPENSE_TAX", "EXPENSE_ACQUIRING", "EXPENSE_OTHER", "INCOME_OTHER", "OWNER_WITHDRAWAL", "OWNER_CONTRIBUTION"];
 
+/** Категория, которую ставят проводкам по подарочным сертификатам (crm-gift.ts, gift-payment.ts). */
+export const GIFT_LEDGER_CATEGORY = "Сертификаты";
+
+/**
+ * Системная проводка: создана заказом, сертификатом или складом и правится только через них.
+ * Ручные проводки (вкладка «Расходы») — только статьи из MANUAL_LEDGER_TYPES без заказа и не по сертификатам.
+ */
+export function isSystemLedgerEntry(e: { type: LedgerType; orderId: string | null; category: string | null; comment: string | null }) {
+  if (e.orderId) return true;
+  if (!MANUAL_LEDGER_TYPES.includes(e.type)) return true;
+  return e.category === GIFT_LEDGER_CATEGORY && /сертификат/i.test(e.comment ?? "");
+}
+
 export const TASK_STATUS: Record<TaskStatus, { label: string; tone: Tone }> = {
   OPEN: { label: "Открыта", tone: "warning" },
   DONE: { label: "Выполнена", tone: "success" },

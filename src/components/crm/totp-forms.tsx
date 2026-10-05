@@ -42,9 +42,12 @@ export function DisableForm() {
 }
 
 export function RefreshSessionForm() {
+  const [state, action, pending] = useActionState(refreshStaffSessionAction, undefined);
   return (
-    <form action={refreshStaffSessionAction} className="mt-3">
-      <button className="btn-primary btn-sm">Обновить сессию и продолжить</button>
+    <form action={action} className="mt-3 flex flex-wrap items-end gap-2">
+      <label className="block"><span className="label">Код из приложения</span><input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={8} required className="input w-32 py-2" /></label>
+      <button className="btn-primary btn-sm" disabled={pending}>Подтвердить и продолжить</button>
+      <div className="basis-full"><Msg s={state} /></div>
     </form>
   );
 }
