@@ -19,7 +19,9 @@ export default async function Home() {
     getCurrentCustomer(),
     getSetting("loyalty"),
   ]);
-  const hero = featured.slice(0, 2);
+  // первым в hero идёт вещь из первого образа лукбука: свежая съёмка открывает главную без правки кода
+  const lead = await db.lookItem.findFirst({ where: { look: { isPublished: true } }, orderBy: [{ look: { order: "asc" } }, { order: "asc" }], select: { productId: true } });
+  const hero = [...featured].sort((a, b) => (a.id === lead?.productId ? -1 : b.id === lead?.productId ? 1 : 0)).slice(0, 2);
   const cta = circleCta(user, loyalty.welcomePoints);
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
