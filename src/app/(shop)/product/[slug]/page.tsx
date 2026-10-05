@@ -3,13 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
+import { getSetting } from "@/lib/settings";
 import { getCurrentCustomer } from "@/lib/auth";
 import { formatMoney, formatDate } from "@/lib/money";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductCard } from "@/components/shop/product-card";
 import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
-import { JsonLd, absolute, breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd, absolute, breadcrumbJsonLd, offerPoliciesJsonLd, siteUrl } from "@/lib/seo";
 
 async function load(slug: string) {
   return db.product.findUnique({
@@ -45,10 +46,11 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   if (p.earlyAccessUntil && p.earlyAccessUntil > new Date() && !user?.loyaltyTier?.earlyAccess) {
     redirect(`/circle?early=${p.slug}`);
   }
-  const [inWishlist, tier, related] = await Promise.all([
+  const [inWishlist, tier, related, delivery] = await Promise.all([
     user ? db.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } }) : null,
     user?.loyaltyTier ?? db.loyaltyTier.findFirst({ orderBy: { threshold: "asc" } }),
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4 }),
+    getSetting("delivery"),
   ]);
   const pts = Math.floor((p.price * (tier?.cashbackPct ?? 3)) / 100 / 100);
   // «С этим носят»: вещи из тех же образов лукбука, иначе соседи по категории
@@ -65,6 +67,8 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
     ...(p.isPreorder ? [["Отшив", p.preorderShipAt ? `к ${formatDate(p.preorderShipAt)}` : "4–6 недель"] as [string, string]] : []),
   ];
   const inStock = p.isPreorder || p.variants.some((v) => v.stock - v.reserved > 0);
+  const colors = [...new Set(p.variants.map((v) => v.color).filter(Boolean))];
+  const sizesAll = [...new Set(p.variants.map((v) => v.size))];
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -72,7 +76,12 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
     description: p.description ?? undefined,
     sku: p.sku,
     brand: { "@type": "Brand", name: "T.Rodionova" },
+    manufacturer: { "@id": `${siteUrl()}/#organization` },
     material: p.composition ?? undefined,
+    ...(colors.length ? { color: colors.join(", ") } : {}),
+    ...(sizesAll.length ? { size: sizesAll } : {}),
+    ...(p.madeIn ? { countryOfOrigin: p.madeIn } : {}),
+    audience: { "@type": "PeopleAudience", suggestedGender: "female" },
     category: p.category?.name,
     image: p.images.map((i) => absolute(i.url)),
     url: absolute(`/product/${p.slug}`),
@@ -83,7 +92,8 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
       availability: inStock ? (p.isPreorder ? "https://schema.org/PreOrder" : "https://schema.org/InStock") : "https://schema.org/OutOfStock",
       itemCondition: p.isPreloved ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
       url: absolute(`/product/${p.slug}`),
-      seller: { "@type": "Organization", name: "T.Rodionova" },
+      seller: { "@id": `${siteUrl()}/#organization` },
+      ...(p.isPreloved ? {} : offerPoliciesJsonLd(delivery)),
     },
     ...(rating ? { aggregateRating: { "@type": "AggregateRating", ratingValue: rating.toFixed(1), reviewCount: p.reviews.length } } : {}),
   };

@@ -118,7 +118,15 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
   try {
     if (section === "brand") {
       const cur = await getSetting("brand");
-      const next = { ...cur, name: String(formData.get("name") || cur.name), tagline: String(formData.get("tagline") ?? ""), phone: String(formData.get("phone") ?? ""), email: String(formData.get("email") ?? ""), telegram: String(formData.get("telegram") ?? "") };
+      const f = (k: string) => String(formData.get(k) ?? "").trim();
+      const url = (k: string) => { const v = f(k); return v && !/^https?:\/\//.test(v) ? `https://${v}` : v; };
+      const next = {
+        ...cur,
+        name: f("name") || cur.name, tagline: f("tagline"), phone: f("phone"), email: f("email"), telegram: url("telegram"),
+        description: f("description"), foundedYear: f("foundedYear").replace(/\D/g, "").slice(0, 4), founder: f("founder"), city: f("city"),
+        instagram: url("instagram"), vk: url("vk"), pinterest: url("pinterest"), youtube: url("youtube"), dzen: url("dzen"),
+        yandexBusiness: url("yandexBusiness"), twoGis: url("twoGis"), wikidata: url("wikidata"), showroomGeo: f("showroomGeo"),
+      };
       await setSetting("brand", next);
     } else if (section === "seller") {
       const f = (k: string) => String(formData.get(k) ?? "").trim();

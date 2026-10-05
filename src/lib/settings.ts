@@ -21,6 +21,20 @@ export type BrandSettings = {
   phone: string;
   email: string;
   telegram: string;
+  // сущность бренда для поисковиков и ИИ-ответов (schema.org Organization, llms.txt)
+  description: string; // одно-два фактических предложения о бренде
+  foundedYear: string; // год основания
+  founder: string; // основательница (Person в разметке и автор журнала)
+  city: string; // город
+  instagram: string;
+  vk: string;
+  pinterest: string;
+  youtube: string;
+  dzen: string;
+  yandexBusiness: string; // ссылка на карточку в Яндекс Бизнес / Картах
+  twoGis: string; // ссылка на карточку в 2ГИС
+  wikidata: string; // ссылка на элемент Wikidata, если есть
+  showroomGeo: string; // координаты шоурума «широта, долгота»
 };
 
 /** Реквизиты продавца: обязательны на сайте по ст. 26.1 ЗоЗПП и Правилам дистанционной торговли. */
@@ -88,6 +102,19 @@ const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: 
     phone: "+7 (495) 000-00-00",
     email: "care@tr-rodionova.ru",
     telegram: "https://t.me/trodionova",
+    description: "Премиальная женская одежда из натуральных тканей: шерсть, кашемир, шёлк. Тираж до 60 единиц на модель, пошив в Португалии и Литве, контроль качества в Москве.",
+    foundedYear: "2019",
+    founder: "Татьяна Родионова",
+    city: "Москва",
+    instagram: "",
+    vk: "",
+    pinterest: "",
+    youtube: "",
+    dzen: "",
+    yandexBusiness: "",
+    twoGis: "",
+    wikidata: "",
+    showroomGeo: "",
   },
 };
 

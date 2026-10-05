@@ -27,6 +27,23 @@ export default async function Settings() {
                 <label><span className="label">Телефон</span><input name="phone" defaultValue={brand.phone} className="input py-2" /></label>
                 <label><span className="label">Email</span><input name="email" defaultValue={brand.email} className="input py-2" /></label>
                 <label className="sm:col-span-2"><span className="label">Telegram</span><input name="telegram" defaultValue={brand.telegram} className="input py-2" /></label>
+                <div className="sm:col-span-2 mt-2 border-t border-line pt-3">
+                  <div className="eyebrow">Бренд как сущность: для поисковиков и ИИ-ответов</div>
+                  <p className="mt-1 text-xs text-muted">Эти данные попадают в разметку schema.org (Organization, Person, Store), в llms.txt и в факты «О бренде». Ссылки на площадки связывают сайт с карточками бренда, по которым ИИ-поисковики подтверждают, что бренд существует.</p>
+                </div>
+                <label className="sm:col-span-2"><span className="label">Описание бренда (1–2 фактических предложения)</span><textarea name="description" rows={2} defaultValue={brand.description} className="input py-2" /></label>
+                <label><span className="label">Год основания</span><input name="foundedYear" defaultValue={brand.foundedYear} className="input py-2" /></label>
+                <label><span className="label">Основательница</span><input name="founder" defaultValue={brand.founder} className="input py-2" /></label>
+                <label><span className="label">Город</span><input name="city" defaultValue={brand.city} className="input py-2" /></label>
+                <label><span className="label">Координаты шоурума (широта, долгота)</span><input name="showroomGeo" defaultValue={brand.showroomGeo} placeholder="55.7570, 37.6017" className="input py-2" /></label>
+                <label><span className="label">Instagram</span><input name="instagram" defaultValue={brand.instagram} placeholder="https://instagram.com/…" className="input py-2" /></label>
+                <label><span className="label">ВКонтакте</span><input name="vk" defaultValue={brand.vk} placeholder="https://vk.com/…" className="input py-2" /></label>
+                <label><span className="label">Pinterest</span><input name="pinterest" defaultValue={brand.pinterest} className="input py-2" /></label>
+                <label><span className="label">YouTube</span><input name="youtube" defaultValue={brand.youtube} className="input py-2" /></label>
+                <label><span className="label">Дзен</span><input name="dzen" defaultValue={brand.dzen} className="input py-2" /></label>
+                <label><span className="label">Яндекс Бизнес (ссылка на карточку)</span><input name="yandexBusiness" defaultValue={brand.yandexBusiness} placeholder="https://yandex.ru/maps/org/…" className="input py-2" /></label>
+                <label><span className="label">2ГИС (ссылка на карточку)</span><input name="twoGis" defaultValue={brand.twoGis} className="input py-2" /></label>
+                <label><span className="label">Wikidata</span><input name="wikidata" defaultValue={brand.wikidata} placeholder="https://www.wikidata.org/wiki/Q…" className="input py-2" /></label>
               </div>
             </SettingsForm>
             <div className="mt-8">

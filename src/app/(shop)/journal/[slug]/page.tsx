@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/money";
 import { Markdown } from "@/components/markdown";
 import { ProductCard } from "@/components/shop/product-card";
 import { getSetting } from "@/lib/settings";
-import { JsonLd, absolute, breadcrumbJsonLd } from "@/lib/seo";
+import { JsonLd, absolute, breadcrumbJsonLd, founderJsonLd, siteUrl } from "@/lib/seo";
 
 async function load(slug: string) {
   return db.article.findUnique({
@@ -64,8 +64,9 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
             keywords: a.keywords.join(", ") || undefined,
             inLanguage: "ru",
             mainEntityOfPage: absolute(`/journal/${a.slug}`),
-            author: { "@type": "Organization", name: brand.name },
-            publisher: { "@type": "Organization", name: brand.name, logo: { "@type": "ImageObject", url: absolute("/icon.svg") } },
+            author: founderJsonLd(brand) ?? { "@type": "Organization", name: brand.name },
+            publisher: { "@id": `${siteUrl()}/#organization` },
+            ...(a.products.length ? { mentions: a.products.map((p) => ({ "@type": "Product", name: p.name, url: absolute(`/product/${p.slug}`) })) } : {}),
           },
           breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Журнал", path: "/journal" }, { name: a.title, path: `/journal/${a.slug}` }]),
         ]}
