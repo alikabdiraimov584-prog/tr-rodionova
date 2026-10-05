@@ -1,0 +1,49 @@
+# Проверка корпоративной почты домена: записи MX, SPF, DKIM, DMARC и доступность почтового сервера.
+# Запускается вручную (Actions → «Check mail» → Run workflow) после настройки почты у провайдера и записей у регистратора.
+name: Check mail
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Домен почты"
+        default: "tr-rodionova.ru"
+      dkim_selectors:
+        description: "DKIM-селекторы через запятую (Яндекс 360: mail; Mail.ru для бизнеса: mailru; Postmark: из кабинета, вида 20240101abc)"
+        default: "mail,mailru,pm,default,timeweb,selector1,selector2,google,s1,s2,dkim"
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DOMAIN: ${{ inputs.domain }}
+      SELECTORS: ${{ inputs.dkim_selectors }}
+    steps:
+      - name: Записи DNS
+        run: |
+          D="$DOMAIN"
+          q() { dig +short "$@" @8.8.8.8 | sed 's/^/    /'; }
+          echo "== MX $D (куда доставляются письма на @$D)"; q MX "$D"
+          echo "== TXT $D (здесь должна быть SPF-запись v=spf1 …)"; q TXT "$D"
+          echo "== DMARC _dmarc.$D"; q TXT "_dmarc.$D"
+          echo "== DKIM"; for s in $(echo "$SELECTORS" | tr ',' ' '); do r=$(dig +short TXT "$s._domainkey.$D" @8.8.8.8 | head -c 120); [ -n "$r" ] && echo "    $s._domainkey: $r"; done; true
+          echo "== Служебные имена"; for n in mail autoconfig autodiscover pm-bounces; do r=$(dig +short "$n.$D" @8.8.8.8 | tr '\n' ' '); [ -n "$r" ] && echo "    $n.$D: $r"; done; true
+          echo "== SOA (serial = когда зону меняли последний раз, ГГГГММДДnn)"; q SOA "$D"
+      - name: Почтовый сервер
+        run: |
+          D="$DOMAIN"
+          mx=$(dig +short MX "$D" @8.8.8.8 | sort -n | head -1 | awk '{print $2}' | sed 's/\.$//')
+          if [ -z "$mx" ]; then echo "MX нет — письма на @$D не доставляются"; exit 0; fi
+          echo "Проверяю $mx:25 (приём) и :465/:587 (отправка)"
+          for p in 25 465 587; do
+            if timeout 10 bash -c "</dev/tcp/$mx/$p" 2>/dev/null; then echo "  порт $p открыт"; else echo "  порт $p закрыт или недоступен"; fi
+          done
+          echo "== Приветствие SMTP"; (echo QUIT | timeout 15 openssl s_client -connect "$mx:465" -quiet 2>/dev/null | head -2) || true
+      - name: Итог
+        run: |
+          D="$DOMAIN"; fail=""
+          mx=$(dig +short MX "$D" @8.8.8.8); [ -n "$mx" ] || fail="$fail нет MX (приём писем не работает);"
+          spf=$(dig +short TXT "$D" @8.8.8.8 | grep -i "v=spf1" || true); [ -n "$spf" ] || fail="$fail нет SPF (письма от @$D уйдут в спам или будут отклонены);"
+          dmarc=$(dig +short TXT "_dmarc.$D" @8.8.8.8 | grep -i "v=DMARC1" || true); [ -n "$dmarc" ] || fail="$fail нет DMARC (требование Gmail, Яндекса и Mail.ru для отправителей);"
+          dkim=""; for s in $(echo "$SELECTORS" | tr ',' ' '); do r=$(dig +short TXT "$s._domainkey.$D" @8.8.8.8); [ -n "$r" ] && dkim="$dkim $s"; done
+          [ -n "$dkim" ] || fail="$fail DKIM не найден по известным селекторам (укажите селектор провайдера во входных данных);"
+          if [ -n "$fail" ]; then echo "ПРОБЛЕМЫ:$fail"; exit 1; fi
+          echo "Почта домена настроена: MX, SPF, DMARC и DKIM ($dkim) на месте"
