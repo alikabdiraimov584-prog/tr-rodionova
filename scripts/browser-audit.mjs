@@ -195,7 +195,8 @@ async function crawl(role, viewport, startPaths, login) {
         if (n["@type"] === "FAQPage") for (const q of n.mainEntity ?? []) { if (!has(q.name)) note("jsonld", `${role} ${path}`, `вопрос FAQ не найден в тексте: ${String(q.name).slice(0, 50)}`); if (!has(q.acceptedAnswer?.text)) note("jsonld", `${role} ${path}`, `ответ FAQ не найден в тексте: ${String(q.name).slice(0, 50)}`); }
         if (n["@type"] === "Organization") {
           const logo = typeof n.logo === "object" ? n.logo?.url : n.logo;
-          if (logo && !ldIds.checkedLogo) { ldIds.checkedLogo = true; const r = await page.request.get(logo).catch(() => null); if (!r || r.status() !== 200 || !/image\/(png|jpeg)/.test(r.headers()["content-type"] || "")) note("jsonld", `${role} ${path}`, `логотип Organization недоступен или не PNG/JPEG: ${logo}`); }
+          // файл запрашивается с проверяемого адреса: на стенде разметка называет боевой домен или localhost:3000, а сервер слушает другой порт
+          if (logo && !ldIds.checkedLogo) { ldIds.checkedLogo = true; const u = new URL(new URL(logo, base).pathname, base).href; const r = await page.request.get(u).catch(() => null); if (!r || r.status() !== 200 || !/image\/(png|jpeg)/.test(r.headers()["content-type"] || "")) note("jsonld", `${role} ${path}`, `логотип Organization недоступен или не PNG/JPEG: ${u}`); }
         }
       }
       // Organization обязательна на индексируемых страницах витрины; кабинет, вход и оформление закрыты от индексации
