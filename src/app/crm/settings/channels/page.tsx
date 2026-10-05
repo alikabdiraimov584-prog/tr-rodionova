@@ -7,7 +7,7 @@ import { CHANNEL_FIELDS } from "@/lib/support/channels";
 import { CHANNEL } from "@/lib/labels";
 import { formatDate } from "@/lib/money";
 import { Badge, PageTitle } from "@/components/ui";
-import { ChannelForm, TelegramWebhookForm } from "@/components/crm/admin-forms";
+import { ChannelForm, TelegramWebhookForm, EmailTestForm } from "@/components/crm/admin-forms";
 import { ConfirmButton } from "@/components/form";
 import { rotateWebhookSecretAction } from "@/app/actions/crm-admin";
 import type { Channel } from "@/generated/prisma/enums";
@@ -23,12 +23,17 @@ const GUIDES: Record<Exclude<Channel, "WEBSITE">, string[]> = {
   ],
   INSTAGRAM: ["Meta: provider = meta, токен страницы/IG и verify token; подпишите приложение на messages.", "Или через Wazzup24: provider = wazzup, тот же API-ключ и channelId канала Instagram."],
   VK: ["Управление сообществом → Работа с API → Callback API: вставьте URL ниже, версию 5.199, событие «Входящее сообщение».", "Скопируйте строку подтверждения и секретный ключ в поля, ключ доступа — с правом «сообщения»."],
-  EMAIL: ["Входящие: в Postmark (или другом сервисе) настройте Inbound webhook на URL ниже.", "Исходящие: укажите адрес отправителя и server token Postmark."],
+  EMAIL: [
+    "Почта домена (Яндекс 360): адрес отправителя care@tr-rodionova.ru, SMTP-сервер smtp.yandex.ru, порт 465, логин — полный адрес ящика, IMAP-сервер imap.yandex.ru.",
+    "Пароль приложения: войдите в Яндекс ID под ящиком care@ → Безопасность → Пароли приложений → «Почта» → создать; обычный пароль от ящика не подойдёт. В Яндекс 360 для ящика должен быть разрешён доступ почтовых программ (IMAP/SMTP).",
+    "Исходящие: уведомления о заказах и баллах, вход по коду, восстановление пароля, рассылки и ответы службы заботы уходят с адреса отправителя. Входящие: письма клиенток читаются из ящика каждые 5 минут и попадают в «Поддержку»; письмо помечается прочитанным.",
+    "Альтернатива — Postmark: server token и Inbound webhook на URL ниже; при заполненном SMTP-сервере Postmark не используется.",
+  ],
   SMS: ["Только исходящие рассылки и уведомления через smsc.ru. Имя отправителя регистрируется у оператора."],
 };
 
 export default async function Channels() {
-  await requireSection("integrations");
+  const me = await requireSection("integrations");
   const rows = await db.channelIntegration.findMany();
   const byChannel = new Map(rows.map((r) => [r.channel, r]));
   const h = await headers();
@@ -69,6 +74,7 @@ export default async function Channels() {
                   </div>
                   {i?.lastError && <div className="text-danger">Последняя ошибка: {i.lastError}</div>}
                   {ch === "TELEGRAM" && <TelegramWebhookForm baseUrl={process.env.APP_URL ?? ""} />}
+                  {ch === "EMAIL" && <EmailTestForm defaultTo={me.email} />}
                 </div>
               ) : (
                 <p className="text-xs text-muted">URL вебхука появится после первого сохранения.</p>

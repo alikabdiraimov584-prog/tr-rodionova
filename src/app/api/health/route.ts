@@ -4,6 +4,19 @@ import { backupStatus } from "@/lib/backups";
 
 export const dynamic = "force-dynamic";
 
+/** Почта сайта: подключена ли, каким способом, последняя ошибка и сколько писем за сутки не ушло. */
+async function mailStatus() {
+  const since = new Date(Date.now() - 86_400_000);
+  const [ch, failed, skipped, sent] = await Promise.all([
+    db.channelIntegration.findUnique({ where: { channel: "EMAIL" }, select: { enabled: true, config: true, lastError: true, lastEventAt: true } }),
+    db.notification.count({ where: { channel: "EMAIL", status: "FAILED", createdAt: { gte: since } } }),
+    db.notification.count({ where: { channel: "EMAIL", status: "SKIPPED", createdAt: { gte: since } } }),
+    db.notification.count({ where: { channel: "EMAIL", status: "SENT", createdAt: { gte: since } } }),
+  ]);
+  const cfg = (ch?.config as Record<string, string> | null) ?? {};
+  return { enabled: !!ch?.enabled, transport: cfg.smtpHost ? "smtp" : cfg.postmarkToken ? "postmark" : null, lastError: ch?.lastError ?? null, lastInboundAt: ch?.lastEventAt ?? null, sent24h: sent, failed24h: failed, skipped24h: skipped };
+}
+
 /** Проверка живости: версия сборки (коммит) и доступность базы. Используется мониторингом и аудитом. */
 export async function GET() {
   let dbOk = true;
@@ -13,8 +26,9 @@ export async function GET() {
     dbOk = false;
   }
   const backup = dbOk ? await backupStatus().catch(() => null) : null;
+  const mail = dbOk ? await mailStatus().catch(() => null) : null;
   return NextResponse.json(
-    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), backup },
+    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), backup, mail },
     { status: dbOk ? 200 : 503, headers: { "cache-control": "no-store" } },
   );
 }

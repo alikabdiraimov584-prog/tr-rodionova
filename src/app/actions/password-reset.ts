@@ -28,6 +28,9 @@ export async function requestPasswordResetAction(_: ActionState, formData: FormD
   ]);
   const neutral = { ok: true, message: "Если такой аккаунт есть, письмо со ссылкой уже отправлено. Ссылка действует 60 минут." };
   if (!byIp.ok || !byEmail.ok) return neutral;
+  // почта не подключена: честно сказать об этом до поиска аккаунта (ответ одинаковый для всех адресов)
+  const mail = await db.channelIntegration.findUnique({ where: { channel: "EMAIL" }, select: { enabled: true } });
+  if (!mail?.enabled && process.env.NODE_ENV === "production") return { error: "Восстановление по почте временно недоступно. Напишите в службу заботы, и мы поможем войти." };
   const user = await db.user.findUnique({ where: { email } });
   if (!user || !user.isActive) return neutral;
   const token = randomBytes(32).toString("base64url");

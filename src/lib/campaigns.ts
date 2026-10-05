@@ -2,7 +2,8 @@ import "server-only";
 import { db } from "@/lib/db";
 import { customerStats } from "@/lib/analytics";
 import { rfmSegment, type RfmSegment } from "@/lib/rfm";
-import { ADAPTERS, type ChannelConfig } from "@/lib/support/channels";
+import { ADAPTERS } from "@/lib/support/channels";
+import { loadChannel } from "@/lib/support/channel-config";
 import { renderTemplate } from "@/lib/support/inbox";
 import type { Channel } from "@/generated/prisma/enums";
 
@@ -113,7 +114,7 @@ export function personalize(text: string, r: { firstName: string; tier: string |
 }
 
 /** Отправить одно сообщение по каналу (адрес уже найден). */
-export async function sendOne(channel: Channel, address: string, text: string, subject: string | null, userId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function sendOne(channel: Channel, address: string, text: string, subject: string | null, userId: string, unsubscribeUrl: string | null = null): Promise<{ ok: true } | { ok: false; error: string }> {
   if (channel === "WEBSITE") {
     const user = await db.user.findUniqueOrThrow({ where: { id: userId } });
     const contact = await db.contact.upsert({
@@ -127,11 +128,11 @@ export async function sendOne(channel: Channel, address: string, text: string, s
     await db.conversation.update({ where: { id: conv.id }, data: { lastMessageAt: new Date(), closedAt: null, status: conv.status === "OPEN" ? "OPEN" : "PENDING" } });
     return { ok: true };
   }
-  const integration = await db.channelIntegration.findUnique({ where: { channel } });
+  const integration = await loadChannel(channel);
   const adapter = ADAPTERS[channel];
   if (!integration?.enabled || !adapter) return { ok: false, error: "Канал не подключён" };
   try {
-    const r = await adapter.send(integration.config as ChannelConfig, address, text, subject);
+    const r = await adapter.send(integration.config, address, text, subject, { unsubscribeUrl });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Сеть недоступна" };
@@ -162,7 +163,7 @@ export async function runCampaign(campaignId: string, baseUrl: string) {
     const unsub =
       c.channel === "EMAIL" ? `Отписаться от рассылок: ${baseUrl}/unsubscribe/${r.user.unsubscribeToken}` : c.channel === "WEBSITE" ? null : "Чтобы отписаться, ответьте СТОП.";
     const text = personalize(c.text, { firstName: r.user.firstName, tier: r.user.loyaltyTier?.name ?? null, points: r.user.pointsBalance }, linkUrl, unsub);
-    const res = await sendOne(c.channel, r.address, text, c.subject, r.userId);
+    const res = await sendOne(c.channel, r.address, text, c.subject, r.userId, c.channel === "EMAIL" ? `${baseUrl}/unsubscribe/${r.user.unsubscribeToken}` : null);
     await db.campaignRecipient.update({ where: { id: r.id }, data: res.ok ? { status: "SENT", sentAt: new Date() } : { status: "FAILED", error: res.error } });
   }
   const counts = await db.campaignRecipient.groupBy({ by: ["status"], where: { campaignId: c.id }, _count: true });

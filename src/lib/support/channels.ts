@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import nodemailer from "nodemailer";
 import type { Channel } from "@/generated/prisma/enums";
 
 /**
@@ -31,6 +32,8 @@ export type Inbound = {
 
 export type ChannelConfig = Record<string, string | undefined>;
 export type SendResult = { ok: true; externalId?: string } | { ok: false; error: string };
+/** Параметры отправки: ответ в переписке (тема с Re:, ссылка на исходное письмо), ссылка отписки для рассылок. */
+export type SendOptions = { reply?: boolean; inReplyTo?: string | null; unsubscribeUrl?: string | null };
 
 export type ParseResult = { messages: Inbound[]; response?: Response };
 
@@ -228,14 +231,65 @@ const vk = {
   },
 };
 
-// ───────────── Email (входящие: Postmark Inbound / любой JSON-вебхук) ─────────────
+// ───────────── Email: отправка по SMTP (Яндекс 360, любой почтовый сервер) или через Postmark; входящие — IMAP-опрос или Postmark Inbound ─────────────
 
 type MailHook = { From?: string; FromName?: string; FromFull?: { Email: string; Name?: string }; Subject?: string; TextBody?: string; StrippedTextReply?: string; MessageID?: string; Headers?: { Name: string; Value: string }[]; from?: string; subject?: string; text?: string };
 
 /** Адрес From в письме легко подделать: считаем отправителя подтверждённым только при SPF или DKIM pass. */
-function mailSenderVerified(b: MailHook) {
-  const auth = (b.Headers ?? []).filter((h) => /^(authentication-results|received-spf)$/i.test(h.Name)).map((h) => h.Value.toLowerCase()).join(" ");
+export function mailAuthPassed(authResults: string) {
+  const auth = authResults.toLowerCase();
   return /\b(spf|dkim)=pass\b/.test(auth) || /^pass\b/.test(auth);
+}
+
+function mailSenderVerified(b: MailHook) {
+  const auth = (b.Headers ?? []).filter((h) => /^(authentication-results|received-spf)$/i.test(h.Name)).map((h) => h.Value).join(" ");
+  return mailAuthPassed(auth);
+}
+
+/**
+ * Текст ответа без процитированного письма: почтовые программы вставляют исходное сообщение после строки
+ * «… написал(а):» / «On … wrote:» / «-----Original Message-----» или строками с «>». В inbox нужен только новый текст.
+ */
+export function stripQuotedReply(text: string) {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const cut = lines.findIndex((l, i) =>
+    /^\s*>/.test(l) ||
+    /^-{2,}\s*(Original Message|Исходное сообщение|Пересылаемое сообщение|Forwarded message)/i.test(l) ||
+    /^(From|От|Sent|Отправлено):\s/.test(l) ||
+    /^(On|В|Вт|Ср|Чт|Пт|Сб|Вс|Пн|сб|вс|пн|вт|ср|чт|пт)\b.*(wrote|написал(\(а\)|а|и)?):?\s*$/.test(l) ||
+    (/(написал(\(а\)|а|и)?|wrote):\s*$/.test(l) && i > 0 && lines[i + 1] !== undefined),
+  );
+  const body = (cut >= 0 ? lines.slice(0, cut) : lines).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return body.replace(/\n(--|__)\s*\n[\s\S]*$/, "").trim() || text.trim();
+}
+
+/** Адрес и порт SMTP из настроек канала; 465 — TLS сразу, 587/25 — STARTTLS. */
+export function smtpSettings(config: ChannelConfig) {
+  const host = (config.smtpHost ?? "").trim();
+  const port = Number(config.smtpPort) || 465;
+  const user = (config.smtpUser ?? config.from ?? "").trim();
+  const pass = (config.smtpPassword ?? "").trim();
+  return { host, port, user, pass, secure: port === 465 };
+}
+
+export function smtpTransport(config: ChannelConfig) {
+  const s = smtpSettings(config);
+  return nodemailer.createTransport({
+    host: s.host,
+    port: s.port,
+    secure: s.secure,
+    auth: { user: s.user, pass: s.pass },
+    requireTLS: !s.secure && !/^(localhost|127\.0\.0\.1)$/.test(s.host),
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 30_000,
+  });
+}
+
+function fromHeader(config: ChannelConfig) {
+  const from = (config.from ?? "").trim();
+  const name = (config.fromName ?? "").trim();
+  return name ? { name, address: from } : from;
 }
 
 const email = {
@@ -246,17 +300,46 @@ const email = {
     if (!addr || !text) return { messages: [] };
     return { messages: [{ contactExternalId: addr, email: addr, name: b.FromFull?.Name ?? b.FromName ?? null, text, subject: b.Subject ?? b.subject ?? null, messageExternalId: b.MessageID ? `mail_${b.MessageID}` : null, identityVerified: mailSenderVerified(b) }] };
   },
-  async send(config: ChannelConfig, to: string, text: string, subject?: string | null): Promise<SendResult> {
-    if (!config.postmarkToken || !config.from) return { ok: false, error: "Не настроена отправка почты (Postmark)" };
+  async send(config: ChannelConfig, to: string, text: string, subject?: string | null, opts: SendOptions = {}): Promise<SendResult> {
+    const from = (config.from ?? "").trim();
+    const finalSubject = subject ? (opts.reply ? `Re: ${subject.replace(/^re:\s*/i, "")}` : subject) : "T.Rodionova";
+    if (config.smtpHost) {
+      const s = smtpSettings(config);
+      if (!from || !s.user || !s.pass) return { ok: false, error: "Не заполнены адрес отправителя, логин или пароль приложения SMTP" };
+      try {
+        const info = await smtpTransport(config).sendMail({
+          from: fromHeader(config),
+          to,
+          subject: finalSubject,
+          text,
+          ...(opts.inReplyTo ? { inReplyTo: opts.inReplyTo, references: opts.inReplyTo } : {}),
+          ...(opts.unsubscribeUrl ? { list: { unsubscribe: { url: opts.unsubscribeUrl, comment: "Отписаться" } } } : {}),
+        });
+        const id = (info.messageId ?? "").replace(/^<|>$/g, "");
+        return { ok: true, externalId: id ? `mail_${id}` : undefined };
+      } catch (e) {
+        return { ok: false, error: smtpError(e) };
+      }
+    }
+    if (!config.postmarkToken || !from) return { ok: false, error: "Не настроена отправка почты: укажите SMTP-сервер и пароль приложения (или Postmark server token)" };
     const { status, json } = await postJson(
       "https://api.postmarkapp.com/email",
-      { From: config.from, To: to, Subject: subject ? `Re: ${subject.replace(/^re:\s*/i, "")}` : "T.Rodionova", TextBody: text },
+      { From: from, To: to, Subject: finalSubject, TextBody: text, ...(opts.unsubscribeUrl ? { Headers: [{ Name: "List-Unsubscribe", Value: `<${opts.unsubscribeUrl}>` }] } : {}) },
       { "X-Postmark-Server-Token": config.postmarkToken, Accept: "application/json" },
     );
     const r = json as { MessageID?: string; Message?: string };
     return status < 300 ? { ok: true, externalId: r.MessageID ? `mail_${r.MessageID}` : undefined } : { ok: false, error: r?.Message ?? `HTTP ${status}` };
   },
 };
+
+/** Понятная причина сбоя SMTP вместо кода библиотеки. */
+export function smtpError(e: unknown) {
+  const err = e as { code?: string; responseCode?: number; message?: string };
+  if (err.responseCode === 535 || /auth/i.test(err.code ?? "")) return "SMTP не принял логин или пароль: нужен пароль приложения из Яндекс ID, а не пароль от ящика";
+  if (err.code === "ESOCKET" || err.code === "ECONNECTION" || err.code === "ETIMEDOUT") return `Нет соединения с SMTP-сервером (${err.message ?? err.code})`;
+  if (err.code === "EENVELOPE") return `Сервер отклонил адрес: ${err.message ?? ""}`.trim();
+  return err.message ?? "Ошибка отправки";
+}
 
 // ───────────── SMS (smsc.ru, только исходящие) ─────────────
 
@@ -275,7 +358,7 @@ const sms = {
 
 type Adapter = {
   parse: (ctx: WebhookContext) => Promise<ParseResult>;
-  send: (config: ChannelConfig, to: string, text: string, subject?: string | null) => Promise<SendResult>;
+  send: (config: ChannelConfig, to: string, text: string, subject?: string | null, opts?: SendOptions) => Promise<SendResult>;
   verify?: (ctx: WebhookContext) => Response | null;
 };
 
@@ -315,7 +398,13 @@ export const CHANNEL_FIELDS: Record<Exclude<Channel, "WEBSITE">, { key: string; 
   ],
   EMAIL: [
     { key: "from", label: "Адрес отправителя", hint: "care@tr-rodionova.ru" },
-    { key: "postmarkToken", label: "Postmark server token", secret: true },
+    { key: "fromName", label: "Имя отправителя", hint: "T.Rodionova" },
+    { key: "smtpHost", label: "SMTP-сервер", hint: "smtp.yandex.ru" },
+    { key: "smtpPort", label: "SMTP-порт", hint: "465" },
+    { key: "smtpUser", label: "Логин SMTP и IMAP (полный адрес)", hint: "care@tr-rodionova.ru" },
+    { key: "smtpPassword", label: "Пароль приложения", secret: true, hint: "Яндекс ID → Безопасность → Пароли приложений → Почта" },
+    { key: "imapHost", label: "IMAP-сервер (ответы клиенток в CRM)", hint: "imap.yandex.ru" },
+    { key: "postmarkToken", label: "Postmark server token (только если вместо SMTP)", secret: true },
   ],
   SMS: [
     { key: "login", label: "smsc.ru: логин" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { addLedgerAction, createStaffAction, resetStaffPasswordAction, saveChannelAction, saveSettingsAction, telegramSetWebhookAction } from "@/app/actions/crm-admin";
+import { addLedgerAction, createStaffAction, resetStaffPasswordAction, saveChannelAction, saveSettingsAction, telegramSetWebhookAction, testEmailChannelAction } from "@/app/actions/crm-admin";
 
 function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
   if (s?.error) return <span className="text-xs text-danger">{s.error}</span>;
@@ -98,6 +98,18 @@ export function ChannelForm({ channel, fields, values, enabled }: { channel: str
         ))}
       </div>
       <div className="flex items-center gap-3"><button className="btn-outline btn-sm" disabled={pending}>Сохранить</button><Msg s={state} /></div>
+    </form>
+  );
+}
+
+/** Почта: тестовое письмо и проверка входа в ящик. Адрес по умолчанию — почта сотрудника, который нажал кнопку. */
+export function EmailTestForm({ defaultTo }: { defaultTo: string }) {
+  const [state, action, pending] = useActionState(testEmailChannelAction, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input name="to" type="email" defaultValue={defaultTo} aria-label="Куда отправить тестовое письмо" className="input w-full py-2 sm:w-72" />
+      <button className="btn-outline btn-sm" disabled={pending}>{pending ? "Проверяю…" : "Отправить тестовое письмо и проверить IMAP"}</button>
+      <Msg s={state} />
     </form>
   );
 }

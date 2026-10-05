@@ -1,7 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { getSetting, type SupportSettings } from "@/lib/settings";
-import { ADAPTERS, type ChannelConfig, type Inbound } from "@/lib/support/channels";
+import { ADAPTERS, type Inbound } from "@/lib/support/channels";
+import { loadChannel } from "@/lib/support/channel-config";
 import type { Channel, Priority } from "@/generated/prisma/enums";
 
 // ───────────── Умная маршрутизация ─────────────
@@ -75,8 +76,7 @@ async function pickAssignee(customerId: string | null, contactId: string): Promi
 }
 
 async function channelConfig(channel: Channel) {
-  const i = await db.channelIntegration.findUnique({ where: { channel } });
-  return i;
+  return loadChannel(channel);
 }
 
 // ───────────── Входящие ─────────────
@@ -188,7 +188,10 @@ async function deliver(conversationId: string, text: string, opts: { authorId?: 
     return db.message.update({ where: { id: msg.id }, data: { status: "FAILED", error: "Канал не подключён — настройте его в «Настройки → Каналы»" } });
   }
   try {
-    const res = await adapter.send(integration.config as ChannelConfig, conv.contact.externalId, text, conv.subject);
+    // ответ в почте: тема с Re: и ссылка на последнее входящее письмо, чтобы почтовые программы собрали переписку в цепочку
+    const lastIn = conv.channel === "EMAIL" ? await db.message.findFirst({ where: { conversationId, direction: "IN", externalId: { startsWith: "mail_" } }, orderBy: { createdAt: "desc" }, select: { externalId: true } }) : null;
+    const inReplyTo = lastIn?.externalId ? `<${lastIn.externalId.slice(5)}>` : null;
+    const res = await adapter.send(integration.config, conv.contact.externalId, text, conv.subject, { reply: true, inReplyTo });
     if (res.ok) return db.message.update({ where: { id: msg.id }, data: { status: "SENT", externalId: res.externalId ?? null } });
     await db.channelIntegration.update({ where: { id: integration.id }, data: { lastError: res.error } });
     return db.message.update({ where: { id: msg.id }, data: { status: "FAILED", error: res.error } });

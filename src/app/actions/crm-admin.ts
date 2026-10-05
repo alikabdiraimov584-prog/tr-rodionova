@@ -7,6 +7,9 @@ import { db } from "@/lib/db";
 import { requireSection, hashPassword } from "@/lib/auth";
 import { getSetting, setSetting } from "@/lib/settings";
 import { CHANNEL_FIELDS } from "@/lib/support/channels";
+import { decodeChannelConfig, encodeChannelConfig, loadChannel } from "@/lib/support/channel-config";
+import { ADAPTERS } from "@/lib/support/channels";
+import { checkMailbox } from "@/lib/support/mail-imap";
 import { toKopecks } from "@/lib/money";
 import { audit } from "@/lib/audit";
 import { errorMessage, type ActionState } from "@/lib/action-result";
@@ -69,7 +72,13 @@ export async function createStaffAction(_: ActionState, formData: FormData): Pro
   if (existing && existing.role !== "CUSTOMER") return { error: "Сотрудник с таким email уже есть" };
   if (existing) return { error: "Этот email принадлежит клиенту. Используйте рабочий адрес сотрудника." };
   const password = tempPassword();
-  const u = await db.user.create({ data: { ...d, lastName: d.lastName || null, phone: d.phone || null, role: d.role as Role, passwordHash: await hashPassword(password) } });
+  let u: { id: string };
+  try {
+    u = await db.user.create({ data: { ...d, lastName: d.lastName || null, phone: d.phone || null, role: d.role as Role, passwordHash: await hashPassword(password) } });
+  } catch (e) {
+    const msg = errorMessage(e);
+    return { error: msg.includes("Unique") ? "Аккаунт с таким email уже есть" : `Не удалось создать аккаунт: ${msg}` };
+  }
   await audit(me.id, "staff.create", "User", u.id, { role: d.role });
   revalidatePath("/crm/staff");
   return { ok: true, message: `Аккаунт создан. Временный пароль: ${password} — передайте сотруднику, он виден один раз.` };
@@ -176,10 +185,16 @@ export async function saveChannelAction(_: ActionState, formData: FormData): Pro
     if (formData.get(`clear_${f.key}`) === "on") delete config[f.key];
   }
   const enabled = formData.get("enabled") === "on";
+  if (channel === "EMAIL") {
+    if (config.from && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(config.from)) return { error: "Адрес отправителя должен быть вида care@tr-rodionova.ru" };
+    if (config.smtpPort && !/^\d{2,5}$/.test(config.smtpPort)) return { error: "SMTP-порт — число, обычно 465" };
+    if (enabled && !config.smtpHost && !config.postmarkToken) return { error: "Чтобы включить почту, укажите SMTP-сервер и пароль приложения (или Postmark server token)" };
+  }
+  const stored = encodeChannelConfig(channel, config);
   await db.channelIntegration.upsert({
     where: { channel },
-    update: { config, enabled },
-    create: { channel, name: CHANNEL_NAMES[channel], config, enabled },
+    update: { config: stored, enabled },
+    create: { channel, name: CHANNEL_NAMES[channel], config: stored, enabled },
   });
   await audit(me.id, "channel.save", "ChannelIntegration", channel, { enabled, keys: Object.keys(config) });
   revalidatePath("/crm/settings/channels");
@@ -200,7 +215,7 @@ export async function telegramSetWebhookAction(_: ActionState, formData: FormDat
   const base = String(formData.get("baseUrl") ?? "").replace(/\/$/, "");
   if (!base.startsWith("https://")) return { error: "Нужен публичный https-адрес сайта (APP_URL)" };
   const i = await db.channelIntegration.findUnique({ where: { channel: "TELEGRAM" } });
-  const token = (i?.config as Record<string, string> | undefined)?.botToken;
+  const token = i ? decodeChannelConfig("TELEGRAM", i.config).botToken : undefined;
   if (!i || !token) return { error: "Сначала сохраните токен бота" };
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
@@ -215,4 +230,28 @@ export async function telegramSetWebhookAction(_: ActionState, formData: FormDat
   } catch (e) {
     return { error: errorMessage(e) };
   }
+}
+
+/** Почта: тестовое письмо администратору по SMTP (или Postmark) и проверка входа в ящик по IMAP. */
+export async function testEmailChannelAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireSection("integrations");
+  const to = String(formData.get("to") ?? me.email).trim() || me.email;
+  const ch = await loadChannel("EMAIL");
+  if (!ch) return { error: "Сначала сохраните настройки канала" };
+  const adapter = ADAPTERS.EMAIL!;
+  const brand = await getSetting("brand");
+  const parts: string[] = [];
+  let ok = true;
+  const sent = await adapter.send(ch.config, to, `Это тестовое письмо с сайта ${brand.name}. Если вы его видите, отправка почты настроена.\n\n— ${brand.name}`, "Проверка почты сайта").catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : "ошибка" }));
+  if (sent.ok) parts.push(`Письмо отправлено на ${to}${ch.config.smtpHost ? ` через ${ch.config.smtpHost}` : " через Postmark"}`);
+  else { ok = false; parts.push(`Отправка: ${sent.error}`); }
+  if (ch.config.smtpHost) {
+    const imap = await checkMailbox(ch.config);
+    if (imap.ok) parts.push(imap.info);
+    else { ok = false; parts.push(imap.error); }
+  }
+  await db.channelIntegration.update({ where: { id: ch.id }, data: ok ? { lastError: null } : { lastError: parts.filter((p) => /^(Отправка|IMAP)/.test(p)).join("; ") } });
+  await audit(me.id, "channel.test", "ChannelIntegration", "EMAIL", { ok });
+  revalidatePath("/crm/settings/channels");
+  return ok ? { ok: true, message: parts.join(". ") } : { error: parts.join(". ") };
 }

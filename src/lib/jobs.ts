@@ -110,7 +110,9 @@ export async function cancelUnpaidOrders(now = new Date()) {
 export async function runHourlyJobs() {
   const paymentReminders = await notifyUnpaidOrders();
   const unpaidCancelled = await cancelUnpaidOrders();
-  return { paymentReminders, unpaidCancelled };
+  // письма ящика поддержки: основной опрос — каждые 5 минут (job=mail), здесь страховка на случай, если он не настроен
+  const mail = await (await import("@/lib/support/mail-imap")).pollMailbox().catch((e) => ({ error: e instanceof Error ? e.message : "mail" }));
+  return { paymentReminders, unpaidCancelled, mail };
 }
 
 export async function runDailyJobs(actorId: string | null = null) {

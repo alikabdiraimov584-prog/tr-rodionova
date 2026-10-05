@@ -5,6 +5,7 @@ import { runDailyJobs, runHourlyJobs } from "@/lib/jobs";
  *   ежедневно   GET /api/cron            — баллы, уровни, рассылки, сверки, очистка
  *   ежечасно    GET /api/cron?job=hourly — напоминания об оплате, снятие резерва через 24 ч
  *   ежедневно   GET /api/cron?job=backup — загрузка ночного дампа базы в S3 (ключи в CRM → Интеграции)
+ *   каждые 5 мин GET /api/cron?job=mail   — новые письма ящика поддержки (IMAP) в единый inbox
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
   try {
     let result: Record<string, unknown>;
     if (job === "hourly") result = await runHourlyJobs();
+    else if (job === "mail") result = await (await import("@/lib/support/mail-imap")).pollMailbox();
     else if (job === "backup") {
       const backups = await import("@/lib/backups");
       result = { ...(await backups.uploadLatestBackup()), ...(await backups.checkBackupHealth()) };

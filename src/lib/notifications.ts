@@ -1,7 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
-import { ADAPTERS, type ChannelConfig } from "@/lib/support/channels";
+import { ADAPTERS } from "@/lib/support/channels";
+import { loadChannel } from "@/lib/support/channel-config";
 import { formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD } from "@/lib/labels";
 import type { Channel } from "@/generated/prisma/enums";
@@ -22,15 +23,19 @@ function siteUrl() {
 }
 
 export async function sendVia(channel: Channel, address: string, text: string, subject: string | null): Promise<{ status: "SENT" | "FAILED" | "SKIPPED"; error?: string }> {
-  const integration = await db.channelIntegration.findUnique({ where: { channel } });
+  const integration = await loadChannel(channel);
   const adapter = ADAPTERS[channel];
   if (!integration?.enabled || !adapter) return { status: "SKIPPED", error: "Канал не подключён" };
+  let result: { status: "SENT" | "FAILED"; error?: string };
   try {
-    const r = await adapter.send(integration.config as ChannelConfig, address, text, subject);
-    return r.ok ? { status: "SENT" } : { status: "FAILED", error: r.error };
+    const r = await adapter.send(integration.config, address, text, subject);
+    result = r.ok ? { status: "SENT" } : { status: "FAILED", error: r.error };
   } catch (e) {
-    return { status: "FAILED", error: e instanceof Error ? e.message : "Сеть недоступна" };
+    result = { status: "FAILED", error: e instanceof Error ? e.message : "Сеть недоступна" };
   }
+  // сбой отправки виден в карточке канала (CRM → Настройки → Каналы), успех снимает старую ошибку
+  await db.channelIntegration.update({ where: { id: integration.id }, data: result.status === "FAILED" ? { lastError: result.error ?? "Ошибка отправки" } : { lastError: null } }).catch(() => null);
+  return result;
 }
 
 async function dispatch(input: { userId?: string | null; orderId?: string | null; event: string; subject: string | null; text: string; email?: string | null; phone?: string | null; sms?: string | null }) {

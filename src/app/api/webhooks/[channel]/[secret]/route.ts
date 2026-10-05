@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { ADAPTERS } from "@/lib/support/channels";
+import { decodeChannelConfig } from "@/lib/support/channel-config";
 import { ingestInbound } from "@/lib/support/inbox";
 import type { Channel } from "@/generated/prisma/enums";
 
@@ -28,7 +29,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/webhooks/[ch
   const r = await resolve(ctx.params);
   if (!r) return new Response("not found", { status: 404 });
   const adapter = ADAPTERS[r.channel];
-  const res = adapter?.verify?.({ config: r.integration.config as Record<string, string>, secret: r.integration.webhookSecret, rawBody: "", headers: request.headers, url: new URL(request.url) });
+  const res = adapter?.verify?.({ config: decodeChannelConfig(r.channel, r.integration.config), secret: r.integration.webhookSecret, rawBody: "", headers: request.headers, url: new URL(request.url) });
   return res ?? new Response("ok");
 }
 
@@ -40,7 +41,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/webhooks/[c
   if (!adapter) return new Response("unsupported", { status: 400 });
   const rawBody = await request.text();
   try {
-    const { messages, response } = await adapter.parse({ config: r.integration.config as Record<string, string>, secret: r.integration.webhookSecret, rawBody, headers: request.headers, url: new URL(request.url) });
+    const { messages, response } = await adapter.parse({ config: decodeChannelConfig(r.channel, r.integration.config), secret: r.integration.webhookSecret, rawBody, headers: request.headers, url: new URL(request.url) });
     for (const m of messages) await ingestInbound(r.channel, m);
     await db.channelIntegration.update({ where: { id: r.integration.id }, data: { lastEventAt: new Date(), ...(messages.length ? { lastError: null } : {}) } });
     return response ?? new Response("ok");

@@ -89,7 +89,7 @@ export async function createManualOrderAction(_: ActionState, formData: FormData
       userId: customer?.id ?? null,
       firstName,
       lastName: customer?.lastName ?? null,
-      email: email || "showroom@tr-rodionova.ru",
+      email: email || "", // без адреса уведомления по почте не отправляются
       phone,
       lines,
       paymentMethod: String(formData.get("paymentMethod") ?? "CARD") as PaymentMethod,
