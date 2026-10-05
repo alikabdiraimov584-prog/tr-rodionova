@@ -1,0 +1,53 @@
+name: Study site
+# Снимки и структура чужого сайта для сравнения дизайна: скриншоты (телефон и компьютер) печатаются в лог в base64.
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Адреса через пробел"
+        required: true
+jobs:
+  study:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Структура и шрифты
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+          for U in $URLS; do
+            origin=$(echo "$U" | grep -oE '^https?://[^/]+')
+            html=$(curl -sS -m 30 -L -A "$UA" "$U")
+            echo "=================== $U"
+            echo "== title: $(echo "$html" | grep -oE '<title>[^<]*' | head -1)"
+            echo "== ссылки шапки (первые 40 a href)"; echo "$html" | tr -d '\r' | awk '/<header|class="header/{f=1} /<\/header>/{if(f){exit}} f' | grep -oE '<a [^>]*href="[^"]*"[^>]*>[^<]{0,40}' | sed 's/<a [^>]*href="\([^"]*\)"[^>]*>/\1 → /' | head -40
+            echo "== заголовки h1-h3"; echo "$html" | grep -oE '<h[1-3][^>]*>[^<]{1,80}' | sed 's/<h\([1-3]\)[^>]*>/h\1: /' | head -30
+            echo "== кнопки/поля: button=$(echo "$html" | grep -oc '<button') input=$(echo "$html" | grep -oc '<input') select=$(echo "$html" | grep -oc '<select') a=$(echo "$html" | grep -oc '<a ') img=$(echo "$html" | grep -oc '<img')"
+            echo "== тексты кнопок"; echo "$html" | grep -oE '<button[^>]*>[^<]{1,40}' | sed 's/<button[^>]*>//' | sort | uniq -c | sort -rn | head -20
+            echo "== классы секций главной (div/section с class, уникальные первые слова)"; echo "$html" | grep -oE '<(section|main|footer|nav)[^>]*class="[^"]*"' | head -30
+            echo "== шрифты"
+            for css in $(echo "$html" | grep -oE '<link[^>]*rel="stylesheet"[^>]*href="[^"]*"' | grep -oE 'href="[^"]*"' | grep -oE '"[^"]*"' | tr -d '"' | head -6); do
+              case "$css" in http*) full="$css";; //*) full="https:$css";; *) full="$origin$css";; esac
+              echo "-- $css"; curl -sS -m 30 -A "$UA" "$full" | grep -oE '@font-face\{[^}]*\}|font-family:[^;}]*' | sed 's/src:[^;]*;//g' | sort | uniq -c | sort -rn | head -12 | cut -c1-200
+              curl -sS -m 30 -A "$UA" "$full" | grep -oE 'body\{[^}]*\}|html\{[^}]*\}' | head -3 | cut -c1-300
+            done
+            echo "$html" | grep -oE 'font-family:[^;"]*' | sort | uniq -c | sort -rn | head -5
+            echo "$html" | grep -oE 'fonts.googleapis.com[^"]*|\.woff2?[^"]*' | sort -u | head -8
+          done
+      - name: Скриншоты
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+        run: |
+          n=0
+          for U in $URLS; do
+            n=$((n+1))
+            google-chrome --headless=new --no-sandbox --hide-scrollbars --window-size=390,2200 --screenshot=/tmp/m$n.png "$U" >/dev/null 2>&1 || true
+            google-chrome --headless=new --no-sandbox --hide-scrollbars --window-size=1440,2600 --screenshot=/tmp/d$n.png "$U" >/dev/null 2>&1 || true
+            for f in m d; do
+              [ -f /tmp/$f$n.png ] || continue
+              convert /tmp/$f$n.png -resize $([ $f = m ] && echo 520 || echo 1100)x -quality 62 /tmp/$f$n.jpg
+              echo "=== SHOT $f$n $U $(identify -format '%wx%h' /tmp/$f$n.jpg) ==="
+              base64 -w0 /tmp/$f$n.jpg | fold -w 4000
+              echo "=== END $f$n ==="
+            done
+          done
