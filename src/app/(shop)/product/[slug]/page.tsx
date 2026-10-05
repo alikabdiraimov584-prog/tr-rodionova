@@ -10,7 +10,8 @@ import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductCard } from "@/components/shop/product-card";
 import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
-import { JsonLd, absolute, breadcrumbJsonLd, offerPoliciesJsonLd, siteUrl } from "@/lib/seo";
+import { JsonLd, absolute, breadcrumbJsonLd, faqJsonLd, offerPoliciesJsonLd, siteUrl } from "@/lib/seo";
+import { productFaq } from "@/lib/faq";
 
 async function load(slug: string) {
   return db.product.findUnique({
@@ -69,6 +70,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const inStock = p.isPreorder || p.variants.some((v) => v.stock - v.reserved > 0);
   const colors = [...new Set(p.variants.map((v) => v.color).filter(Boolean))];
   const sizesAll = [...new Set(p.variants.map((v) => v.size))];
+  const faq = productFaq(p, sizesAll, delivery);
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -99,7 +101,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   };
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-      <JsonLd data={[productJsonLd, breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
+      <JsonLd data={[productJsonLd, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
       <nav className="py-3 text-[0.66rem] uppercase tracking-[0.1em] text-muted [&_a]:inline-block [&_a]:py-1">
         <Link href="/catalog" className="hover:text-ink">Каталог</Link>
         {p.category && <> / <Link href={`/catalog?category=${p.category.slug}`} className="hover:text-ink">{p.category.name}</Link></>}
@@ -155,6 +157,21 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           )}
         </div>
       </div>
+
+      <section className="mt-16 border-t border-line pt-6">
+        <h2>Вопросы о вещи</h2>
+        <dl className="mt-4 grid gap-5 md:grid-cols-2">
+          {faq.map((f) => (
+            <div key={f.q}>
+              <dt className="font-medium">{f.q}</dt>
+              <dd className="mt-1 text-sm text-ink/85">
+                {f.a}
+                {f.href && <> <Link href={f.href} className="underline underline-offset-4">Подробнее</Link></>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {p.reviews.length > 0 && (
         <section className="mt-16 border-t border-line pt-6">

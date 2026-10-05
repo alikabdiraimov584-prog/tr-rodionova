@@ -58,7 +58,7 @@ export async function ShopHeader() {
 export async function ShopFooter() {
   const [brand, seller] = await Promise.all([getSettingOrDefault("brand"), getSettingOrDefault("seller")]);
   const cols: [string, [string, string][]][] = [
-    ["Покупателям", [["/delivery", "Доставка и возврат"], ["/sizes", "Размеры и мерки"], ["/care", "Уход за изделиями"], ["/gift", "Подарочные сертификаты"], ["/preloved", "Выкуп и pre-loved"]]],
+    ["Покупателям", [["/faq", "Вопросы и ответы"], ["/delivery", "Доставка и возврат"], ["/sizes", "Размеры и мерки"], ["/care", "Уход за изделиями"], ["/gift", "Подарочные сертификаты"], ["/preloved", "Выкуп и pre-loved"]]],
     ["Бренд", [["/about", "О бренде"], ["/collections", "Коллекции"], ["/lookbook", "Лукбук"], ["/journal", "Журнал"], ["/showroom", "Шоурум и контакты"]]],
     ["Circle", [["/circle", "Программа лояльности"], ["/account", "Личный кабинет"], ["/account/stylist", "Персональный стилист"], ["/register", "Вступить"]]],
     ["Документы", [["/offer", "Публичная оферта"], ["/privacy", "Политика конфиденциальности"], ["/privacy#consent", "Согласие на обработку данных"]]],
