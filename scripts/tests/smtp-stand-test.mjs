@@ -7,7 +7,7 @@ import { chromium } from "playwright-core";
 const received = [];
 const server = new SMTPServer({
   secure: false, disabledCommands: ["STARTTLS"], authOptional: false,
-  onAuth(auth, session, cb) { auth.username === "care@tr-rodionova.ru" && auth.password === "app-password-1" ? cb(null, { user: auth.username }) : cb(new Error("Invalid login")); },
+  onAuth(auth, session, cb) { if (auth.username === "care@tr-rodionova.ru" && auth.password === "app-password-1") cb(null, { user: auth.username }); else cb(new Error("Invalid login")); },
   onData(stream, session, cb) { let buf = ""; stream.on("data", (d) => (buf += d)); stream.on("end", async () => { received.push(await simpleParser(buf)); cb(); }); },
 });
 await new Promise((r) => server.listen(2525, "127.0.0.1", r));

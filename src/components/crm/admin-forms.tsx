@@ -9,28 +9,47 @@ function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
   return null;
 }
 
-export function LedgerForm() {
+const LEDGER_OPTIONS: [string, string][] = [
+  ["EXPENSE_PRODUCTION", "Производство: ткани, пошив, фурнитура"],
+  ["EXPENSE_MARKETING", "Маркетинг"],
+  ["EXPENSE_SHIPPING", "Доставка и логистика"],
+  ["EXPENSE_SALARY", "Зарплаты и подрядчики"],
+  ["EXPENSE_RENT", "Аренда"],
+  ["EXPENSE_SERVICES", "Сервисы, сайт, связь, банк"],
+  ["EXPENSE_TAX", "Налоги и взносы"],
+  ["EXPENSE_ACQUIRING", "Эквайринг"],
+  ["EXPENSE_OTHER", "Прочие расходы"],
+  ["INCOME_OTHER", "Прочие доходы"],
+  ["OWNER_CONTRIBUTION", "Взнос собственника / заём"],
+  ["OWNER_WITHDRAWAL", "Вывод собственнику"],
+];
+
+export type LedgerInitial = { id: string; type: string; amount: number; date: string; category: string; counterparty: string; comment: string };
+
+/** Ручная проводка: расход, прочий доход, взнос или вывод. В режиме правки заполнена существующей проводкой. */
+export function LedgerForm({ initial, categories = [], counterparties = [], cancelHref }: { initial?: LedgerInitial; categories?: string[]; counterparties?: string[]; cancelHref?: string }) {
   const [state, action, pending] = useActionState(addLedgerAction, undefined);
+  const today = new Date().toISOString().slice(0, 10);
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 md:items-end xl:grid-cols-[200px_140px_150px_1fr_1.5fr_auto]">
+    <form action={action} className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-[1.6fr_130px_150px_1fr_1fr_1.4fr_auto] xl:items-end">
+      {initial && <input type="hidden" name="id" value={initial.id} />}
       <label><span className="label">Статья</span>
-        <select aria-label="Тип" name="type" className="input py-2">
-          <option value="EXPENSE_MARKETING">Маркетинг</option>
-          <option value="EXPENSE_PRODUCTION">Производство</option>
-          <option value="EXPENSE_SALARY">Зарплаты</option>
-          <option value="EXPENSE_RENT">Аренда</option>
-          <option value="EXPENSE_SHIPPING">Доставка</option>
-          <option value="EXPENSE_ACQUIRING">Эквайринг</option>
-          <option value="EXPENSE_OTHER">Прочие расходы</option>
-          <option value="INCOME_OTHER">Прочие доходы</option>
+        <select aria-label="Статья" name="type" defaultValue={initial?.type ?? "EXPENSE_PRODUCTION"} className="input py-2">
+          {LEDGER_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </label>
-      <label><span className="label">Сумма, ₽</span><input name="amount" className="input py-2" /></label>
-      <label><span className="label">Дата</span><input aria-label="Дата" name="date" type="date" className="input py-2" /></label>
-      <label><span className="label">Категория</span><input name="category" placeholder="Блогеры, ткани…" className="input py-2" /></label>
-      <label><span className="label">Комментарий</span><input name="comment" className="input py-2" /></label>
-      <button className="btn-primary btn-sm" disabled={pending}>Добавить</button>
-      <div className="sm:col-span-2 md:col-span-3 xl:col-span-6"><Msg s={state} /></div>
+      <label><span className="label">Сумма, ₽</span><input name="amount" inputMode="decimal" defaultValue={initial ? (initial.amount / 100).toString() : ""} placeholder="12 500" required className="input py-2" /></label>
+      <label><span className="label">Дата оплаты</span><input aria-label="Дата оплаты" name="date" type="date" defaultValue={initial?.date ?? today} className="input py-2" /></label>
+      <label><span className="label">Категория</span><input name="category" list="ledger-categories" defaultValue={initial?.category ?? ""} placeholder="Ткани, блогеры, СДЭК…" className="input py-2" /></label>
+      <label><span className="label">Кому / от кого</span><input name="counterparty" list="ledger-counterparties" defaultValue={initial?.counterparty ?? ""} placeholder="Фабрика, ИП, сервис" className="input py-2" /></label>
+      <label><span className="label">Комментарий</span><input name="comment" defaultValue={initial?.comment ?? ""} placeholder="Счёт №, за что" className="input py-2" /></label>
+      <div className="flex items-center gap-2">
+        <button className="btn-primary btn-sm whitespace-nowrap" disabled={pending}>{initial ? "Сохранить" : "Добавить"}</button>
+        {initial && cancelHref && <a href={cancelHref} className="text-xs text-muted underline">отмена</a>}
+      </div>
+      <datalist id="ledger-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+      <datalist id="ledger-counterparties">{counterparties.map((c) => <option key={c} value={c} />)}</datalist>
+      <div className="sm:col-span-2 md:col-span-3 xl:col-span-7"><Msg s={state} /></div>
     </form>
   );
 }

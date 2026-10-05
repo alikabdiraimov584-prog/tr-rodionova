@@ -11,6 +11,7 @@ import { decodeChannelConfig, encodeChannelConfig, loadChannel } from "@/lib/sup
 import { ADAPTERS } from "@/lib/support/channels";
 import { checkMailbox } from "@/lib/support/mail-imap";
 import { toKopecks } from "@/lib/money";
+import { MANUAL_LEDGER_TYPES } from "@/lib/labels";
 import { audit } from "@/lib/audit";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import type { Channel, LedgerType, Role } from "@/generated/prisma/enums";
@@ -18,22 +19,35 @@ import type { Channel, LedgerType, Role } from "@/generated/prisma/enums";
 // ───────────── Финансы ─────────────
 
 const LedgerSchema = z.object({
-  type: z.enum(["INCOME_OTHER", "EXPENSE_SHIPPING", "EXPENSE_MARKETING", "EXPENSE_PRODUCTION", "EXPENSE_SALARY", "EXPENSE_RENT", "EXPENSE_ACQUIRING", "EXPENSE_OTHER"]),
+  id: z.string().trim().optional(),
+  type: z.enum(MANUAL_LEDGER_TYPES as [LedgerType, ...LedgerType[]]),
   amount: z.string().min(1, "Сумма"),
   date: z.string().optional(),
-  category: z.string().trim().optional(),
-  comment: z.string().trim().optional(),
+  category: z.string().trim().max(80).optional(),
+  counterparty: z.string().trim().max(120).optional(),
+  comment: z.string().trim().max(500).optional(),
 });
 
+/** Добавить или изменить ручную проводку (расход, прочий доход, взнос или вывод собственника). Проводки заказов не редактируются. */
 export async function addLedgerAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireSection("finance");
   const parsed = LedgerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: `Заполните поле «${parsed.error.issues[0].message}»` };
   const amount = toKopecks(parsed.data.amount);
   if (amount <= 0) return { error: "Сумма должна быть больше нуля" };
-  const e = await db.ledgerEntry.create({
-    data: { type: parsed.data.type as LedgerType, amount, date: parsed.data.date ? new Date(parsed.data.date) : new Date(), category: parsed.data.category || null, comment: parsed.data.comment || null, createdBy: me.id },
-  });
+  const date = parsed.data.date ? new Date(parsed.data.date) : new Date();
+  if (Number.isNaN(date.getTime())) return { error: "Неверная дата" };
+  const data = { type: parsed.data.type as LedgerType, amount, date, category: parsed.data.category || null, counterparty: parsed.data.counterparty || null, comment: parsed.data.comment || null };
+  if (parsed.data.id) {
+    const cur = await db.ledgerEntry.findUnique({ where: { id: parsed.data.id } });
+    if (!cur) return { error: "Проводка не найдена" };
+    if (cur.orderId) return { error: "Проводки по заказам меняются только через заказ" };
+    await db.ledgerEntry.update({ where: { id: cur.id }, data });
+    await audit(me.id, "ledger.update", "LedgerEntry", cur.id, { type: data.type, amount, was: cur.amount });
+    revalidatePath("/crm/finance");
+    return { ok: true, message: "Проводка изменена" };
+  }
+  const e = await db.ledgerEntry.create({ data: { ...data, createdBy: me.id } });
   await audit(me.id, "ledger.add", "LedgerEntry", e.id, { type: e.type, amount });
   revalidatePath("/crm/finance");
   return { ok: true, message: "Проводка добавлена" };
@@ -138,6 +152,11 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
         pressLinks: String(formData.get("pressLinks") ?? "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join("\n"),
       };
       await setSetting("brand", next);
+    } else if (section === "finance") {
+      const balance = String(formData.get("openingBalance") ?? "").trim();
+      const date = String(formData.get("openingDate") ?? "").trim();
+      if (date && Number.isNaN(new Date(date).getTime())) return { error: "Неверная дата начала учёта" };
+      await setSetting("finance", { openingBalance: balance ? toKopecks(balance) : 0, openingDate: date });
     } else if (section === "seller") {
       const f = (k: string) => String(formData.get(k) ?? "").trim();
       await setSetting("seller", {

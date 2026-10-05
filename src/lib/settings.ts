@@ -65,7 +65,13 @@ export type SupportSettings = {
   reopenDays: number; // новое сообщение в закрытый диалог моложе N дней переоткрывает его
 };
 
-const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings; seller: SellerSettings } = {
+export type FinanceSettings = {
+  openingBalance: number; // остаток денег на начало учёта, копейки
+  openingDate: string; // ГГГГ-ММ-ДД: с этой даты считается остаток в ДДС
+};
+
+const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings; seller: SellerSettings; finance: FinanceSettings } = {
+  finance: { openingBalance: 0, openingDate: "" },
   seller: {
     name: "ИП Родионова Татьяна Ивановна",
     inn: "211501713609",

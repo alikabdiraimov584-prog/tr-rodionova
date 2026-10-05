@@ -574,6 +574,10 @@ enum LedgerType {
   EXPENSE_OTHER
   REFUND
   COGS_REVERSAL // сторно себестоимости: товар вернулся на склад
+  EXPENSE_TAX // налоги и взносы
+  EXPENSE_SERVICES // сервисы, сайт, связь, банк
+  OWNER_WITHDRAWAL // вывод средств собственнику (только ДДС)
+  OWNER_CONTRIBUTION // взнос собственника или заём (только ДДС)
 }
 
 model LedgerEntry {
@@ -584,9 +588,12 @@ model LedgerEntry {
   orderId   String?
   order     Order?     @relation(fields: [orderId], references: [id])
   category  String?
+  counterparty String? // кому заплатили / от кого получили
   comment   String?
   createdBy String?
   createdAt DateTime   @default(now())
+
+  @@index([date])
 }
 
 model Setting {

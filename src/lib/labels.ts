@@ -85,7 +85,14 @@ export const LEDGER_TYPE: Record<LedgerType, { label: string; sign: 1 | -1 }> = 
   EXPENSE_OTHER: { label: "Прочие расходы", sign: -1 },
   REFUND: { label: "Возврат покупателю", sign: -1 },
   COGS_REVERSAL: { label: "Сторно себестоимости", sign: 1 },
+  EXPENSE_TAX: { label: "Налоги и взносы", sign: -1 },
+  EXPENSE_SERVICES: { label: "Сервисы и сайт", sign: -1 },
+  OWNER_WITHDRAWAL: { label: "Вывод собственнику", sign: -1 },
+  OWNER_CONTRIBUTION: { label: "Взнос собственника / заём", sign: 1 },
 };
+
+/** Статьи, которые сотрудник вводит вручную (остальные создаются заказами). */
+export const MANUAL_LEDGER_TYPES: LedgerType[] = ["EXPENSE_PRODUCTION", "EXPENSE_MARKETING", "EXPENSE_SHIPPING", "EXPENSE_SALARY", "EXPENSE_RENT", "EXPENSE_SERVICES", "EXPENSE_TAX", "EXPENSE_ACQUIRING", "EXPENSE_OTHER", "INCOME_OTHER", "OWNER_WITHDRAWAL", "OWNER_CONTRIBUTION"];
 
 export const TASK_STATUS: Record<TaskStatus, { label: string; tone: Tone }> = {
   OPEN: { label: "Открыта", tone: "warning" },

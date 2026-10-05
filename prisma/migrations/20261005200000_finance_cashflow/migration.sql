@@ -1,0 +1,7 @@
+-- Финансы: статьи для ДДС и контрагент в проводках
+ALTER TYPE "LedgerType" ADD VALUE IF NOT EXISTS 'EXPENSE_TAX';
+ALTER TYPE "LedgerType" ADD VALUE IF NOT EXISTS 'EXPENSE_SERVICES';
+ALTER TYPE "LedgerType" ADD VALUE IF NOT EXISTS 'OWNER_WITHDRAWAL';
+ALTER TYPE "LedgerType" ADD VALUE IF NOT EXISTS 'OWNER_CONTRIBUTION';
+ALTER TABLE "LedgerEntry" ADD COLUMN IF NOT EXISTS "counterparty" TEXT;
+CREATE INDEX IF NOT EXISTS "LedgerEntry_date_idx" ON "LedgerEntry"("date");
