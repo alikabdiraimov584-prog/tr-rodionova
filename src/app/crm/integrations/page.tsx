@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { GROUPS, INTEGRATIONS, type IntegrationGroup } from "@/lib/integrations/registry";
 import { listIntegrationStates } from "@/lib/integrations/store";
+import { backupStatus } from "@/lib/backups";
 import { CHANNEL } from "@/lib/labels";
 import { formatDate } from "@/lib/money";
 import { Badge, PageTitle } from "@/components/ui";
@@ -16,7 +17,7 @@ const ORDER: IntegrationGroup[] = ["payments", "delivery", "messaging", "analyti
 
 export default async function IntegrationsPage() {
   await requireSection("integrations");
-  const [states, channels, h] = await Promise.all([listIntegrationStates(), db.channelIntegration.findMany(), headers()]);
+  const [states, channels, h, backup] = await Promise.all([listIntegrationStates(), db.channelIntegration.findMany(), headers(), backupStatus().catch(() => null)]);
   const base = process.env.APP_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const envYookassa = !!(process.env.YOOKASSA_SHOP_ID && process.env.YOOKASSA_SECRET_KEY);
   return (
@@ -70,6 +71,12 @@ export default async function IntegrationsPage() {
                     {st?.lastCheckAt && (
                       <p className={`text-xs ${st.lastCheckOk ? "text-success" : "text-danger"}`}>
                         Последняя проверка {formatDate(st.lastCheckAt, true)}: {st.lastCheckOk ? "успешно" : st.lastError ?? "ошибка"}
+                      </p>
+                    )}
+                    {i.key === "s3_backup" && backup && (
+                      <p className={`text-xs ${backup.localAt ? "text-muted" : "text-danger"}`}>
+                        Дамп на сервере: {backup.localAt ? formatDate(backup.localAt, true) : "ещё нет"} · служба дампов: {backup.localStatus}
+                        {backup.uploadedAt && <> · копия в S3: {formatDate(backup.uploadedAt, true)}</>}
                       </p>
                     )}
                     {i.webhookPath && (

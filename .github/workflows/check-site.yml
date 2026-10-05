@@ -52,7 +52,8 @@ jobs:
             age=$(( (now - $(date -u -d "$localAt" +%s)) / 3600 ))
             echo "Локальный дамп: $localAt (${age} ч)"; [ "$age" -le 48 ] || fail="$fail локальный бэкап старше 2 суток;"
           else
-            echo "Локальный дамп: нет"; fail="$fail нет локального бэкапа;"
+            st=$(echo "$health" | sed -n 's/.*"localStatus":"\([^"]*\)".*/\1/p')
+            echo "Локальный дамп: нет (служба дампов: ${st:-нет данных})"; fail="$fail нет локального бэкапа (${st:-нет данных});"
           fi
           # копия в S3 проверяется только когда интеграция включена
           if echo "$health" | grep -q '"s3Enabled":true'; then

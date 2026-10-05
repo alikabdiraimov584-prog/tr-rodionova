@@ -53,11 +53,20 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        # состояние последней попытки в /backups/.status: его показывает /api/health (backup.localStatus) и проверка сайта
+        status() { echo "$$1 $$(date -u +%FT%TZ)" > /backups/.status.tmp && mv /backups/.status.tmp /backups/.status; }
         dump() {
           f="/backups/tr-rodionova-$$(date -u +%Y%m%d-%H%M).sql.gz"
-          if pg_dump "$$DATABASE_URL" | gzip -9 > "$$f.tmp"; then mv "$$f.tmp" "$$f" && echo "backup ok $$f"; else rm -f "$$f.tmp"; echo "backup failed"; fi
+          # -Z 9: сжатый вывод самим pg_dump, код возврата — именно pg_dump (в конвейере с gzip он терялся)
+          if pg_dump -Z 9 -f "$$f.tmp" "$$DATABASE_URL" 2>/tmp/err && [ -s "$$f.tmp" ]; then
+            mv "$$f.tmp" "$$f" && echo "backup ok $$f" && status "ok $$(basename "$$f")"
+          else
+            err=$$(tail -c 300 /tmp/err 2>/dev/null | tr '\n' ' '); rm -f "$$f.tmp"
+            echo "backup failed: $$err"; status "failed: $${err:-pg_dump exited with error}"
+          fi
           find /backups -name '*.sql.gz' -mtime +7 -delete
         }
+        status started
         sleep 60
         # при старте — копия за сегодня, если её ещё нет
         ls /backups/tr-rodionova-$$(date -u +%Y%m%d)-*.sql.gz >/dev/null 2>&1 || dump

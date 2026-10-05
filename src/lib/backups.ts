@@ -1,5 +1,5 @@
 import "server-only";
-import { readdir, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import path from "node:path";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
@@ -110,10 +110,35 @@ export async function uploadLatestBackup(): Promise<{ ok: boolean; uploaded?: st
 }
 
 /** Сводка для /api/health и мониторинга. */
+/**
+ * Состояние службы дампов: файл .status, который сервис backup пишет при старте и после каждой попытки
+ * («started …», «ok <файл> …», «failed: <ошибка pg_dump> …»). Если файла нет — служба не запускалась
+ * или том не подключён к приложению; если каталог недоступен — об этом тоже сообщаем.
+ */
+async function localStatus(): Promise<string> {
+  try {
+    const text = (await readFile(path.join(BACKUP_DIR, ".status"), "utf8")).trim();
+    // кавычки убираем, чтобы строка в JSON /api/health читалась простыми средствами (sed в проверке сайта)
+    return text.replace(/"/g, "'") || "служба дампов ещё ничего не сообщала";
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      try {
+        await readdir(BACKUP_DIR);
+        return "служба дампов ещё не запускалась (нет файла состояния)";
+      } catch {
+        return "каталог бэкапов недоступен приложению (том не подключён)";
+      }
+    }
+    return `файл состояния не читается: ${code ?? String(e)}`;
+  }
+}
+
 export async function backupStatus() {
-  const [local, st, i] = await Promise.all([latestLocalDump(), state(), activeIntegration("s3_backup")]);
+  const [local, status, st, i] = await Promise.all([latestLocalDump(), localStatus(), state(), activeIntegration("s3_backup")]);
   return {
     localAt: local?.mtime.toISOString() ?? null,
+    localStatus: status,
     s3Enabled: !!(i && toConfig(i.config)),
     uploadedAt: st.uploadedAt ?? null,
     objects: st.objects ?? null,
