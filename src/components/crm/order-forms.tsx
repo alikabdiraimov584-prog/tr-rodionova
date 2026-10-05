@@ -47,7 +47,7 @@ export function ReturnForm({ orderId, items }: { orderId: string; items: { id: s
       {avail.map((i) => (
         <label key={i.id} className="flex items-center justify-between gap-3 text-sm">
           <span>{i.name}</span>
-          <select name={`ret_${i.id}`} className="min-h-10 border border-line bg-white px-2 py-1">
+          <select name={`ret_${i.id}`} aria-label="Количество к возврату" className="min-h-10 border border-line bg-white px-2 py-1">
             {Array.from({ length: i.left + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>

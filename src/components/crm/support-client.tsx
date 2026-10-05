@@ -45,6 +45,7 @@ export function Composer({ conversationId, templates, ctx, hint }: { conversatio
         <button type="button" onClick={() => setNote(false)} className={`badge ${!note ? "border-ink bg-ink text-ivory" : "border-line"}`}>Ответ клиенту</button>
         <button type="button" onClick={() => setNote(true)} className={`badge ${note ? "border-champagne-dark bg-champagne text-ink" : "border-line"}`}>Заметка для команды</button>
         <select
+          aria-label="Шаблон ответа"
           className="min-h-9 border border-line bg-white px-2 py-1 text-xs sm:ml-auto"
           value=""
           onChange={(e) => {

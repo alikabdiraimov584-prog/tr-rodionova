@@ -50,7 +50,7 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
             const v = vmap.get(r.variantId);
             return (
               <div key={i} className="grid gap-2 sm:grid-cols-[1fr_80px_140px_auto]">
-                <select name={`variant_${i}`} value={r.variantId} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, variantId: e.target.value } : x)))} className="input">
+                <select name={`variant_${i}`} aria-label="Вариант товара" value={r.variantId} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, variantId: e.target.value } : x)))} className="input">
                   <option value="">Выберите товар и размер</option>
                   {variants.map((v) => <option key={v.id} value={v.id} disabled={v.available <= 0}>{v.label} · {formatMoney(v.price)} · своб. {v.available}</option>)}
                 </select>

@@ -95,7 +95,7 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
 
         <div className="card space-y-4 p-5">
           <div className="flex flex-wrap items-center gap-3"><div className="eyebrow">Аудитория</div>
-            <select className="ml-auto min-w-0 max-w-full border border-line bg-white px-2 py-1 text-xs" value="" onChange={(e) => { const p = opts.presets.find((x) => x.key === e.target.value); if (p) setSeg(p.segment); }}>
+            <select aria-label="Готовый сегмент" className="ml-auto min-w-0 max-w-full border border-line bg-white px-2 py-1 text-xs" value="" onChange={(e) => { const p = opts.presets.find((x) => x.key === e.target.value); if (p) setSeg(p.segment); }}>
               <option value="">Готовые сегменты…</option>
               {opts.presets.map((p) => <option key={p.key} value={p.key}>{p.name} — {p.hint}</option>)}
             </select>
@@ -111,10 +111,10 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
           <div className="grid gap-3 sm:grid-cols-3">
             <label><span className="label">Теги через запятую</span><input name="tags" defaultValue={(seg.tags ?? []).join(", ")} onBlur={(e) => setSeg((s) => ({ ...s, tags: e.target.value.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean) }))} className="input py-2" /></label>
             <label><span className="label">Источник</span>
-              <select onChange={(e) => setSeg((s) => ({ ...s, sources: e.target.value ? [e.target.value] : [] }))} value={seg.sources?.[0] ?? ""} className="input py-2"><option value="">Любой</option>{opts.sources.map((x) => <option key={x}>{x}</option>)}</select>
+              <select aria-label="Источник клиентки" onChange={(e) => setSeg((s) => ({ ...s, sources: e.target.value ? [e.target.value] : [] }))} value={seg.sources?.[0] ?? ""} className="input py-2"><option value="">Любой</option>{opts.sources.map((x) => <option key={x}>{x}</option>)}</select>
             </label>
             <label><span className="label">Размер</span>
-              <select onChange={(e) => setSeg((s) => ({ ...s, sizes: e.target.value ? [e.target.value] : [] }))} value={seg.sizes?.[0] ?? ""} className="input py-2"><option value="">Любой</option>{["XS", "S", "M", "L", "XL"].map((x) => <option key={x}>{x}</option>)}</select>
+              <select aria-label="Размер" onChange={(e) => setSeg((s) => ({ ...s, sizes: e.target.value ? [e.target.value] : [] }))} value={seg.sizes?.[0] ?? ""} className="input py-2"><option value="">Любой</option>{["XS", "S", "M", "L", "XL"].map((x) => <option key={x}>{x}</option>)}</select>
             </label>
             <label><span className="label">Покупок от, ₽</span><input name="minLifetime" type="number" defaultValue={seg.minLifetime ?? ""} onChange={num("minLifetime")} className="input py-2" /></label>
             <label><span className="label">Покупок до, ₽</span><input name="maxLifetime" type="number" defaultValue={seg.maxLifetime ?? ""} onChange={num("maxLifetime")} className="input py-2" /></label>
