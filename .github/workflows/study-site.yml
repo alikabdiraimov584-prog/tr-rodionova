@@ -26,18 +26,26 @@ jobs:
             echo "== тексты кнопок"; echo "$html" | grep -oE '<button[^>]*>[^<]{1,40}' | sed 's/<button[^>]*>//' | sort | uniq -c | sort -rn | head -20
             echo "== классы секций главной (div/section с class, уникальные первые слова)"; echo "$html" | grep -oE '<(section|main|footer|nav)[^>]*class="[^"]*"' | head -30
             echo "== шрифты"
-            for css in $(echo "$html" | grep -oE '<link[^>]*rel="stylesheet"[^>]*href="[^"]*"' | grep -oE 'href="[^"]*"' | grep -oE '"[^"]*"' | tr -d '"' | head -6); do
+            for css in $(echo "$html" | grep -oE '<link[^>]*href="[^"]*\.css[^"]*"' | grep -oE 'href="[^"]*"' | grep -oE '"[^"]*"' | tr -d '"' | head -8); do
               case "$css" in http*) full="$css";; //*) full="https:$css";; *) full="$origin$css";; esac
               echo "-- $css"; curl -sS -m 30 -A "$UA" "$full" | grep -oE '@font-face\{[^}]*\}|font-family:[^;}]*' | sed 's/src:[^;]*;//g' | sort | uniq -c | sort -rn | head -12 | cut -c1-200
               curl -sS -m 30 -A "$UA" "$full" | grep -oE 'body\{[^}]*\}|html\{[^}]*\}' | head -3 | cut -c1-300
             done
             echo "$html" | grep -oE 'font-family:[^;"]*' | sort | uniq -c | sort -rn | head -5
-            echo "$html" | grep -oE 'fonts.googleapis.com[^"]*|\.woff2?[^"]*' | sort -u | head -8
+            echo "$html" | grep -oE '[^"'"'"' (]*\.woff2?[^"'"'"' )]*' | sort -u | head -8
+            echo "== css-файлы:"; echo "$html" | grep -oE '<link[^>]*href="[^"]*\.css[^"]*"' | grep -oE 'href="[^"]*"' | head -8
+            echo "== цвета (самые частые в CSS)"
+            for css in $(echo "$html" | grep -oE '<link[^>]*href="[^"]*\.css[^"]*"' | grep -oE 'href="[^"]*"' | grep -oE '"[^"]*"' | tr -d '"' | head -4); do
+              case "$css" in http*) full="$css";; //*) full="https:$css";; *) full="$origin$css";; esac
+              curl -sS -m 30 -A "$UA" "$full" | grep -oE '#[0-9a-fA-F]{6}\b' | tr 'A-F' 'a-f' | sort | uniq -c | sort -rn | head -8 | tr '\n' ' '; echo
+              curl -sS -m 30 -A "$UA" "$full" | grep -oE '\.woff2?[^)"]*' | head -3
+            done
           done
       - name: Скриншоты
         env:
           URLS: ${{ github.event.inputs.urls }}
         run: |
+          pip install -q pillow >/dev/null 2>&1 || true
           n=0
           for U in $URLS; do
             n=$((n+1))
@@ -45,8 +53,10 @@ jobs:
             google-chrome --headless=new --no-sandbox --hide-scrollbars --window-size=1440,2600 --screenshot=/tmp/d$n.png "$U" >/dev/null 2>&1 || true
             for f in m d; do
               [ -f /tmp/$f$n.png ] || continue
-              convert /tmp/$f$n.png -resize $([ $f = m ] && echo 520 || echo 1100)x -quality 62 /tmp/$f$n.jpg
-              echo "=== SHOT $f$n $U $(identify -format '%wx%h' /tmp/$f$n.jpg) ==="
+              python3 -c "
+from PIL import Image; import sys
+im=Image.open(sys.argv[1]).convert('RGB'); w=int(sys.argv[3]); im=im.resize((w, int(im.height*w/im.width))); im.save(sys.argv[2], 'JPEG', quality=60, optimize=True); print(im.size)" /tmp/$f$n.png /tmp/$f$n.jpg $([ $f = m ] && echo 520 || echo 1100)
+              echo "=== SHOT $f$n $U ==="
               base64 -w0 /tmp/$f$n.jpg | fold -w 4000
               echo "=== END $f$n ==="
             done
