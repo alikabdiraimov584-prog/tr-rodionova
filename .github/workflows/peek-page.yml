@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       path:
-        description: "Путь на сайте, например /product/plate-tr-halter"
+        description: "Путь на сайте, например /product/plate-tr-halter (или полный адрес другого сайта для сравнения)"
         required: true
         default: "/"
 jobs:
@@ -16,8 +16,15 @@ jobs:
           DOMAIN: tr-rodionova.ru
           P: ${{ github.event.inputs.path }}
         run: |
-          html=$(curl -sS -m 30 -L "https://$DOMAIN$P")
-          echo "== статус"; curl -sS -m 30 -o /dev/null -w '%{http_code}\n' "https://$DOMAIN$P"
+          case "$P" in https://*|http://*) U="$P";; *) U="https://$DOMAIN$P";; esac
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+          html=$(curl -sS -m 30 -L -A "$UA" "$U")
+          echo "== статус"; curl -sS -m 30 -o /dev/null -A "$UA" -w '%{http_code}\n' "$U"
+          echo "== галерея (теги img/picture/source и контейнеры со словами gallery/slider/swiper/zoom)"
+          echo "$html" | grep -oiE '<(div|section|ul)[^>]*(gallery|slider|swiper|zoom|fotorama|carousel|product-image|photo)[^>]*>' | head -20
+          echo "$html" | grep -oiE '<(img|source|picture)[^>]*>' | head -40
+          echo "== подключённые скрипты и стили"
+          echo "$html" | grep -oiE '<(script|link)[^>]*(src|href)="[^"]*"' | grep -oiE '"[^"]*"' | grep -iE 'swiper|slick|fotorama|zoom|photoswipe|splide|glide|lightgallery|magnific' | head
           echo "== заголовок"; echo "$html" | grep -oE '<title>[^<]*' | head -1
           echo "== картинки (src и url из /_next/image)"
           echo "$html" | grep -oE '<img[^>]*' | grep -oE '(src|srcset)="[^"]*"' | sed 's/&amp;/\&/g' | grep -oE '(url=[^&" ]*|/[^" ,]*\.(jpg|jpeg|png|webp|avif|svg))' | sed 's/^url=//' | python3 -c 'import sys,urllib.parse; seen=[]
