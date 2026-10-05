@@ -108,7 +108,9 @@ async function main() {
     });
   }
 
-  // ── Сотрудники и демо-клиент ──
+  // ── Сотрудники и демо-клиент: только для стенда (SEED_DEMO=0 в продакшене их не создаёт,
+  // администратор там создаётся из ADMIN_EMAIL / ADMIN_PASSWORD скриптом bootstrap-admin) ──
+  if (process.env.SEED_DEMO !== "0") {
   const passwordHash = await bcrypt.hash("admin12345", 10);
   await db.user.upsert({
     where: { email: "admin@tr-rodionova.ru" },
@@ -156,6 +158,7 @@ async function main() {
     await db.pointsTransaction.create({
       data: { userId: customer.id, type: "EARN_WELCOME", amount: 2000, comment: "Приветственный бонус" },
     });
+  }
   }
 
   // ── Категории ──
@@ -446,12 +449,14 @@ async function main() {
     create: { code: "CIRCLE", type: "FREE_SHIPPING", value: 0, perUser: 3 },
   });
 
-  // ── Поддержка: сотрудник, каналы, шаблоны ──
-  await db.user.upsert({
-    where: { email: "support@tr-rodionova.ru" },
-    update: {},
-    create: { email: "support@tr-rodionova.ru", passwordHash: await bcrypt.hash("support12345", 10), firstName: "Ольга", lastName: "Белова", role: "SUPPORT" },
-  });
+  // ── Поддержка: каналы, шаблоны (демо-сотрудник поддержки — только для стенда) ──
+  if (process.env.SEED_DEMO !== "0") {
+    await db.user.upsert({
+      where: { email: "support@tr-rodionova.ru" },
+      update: {},
+      create: { email: "support@tr-rodionova.ru", passwordHash: await bcrypt.hash("support12345", 10), firstName: "Ольга", lastName: "Белова", role: "SUPPORT" },
+    });
+  }
   const channels = [
     ["TELEGRAM", "Telegram"],
     ["WHATSAPP", "WhatsApp"],
