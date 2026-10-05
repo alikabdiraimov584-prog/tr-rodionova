@@ -35,7 +35,7 @@ export default async function LoyaltyPage() {
           <p className="mt-3 text-sm text-muted">
             Подруга получит {s.welcomePoints.toLocaleString("ru-RU")} баллов при регистрации, вы — {s.referralPoints.toLocaleString("ru-RU")} баллов после её первой покупки.
           </p>
-          <CopyLink value={refLink} />
+          <CopyLink value={refLink} label="Реферальная ссылка" />
           <p className="mt-3 text-xs text-muted">Приглашено: {invited}</p>
         </div>
       </div>

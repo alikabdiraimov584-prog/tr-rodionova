@@ -48,13 +48,13 @@ export default async function GiftCardPage({ params, searchParams }: PageProps<"
             <div className="eyebrow">Код сертификата</div>
             <div className="serif mt-3 text-2xl tracking-[0.12em] md:text-3xl">{showCode ? card.code : "TR-••••-••••-••••-••••"}</div>
             <div className="mt-2 text-xs text-muted">Остаток {formatMoney(card.balance)} из {formatMoney(card.amount)} · действует до {formatDate(card.expiresAt)}</div>
-            {card.status === "ACTIVE" && <CopyLink value={card.code} />}
+            {card.status === "ACTIVE" && <CopyLink value={card.code} label="Код сертификата" />}
           </div>
           {card.status === "ACTIVE" && (
             <div>
               <div className="eyebrow mb-2">Текст для получателя</div>
               <p className="border border-line bg-white p-4 text-sm leading-relaxed">{recipientText}</p>
-              <CopyLink value={recipientText} />
+              <CopyLink value={recipientText} label="Текст для получателя" />
             </div>
           )}
           {card.redemptions.length > 0 && (
