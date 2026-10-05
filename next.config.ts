@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Фото отдаются через оптимизатор Next: под ширину экрана и в WebP, исходники любого размера (до 12 МБ из CRM)
   images: {
+    localPatterns: [{ pathname: "/images/**", search: "" }, { pathname: "/uploads/**", search: "" }],
+    qualities: [75, 85],
+    minimumCacheTTL: 2678400,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },

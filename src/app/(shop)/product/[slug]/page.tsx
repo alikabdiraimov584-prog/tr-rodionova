@@ -99,7 +99,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
         <div className="grid grid-cols-2 gap-1">
           {p.images.map((img, i) => (
             <div key={img.id} className={`relative aspect-[3/4] bg-sand ${i === 0 ? "col-span-2 md:col-span-1" : ""}`}>
-              <Image src={img.url} alt={img.alt ?? p.name} fill unoptimized priority={i === 0} sizes="(min-width: 768px) 30vw, 100vw" className="object-cover" />
+              <Image src={img.url} alt={img.alt ?? p.name} fill quality={85} priority={i === 0} sizes="(min-width: 768px) 30vw, 100vw" className="object-cover" />
             </div>
           ))}
         </div>

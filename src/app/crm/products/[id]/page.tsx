@@ -36,7 +36,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
         <div className="mt-3 flex flex-wrap gap-3">
           {p.images.map((img, i) => (
             <div key={img.id} className="w-28">
-              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-sand"><Image src={img.url} alt="" fill unoptimized className="object-cover" /></div>
+              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-sand"><Image src={img.url} alt="" fill sizes="(min-width: 1024px) 20vw, 50vw" className="object-cover" /></div>
               <div className="mt-1 flex justify-between text-[0.65rem] text-muted">
                 <form action={moveProductImageAction}><input type="hidden" name="id" value={img.id} /><input type="hidden" name="dir" value="up" /><button disabled={i === 0} className="disabled:opacity-30">←</button></form>
                 <form action={removeProductImageAction}><input type="hidden" name="id" value={img.id} /><button className="hover:text-danger">удалить</button></form>

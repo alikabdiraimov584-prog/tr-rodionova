@@ -25,8 +25,8 @@ export function ProductCard({ p }: { p: CardProduct }) {
   return (
     <Link href={`/product/${p.slug}`} className="group block border border-line bg-ivory">
       <div className="relative aspect-[3/4] overflow-hidden bg-sand">
-        {first && <Image src={first.url} alt={first.alt ?? p.name} fill unoptimized sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover transition-opacity duration-300 group-hover:opacity-0" />}
-        {second && <Image src={second.url} alt={second.alt ?? p.name} fill unoptimized sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100" />}
+        {first && <Image src={first.url} alt={first.alt ?? p.name} fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover transition-opacity duration-300 group-hover:opacity-0" />}
+        {second && <Image src={second.url} alt={second.alt ?? p.name} fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100" />}
         <div className="absolute left-2 top-2 flex gap-1 text-[0.58rem] uppercase tracking-[0.1em]">
           {p.isNew && <span className="bg-ivory px-1.5 py-0.5">Новое</span>}
           {p.isPreorder && <span className="bg-ivory px-1.5 py-0.5">Предзаказ</span>}

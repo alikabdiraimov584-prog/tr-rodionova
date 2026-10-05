@@ -39,7 +39,7 @@ export default async function LookPage({ params }: PageProps<"/lookbook/[slug]">
       </nav>
       <div className="grid gap-10 md:grid-cols-[1.2fr_1fr]">
         <div className="relative aspect-[3/4] bg-sand">
-          {look.coverUrl && <Image src={look.coverUrl} alt={look.title} fill unoptimized priority sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />}
+          {look.coverUrl && <Image src={look.coverUrl} alt={look.title} fill priority sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />}
         </div>
         <div className="md:sticky md:top-32 md:self-start">
           {look.season && <Eyebrow>{look.season}</Eyebrow>}

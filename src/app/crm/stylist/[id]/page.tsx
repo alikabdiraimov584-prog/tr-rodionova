@@ -97,7 +97,7 @@ export default async function SelectionPage({ params, searchParams }: PageProps<
                   const img = it.product.images[0];
                   return (
                     <div key={it.id} className="flex items-center gap-4 p-4 text-sm">
-                      <div className="relative h-20 w-16 shrink-0 bg-sand">{img && <Image src={img.url} alt={img.alt ?? it.product.name} fill unoptimized sizes="64px" className="object-cover" />}</div>
+                      <div className="relative h-20 w-16 shrink-0 bg-sand">{img && <Image src={img.url} alt={img.alt ?? it.product.name} fill sizes="64px" className="object-cover" />}</div>
                       <div className="min-w-0 flex-1">
                         <div><Link href={`/product/${it.product.slug}`} target="_blank" className="underline">{it.product.name}</Link> <span className="text-muted">· {formatMoney(it.product.price)}</span></div>
                         <div className="text-xs text-muted">

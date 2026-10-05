@@ -50,7 +50,7 @@ export default async function SelectionView({ params }: PageProps<"/account/styl
               return (
                 <div key={it.id} className="grid gap-5 py-6 sm:grid-cols-[120px_1fr]">
                   <Link href={`/product/${it.product.slug}`} className="relative block aspect-[4/5] bg-sand">
-                    {img && <Image src={img.url} alt={img.alt ?? it.product.name} fill unoptimized sizes="120px" className="object-cover" />}
+                    {img && <Image src={img.url} alt={img.alt ?? it.product.name} fill sizes="120px" className="object-cover" />}
                   </Link>
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">

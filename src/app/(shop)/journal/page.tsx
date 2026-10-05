@@ -40,7 +40,7 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
           {articles.map((a) => (
             <Link key={a.id} href={`/journal/${a.slug}`} className="group block">
               <div className="relative aspect-[4/3] overflow-hidden bg-sand">
-                {a.coverUrl && <Image src={a.coverUrl} alt={a.title} fill unoptimized sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
+                {a.coverUrl && <Image src={a.coverUrl} alt={a.title} fill sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
               </div>
               <div className="mt-4 flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.16em] text-muted">
                 {a.category && <span>{a.category}</span>}

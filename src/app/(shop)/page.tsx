@@ -25,7 +25,7 @@ export default async function Home() {
       <section className="mt-1 grid gap-1 md:grid-cols-2">
         {hero.map((p, i) => (
           <Link key={p.id} href={`/product/${p.slug}`} className="relative block aspect-[4/5] overflow-hidden bg-sand md:aspect-[3/4]">
-            {p.images[i % p.images.length] && <Image src={p.images[i % p.images.length].url} alt={p.name} fill unoptimized priority className="object-cover object-top" sizes="50vw" />}
+            {p.images[i % p.images.length] && <Image src={p.images[i % p.images.length].url} alt={p.name} fill priority className="object-cover object-top" sizes="50vw" />}
             <span className="absolute bottom-4 left-4 bg-ivory px-2.5 py-1.5 text-[0.68rem] uppercase tracking-[0.1em]">{p.name} · {formatMoney(p.price)}</span>
           </Link>
         ))}
@@ -44,7 +44,7 @@ export default async function Home() {
         <section className="mt-14 grid gap-1 md:grid-cols-2">
           {looks.map((l) => (
             <Link key={l.id} href={`/lookbook/${l.slug}`} className="relative block aspect-[16/10] overflow-hidden bg-sand">
-              {l.coverUrl && <Image src={l.coverUrl} alt={l.title} fill unoptimized className="object-cover" sizes="50vw" />}
+              {l.coverUrl && <Image src={l.coverUrl} alt={l.title} fill className="object-cover" sizes="50vw" />}
               <span className="absolute bottom-4 left-4 bg-ivory px-2.5 py-1.5 text-[0.68rem] uppercase tracking-[0.1em]">Образ · {l.title}</span>
             </Link>
           ))}
@@ -63,7 +63,7 @@ export default async function Home() {
           <p className="mt-4 max-w-md text-sm leading-relaxed text-ink/80">Ткани с фабрик Бьеллы, кашемир 12 gauge из Монголии, шёлк из Комо. Каждая модель проходит две примерки на живой модели до запуска в пошив и шьётся небольшими партиями в Европе.</p>
           <div className="mt-6 flex gap-4 text-[0.68rem] uppercase tracking-[0.1em]"><Link href="/about" className="underline underline-offset-4">О бренде</Link><Link href="/care" className="underline underline-offset-4">Уход</Link></div>
         </div>
-        <div className="relative min-h-[320px] bg-sand">{featured[2]?.images[1] && <Image src={featured[2].images[1].url} alt="" fill unoptimized className="object-cover" sizes="50vw" />}</div>
+        <div className="relative min-h-[320px] bg-sand">{featured[2]?.images[1] && <Image src={featured[2].images[1].url} alt="" fill className="object-cover" sizes="50vw" />}</div>
       </section>
 
       <section className="mt-14 grid gap-px border border-line bg-line md:grid-cols-4">

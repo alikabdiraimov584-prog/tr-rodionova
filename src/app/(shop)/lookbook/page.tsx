@@ -22,7 +22,7 @@ export default async function LookbookPage() {
           {looks.map((l) => (
             <Link key={l.id} href={`/lookbook/${l.slug}`} className="group block">
               <div className="relative aspect-[3/4] overflow-hidden bg-sand">
-                {l.coverUrl && <Image src={l.coverUrl} alt={l.title} fill unoptimized sizes="(min-width: 768px) 33vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
+                {l.coverUrl && <Image src={l.coverUrl} alt={l.title} fill sizes="(min-width: 768px) 33vw, 50vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
               </div>
               <div className="mt-3 flex items-baseline justify-between gap-3">
                 <span className="text-sm">{l.title}</span>

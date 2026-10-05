@@ -63,7 +63,7 @@ export default async function LookEdit({ params }: PageProps<"/crm/content/looks
               <tr key={it.id}>
                 <td className="w-12">
                   <div className="relative h-14 w-11 bg-sand">
-                    {it.product.images[0] && <Image src={it.product.images[0].url} alt={it.product.name} fill unoptimized sizes="44px" className="object-cover" />}
+                    {it.product.images[0] && <Image src={it.product.images[0].url} alt={it.product.name} fill sizes="44px" className="object-cover" />}
                   </div>
                 </td>
                 <td>

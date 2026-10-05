@@ -37,7 +37,7 @@ export default async function CartPage() {
               return (
                 <div key={i.id} className="flex gap-4 py-5 sm:gap-5">
                   <Link href={`/product/${i.variant.product.slug}`} className="relative h-28 w-20 shrink-0 bg-sand sm:h-32 sm:w-24">
-                    {i.variant.product.images[0] && <Image src={i.variant.product.images[0].url} alt="" fill unoptimized className="object-cover" />}
+                    {i.variant.product.images[0] && <Image src={i.variant.product.images[0].url} alt="" fill className="object-cover" />}
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
                     <div className="flex justify-between gap-3">

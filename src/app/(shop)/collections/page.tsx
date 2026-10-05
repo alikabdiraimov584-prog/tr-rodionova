@@ -20,7 +20,7 @@ export default async function Collections() {
               <p className="mt-3 max-w-md text-sm leading-relaxed text-ink/80">{c.description}</p>
               <Link href="/catalog" className="btn-outline mt-5">Смотреть все вещи</Link>
             </div>
-            <div className="relative aspect-[16/9] bg-sand">{c.coverUrl && <Image src={c.coverUrl} alt={c.name} fill unoptimized className="object-cover" />}</div>
+            <div className="relative aspect-[16/9] bg-sand">{c.coverUrl && <Image src={c.coverUrl} alt={c.name} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />}</div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-1 md:grid-cols-4">{c.products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
         </section>

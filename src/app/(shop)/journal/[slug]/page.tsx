@@ -84,7 +84,7 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
       </header>
       {a.coverUrl && (
         <div className="relative mx-auto mt-10 aspect-[16/9] max-w-5xl bg-sand">
-          <Image src={a.coverUrl} alt={a.title} fill unoptimized priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover" />
+          <Image src={a.coverUrl} alt={a.title} fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover" />
         </div>
       )}
       <div className="mx-auto mt-12 max-w-5xl">

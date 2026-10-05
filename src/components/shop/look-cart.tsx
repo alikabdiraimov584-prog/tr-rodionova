@@ -33,7 +33,7 @@ export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookC
           return (
             <li key={it.productId} className="flex gap-4 py-4">
               <Link href={`/product/${it.slug}`} className="relative block h-24 w-20 shrink-0 overflow-hidden bg-sand">
-                {it.image && <Image src={it.image} alt={it.name} fill unoptimized sizes="80px" className="object-cover" />}
+                {it.image && <Image src={it.image} alt={it.name} fill sizes="80px" className="object-cover" />}
               </Link>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
