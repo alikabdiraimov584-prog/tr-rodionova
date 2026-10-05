@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
@@ -8,6 +7,7 @@ import { getCurrentCustomer } from "@/lib/auth";
 import { formatMoney, formatDate } from "@/lib/money";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductCard } from "@/components/shop/product-card";
+import { ProductGallery } from "@/components/shop/product-gallery";
 import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
 import { JsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd } from "@/lib/seo";
@@ -80,13 +80,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
         {p.isPreloved && <> / <Link href="/preloved" className="hover:text-ink">Pre-loved</Link></>}
       </nav>
       <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] lg:grid-cols-[1.4fr_1fr] lg:gap-10">
-        <div className="grid grid-cols-2 gap-1">
-          {p.images.map((img, i) => (
-            <div key={img.id} className={`relative aspect-[3/4] bg-sand ${i === 0 ? "col-span-2 md:col-span-1" : ""}`}>
-              <Image src={img.url} alt={img.alt ?? p.name} fill quality={85} priority={i === 0} sizes="(min-width: 768px) 30vw, 100vw" className="object-cover" />
-            </div>
-          ))}
-        </div>
+        <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />
         <div className="min-w-0 md:sticky md:top-32 md:self-start">
           <div className="flex items-start justify-between gap-4">
             <h1 className="min-w-0 text-xl">{p.name}</h1>

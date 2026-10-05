@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "64mb" }, proxyClientMaxBodySize: "64mb" },
   // Фото отдаются через оптимизатор Next: под ширину экрана и в WebP, исходники любого размера (до 12 МБ из CRM)
   images: {
+    // AVIF на ~30 % легче WebP при том же качестве; браузеры без AVIF получают WebP. Варианты кэшируются 31 день.
+    formats: ["image/avif", "image/webp"],
     localPatterns: [{ pathname: "/images/**", search: "" }, { pathname: "/uploads/**", search: "" }],
     qualities: [75, 85],
     minimumCacheTTL: 2678400,
