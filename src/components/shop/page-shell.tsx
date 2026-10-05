@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
+import { JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 /** Текстовая страница сайта: узкая колонка, заголовок, разделы с линейками. */
-export function TextPage({ eyebrow, title, intro, children, aside }: { eyebrow?: string; title: string; intro?: string; children: ReactNode; aside?: ReactNode }) {
+/** crumbs — путь страницы для разметки BreadcrumbList (главная добавляется сама). */
+export function TextPage({ eyebrow, title, intro, children, aside, crumbs }: { eyebrow?: string; title: string; intro?: string; children: ReactNode; aside?: ReactNode; crumbs?: { name: string; path: string }[] }) {
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-8 md:px-6">
+      {crumbs && <JsonLd data={breadcrumbJsonLd([{ name: "Главная", path: "/" }, ...crumbs])} />}
       <div className="border-b border-line pb-6">
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1 className="mt-1 text-2xl">{title}</h1>

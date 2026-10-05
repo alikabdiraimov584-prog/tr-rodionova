@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { siteFaq } from "@/lib/faq";
-import { JsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+import { JsonLd, faqJsonLd } from "@/lib/seo";
 import { TextPage } from "@/components/shop/page-shell";
 
 export const metadata: Metadata = {
@@ -13,8 +13,8 @@ export default async function FaqPage() {
   const groups = await siteFaq();
   const all = groups.flatMap((g) => g.items);
   return (
-    <TextPage eyebrow="Покупателям" title="Вопросы и ответы" intro="Коротко о доставке, примерке, возврате, размерах, уходе и программе Circle. Если ответа нет, напишите в службу заботы: отвечаем в течение 15 минут в рабочее время.">
-      <JsonLd data={[faqJsonLd(all.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Вопросы и ответы", path: "/faq" }])]} />
+    <TextPage eyebrow="Покупателям" title="Вопросы и ответы" intro="Коротко о доставке, примерке, возврате, размерах, уходе и программе Circle. Если ответа нет, напишите в службу заботы: отвечаем в течение 15 минут в рабочее время." crumbs={[{ name: "Вопросы и ответы", path: "/faq" }]}>
+      <JsonLd data={faqJsonLd(all.map(({ q, a }) => ({ q, a })))} />
       {groups.map((g) => (
         <section key={g.group} className="border-t border-line pt-5">
           <h2 className="text-base">{g.group}</h2>

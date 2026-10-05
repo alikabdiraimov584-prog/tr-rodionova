@@ -56,12 +56,27 @@ export async function siteFaq(): Promise<{ group: string; items: Faq[] }[]> {
   ];
 }
 
-/** Вопросы-ответы для карточки вещи: размер, уход, доставка, возврат. */
-export function productFaq(p: { name: string; care: string | null; composition: string | null; isPreorder: boolean; isPreloved: boolean }, sizes: string[], delivery: { freeFrom: number; courier: number }): Faq[] {
+/**
+ * Вопросы-ответы для карточки вещи: размер, уход, ткань и производство, доставка, возврат, цена и баллы, тираж.
+ * Только факты об этой вещи и этой категории; общие вопросы — на /faq.
+ */
+export function productFaq(p: { name: string; care: string | null; composition: string | null; madeIn: string | null; price: number; isPreorder: boolean; isPreloved: boolean; condition?: string | null }, sizes: string[], delivery: { freeFrom: number; courier: number }, points: number): Faq[] {
   const items: Faq[] = [];
   if (sizes.length) items.push({ q: `В каких размерах есть ${p.name}?`, a: `${p.name} выпускается в размерах ${sizes.join(", ")}. Проверьте мерки по таблице размеров; в Москве и Санкт-Петербурге можно заказать два размера на примерку курьером и оставить один.`, href: "/sizes" });
+  const madeIn = p.madeIn && !/^europe$/i.test(p.madeIn) ? p.madeIn : null;
+  if (p.composition || madeIn) {
+    items.push({ q: `Из чего и где сшита вещь ${p.name}?`, a: `${p.composition ? `Состав: ${p.composition}.` : ""} ${madeIn ? `Пошив: ${madeIn}; контроль качества в Москве, каждая вещь проверяется вручную.` : "Пошив в Португалии и Литве, контроль качества в Москве."}`.trim(), href: "/about#fabrics" });
+  }
   if (p.care) items.push({ q: `Как ухаживать за вещью ${p.name}?`, a: p.care, href: "/care" });
-  items.push({ q: `Как доставят ${p.name} и можно ли примерить?`, a: `Курьер по Москве и Санкт-Петербургу за 1–2 дня с примеркой до 20 минут (${formatMoney(delivery.courier)}, бесплатно от ${formatMoney(delivery.freeFrom)}), по России — СДЭК 2–7 дней.${p.isPreorder ? " Вещь по предзаказу отшивается 4–6 недель." : ""}`, href: "/delivery" });
-  items.push({ q: `Можно ли вернуть ${p.name}?`, a: p.isPreorder ? "Вещь по предзаказу возврату по размеру не подлежит; брак меняем или возвращаем деньги в любой срок." : "Да, 14 дней с момента получения при сохранённых ярлыках и товарном виде: возврат оформляется в личном кабинете.", href: "/delivery" });
+  items.push({ q: `Как доставят ${p.name} и можно ли примерить?`, a: `Курьер по Москве и Санкт-Петербургу за 1–2 дня с примеркой до 20 минут (${formatMoney(delivery.courier)}, бесплатно от ${formatMoney(delivery.freeFrom)}), по России — СДЭК 2–7 дней.${p.isPreorder ? " Вещь по предзаказу отшивается 4–6 недель." : ""}`, href: "/delivery#fitting" });
+  items.push({ q: `Можно ли вернуть ${p.name}?`, a: p.isPreorder ? "Вещь по предзаказу возврату по размеру не подлежит; брак меняем или возвращаем деньги в любой срок." : "Да, 14 дней с момента получения при сохранённых ярлыках и товарном виде: возврат оформляется в личном кабинете, обратная доставка за счёт покупательницы, для уровня Privé — бесплатно.", href: "/delivery#returns" });
+  items.push({
+    q: `Сколько стоит ${p.name} и сколько баллов начислят?`,
+    a: p.isPreloved
+      ? `${formatMoney(p.price)}. Вещь pre-loved проверена ателье${p.condition ? `, состояние: ${p.condition}` : ""}; подлинность гарантирована. За покупку начислят ${points.toLocaleString("ru-RU")} баллов Circle (1 балл = 1 ₽).`
+      : `${formatMoney(p.price)}; цена не меняется в течение сезона, распродаж не бывает. За покупку начислят ${points.toLocaleString("ru-RU")} баллов Circle (1 балл = 1 ₽), доставка бесплатна от ${formatMoney(delivery.freeFrom)}.`,
+    href: "/circle",
+  });
+  if (!p.isPreloved) items.push({ q: `Сколько единиц ${p.name} выпущено и будет ли допошив?`, a: "Тираж каждой модели T.Rodionova — до 60 единиц, допошив только под предзаказ. Если вашего размера нет в наличии, подпишитесь на уведомление о поступлении в карточке вещи.", href: "/about#rules" });
   return items;
 }

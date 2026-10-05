@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { errorMessage, type ActionState } from "@/lib/action-result";
+import { pingIndexNow } from "@/lib/indexnow";
 
 const slugify = (s: string) =>
   s
@@ -159,6 +160,8 @@ export async function saveArticleAction(_: ActionState, formData: FormData): Pro
   }
   await audit(me.id, id ? "article.update" : "article.create", "Article", articleId, { title: data.title, slug: data.slug, published: !!publishedAt });
   revalidateContent();
+  // опубликованная статья — поисковикам сразу (IndexNow), если интеграция включена
+  if (publishedAt && publishedAt <= new Date()) await pingIndexNow([`/journal/${data.slug}`, "/journal", "/llms.txt"]);
   if (!id) redirect(`/crm/content/articles/${articleId}`);
   return { ok: true, message: "Сохранено" };
 }

@@ -29,7 +29,7 @@ export const GROUPS: Record<IntegrationGroup, { title: string; hint: string }> =
   delivery: { title: "Доставка", hint: "Службы доставки: проверка подключения, трек-ссылки для клиенток" },
   messaging: { title: "Мессенджеры, почта и SMS", hint: "Каналы единого inbox и уведомлений — настраиваются на отдельной странице" },
   analytics: { title: "Аналитика", hint: "Счётчики ставятся на сайт только после согласия на cookie" },
-  search: { title: "Поисковики", hint: "Подтверждение прав на сайт для Яндекс Вебмастера и Google Search Console" },
+  search: { title: "Поисковики", hint: "Подтверждение прав на сайт для Яндекс Вебмастера и Google Search Console; IndexNow — мгновенная индексация изменений" },
   service: { title: "Резервные копии", hint: "Копии базы за пределами сервера: если диск погибнет, данные восстановятся из бакета" },
 };
 
@@ -276,7 +276,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     summary: "Подтверждение прав на сайт мета-тегом, затем sitemap и индексация.",
     effect: "Мета-тег yandex-verification добавляется на все страницы.",
     fields: [{ key: "verification", label: "Код подтверждения", hint: "Вебмастер → Добавить сайт → Мета-тег: значение content" }],
-    guide: ["Добавьте сайт в webmaster.yandex.ru, выберите способ «Мета-тег» и вставьте код.", "После подтверждения укажите в Вебмастере sitemap: /sitemap.xml."],
+    guide: ["Добавьте сайт в webmaster.yandex.ru, выберите способ «Мета-тег» и вставьте код.", "После подтверждения укажите в Вебмастере sitemap: /sitemap.xml и добавьте товарный фид /yml.xml в разделе «Товары и предложения».", "Видимость в ответах ИИ: отчёт «Эффективность → Показы сайта в Алисе AI» (https://webmaster.yandex.ru/) — единственная первичная метрика GEO для Яндекса; сверяйте раз в месяц."],
   },
   {
     key: "google_search_console",
@@ -286,6 +286,28 @@ export const INTEGRATIONS: IntegrationDef[] = [
     effect: "Мета-тег google-site-verification добавляется на все страницы.",
     fields: [{ key: "verification", label: "Код подтверждения", hint: "Search Console → HTML tag: значение content" }],
     guide: ["Добавьте ресурс «URL-префикс» в Search Console, выберите «HTML-тег» и вставьте код.", "После подтверждения отправьте sitemap: /sitemap.xml."],
+  },
+  {
+    key: "indexnow",
+    group: "search",
+    name: "IndexNow: Яндекс и Bing",
+    summary: "Мгновенное уведомление поисковиков об изменённых страницах: новые статьи, вещи, цены.",
+    effect: "После сохранения статьи или вещи в CRM адрес страницы отправляется в api.indexnow.org (его читают Яндекс, Bing и другие участники). Ключ отдаётся по адресу /indexnow/<ключ>.txt.",
+    fields: [{ key: "key", label: "Ключ", hint: "8–128 латинских букв и цифр; оставьте пустым — создастся автоматически при включении" }],
+    guide: ["Включите интеграцию: ключ создастся сам, регистрироваться нигде не нужно.", "В Яндекс Вебмастере раздел «Индексирование → IndexNow» покажет принятые адреса через несколько часов.", "Проверка связи ниже запрашивает файл ключа с боевого сайта."],
+    test: async (config) => {
+      const key = (config.key ?? "").trim();
+      if (!key) return { ok: false, error: "Ключ ещё не создан: сохраните интеграцию включённой" };
+      const base = (process.env.APP_URL ?? "").replace(/\/$/, "");
+      if (!base) return { ok: false, error: "APP_URL не задан в .env" };
+      try {
+        const res = await fetch(`${base}/indexnow/${key}.txt`, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
+        const text = (await res.text()).trim();
+        return res.ok && text === key ? { ok: true, info: `Файл ключа отдаётся: ${base}/indexnow/${key}.txt` } : { ok: false, error: `Файл ключа недоступен (HTTP ${res.status})` };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : "нет связи" };
+      }
+    },
   },
 ];
 

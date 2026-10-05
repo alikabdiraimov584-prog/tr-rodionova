@@ -31,7 +31,7 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "*", allow: "/", disallow: PRIVATE },
       { userAgent: AI_AGENTS, allow: "/", disallow: PRIVATE },
     ],
+    // директива Host не поддерживается Яндексом с 2018 года и неизвестна другим поисковикам — не выводим
     sitemap: `${base}/sitemap.xml`,
-    host: base,
   };
 }

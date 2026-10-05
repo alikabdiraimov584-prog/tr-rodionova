@@ -35,6 +35,7 @@ export type BrandSettings = {
   twoGis: string; // ссылка на карточку в 2ГИС
   wikidata: string; // ссылка на элемент Wikidata, если есть
   showroomGeo: string; // координаты шоурума «широта, долгота»
+  pressLinks: string; // публикации о бренде, по одной на строку: «Издание, дата — https://…»
 };
 
 /** Реквизиты продавца: обязательны на сайте по ст. 26.1 ЗоЗПП и Правилам дистанционной торговли. */
@@ -115,6 +116,7 @@ const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: 
     twoGis: "",
     wikidata: "",
     showroomGeo: "",
+    pressLinks: "",
   },
 };
 

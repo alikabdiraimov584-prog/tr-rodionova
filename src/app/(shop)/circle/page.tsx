@@ -6,6 +6,7 @@ import { getCurrentCustomer } from "@/lib/auth";
 import { circleCta } from "@/lib/role-links";
 import { formatMoney } from "@/lib/money";
 import { Eyebrow, Monogram, Star } from "@/components/ui";
+import { JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = { title: "T.Rodionova Circle — программа лояльности" };
 
@@ -16,6 +17,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
   const early = typeof sp.early === "string";
   return (
     <div>
+      <JsonLd data={breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "T.Rodionova Circle", path: "/circle" }])} />
       <section className="border-b border-line bg-white py-14 text-center">
         {early && <p className="mx-auto mb-6 max-w-lg border border-champagne bg-champagne/20 px-4 py-3 text-sm">Эта вещь пока доступна только участницам уровней Maison и Privé в рамках раннего доступа. Вступите в Circle: уровень растёт с покупками.</p>}
         <Monogram className="text-6xl" />
@@ -30,7 +32,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
       <section className="mx-auto max-w-6xl px-4 py-20 md:px-8">
         <div className="grid gap-px border border-line bg-line md:grid-cols-3">
           {tiers.map((t) => (
-            <div key={t.id} className={`p-8 ${t.code === "PRIVE" ? "bg-ink text-ivory" : "bg-ivory"}`}>
+            <div key={t.id} id={t.code.toLowerCase()} className={`scroll-mt-32 p-8 ${t.code === "PRIVE" ? "bg-ink text-ivory" : "bg-ivory"}`}>
               <div className={`eyebrow ${t.code === "PRIVE" ? "text-champagne" : ""}`}>
                 {t.threshold ? `от ${formatMoney(t.threshold)} за 12 месяцев` : "с первой покупки"}
               </div>

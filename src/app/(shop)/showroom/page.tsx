@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSetting } from "@/lib/settings";
 import { TextPage, Section } from "@/components/shop/page-shell";
+import { JsonLd, storeJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = { title: "Шоурум и контакты" };
 
 export default async function Showroom() {
   const [b, seller] = await Promise.all([getSetting("brand"), getSetting("seller")]);
   const hasShowroom = !!seller.showroom;
+  const store = storeJsonLd(b, seller);
   return (
     <TextPage
+      crumbs={[{ name: "Шоурум и контакты", path: "/showroom" }]}
       eyebrow="Шоурум"
       title={hasShowroom ? seller.showroom : "Примерка там, где удобно вам"}
       intro={hasShowroom ? `${seller.hours}. Вся коллекция в наличии, примерочные с дневным светом, стилист по записи.` : "Шоурум пока не открыт: мы продаём онлайн и привозим вещи на примерку курьером. Оплачиваете только то, что оставили."}
@@ -24,6 +27,7 @@ export default async function Showroom() {
         </div>
       }
     >
+      {store && <JsonLd data={store} />}
       <Section id="home-fitting" title="Примерка дома">
         <p>Для Москвы и области привезём до 6 вещей на примерку с курьером: до 20 минут на примерку, оплата на месте только за то, что подошло. Выбирается при оформлении заказа.</p>
       </Section>

@@ -126,6 +126,7 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
         description: f("description"), foundedYear: f("foundedYear").replace(/\D/g, "").slice(0, 4), founder: f("founder"), city: f("city"),
         instagram: url("instagram"), vk: url("vk"), pinterest: url("pinterest"), youtube: url("youtube"), dzen: url("dzen"),
         yandexBusiness: url("yandexBusiness"), twoGis: url("twoGis"), wikidata: url("wikidata"), showroomGeo: f("showroomGeo"),
+        pressLinks: String(formData.get("pressLinks") ?? "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join("\n"),
       };
       await setSetting("brand", next);
     } else if (section === "seller") {

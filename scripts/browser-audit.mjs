@@ -54,6 +54,8 @@ const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath
 
 const problems = [];
 const stats = { pages: 0, buttonsClicked: 0, forms: 0, links: 0 };
+// сущности schema.org по всему обходу: какие @id описаны и на какие только ссылаются
+const ldIds = { defined: new Set(), referenced: new Map(), checkedLogo: false };
 const note = (kind, where, detail) => problems.push({ kind, where, detail: String(detail).slice(0, 400) });
 
 // Доступность: axe-core (WCAG 2.1 A/AA) на каждой загруженной странице. Источник подаётся через page.evaluate строкой —
@@ -154,15 +156,48 @@ async function crawl(role, viewport, startPaths, login) {
     const broken = await page.evaluate(() => [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.getAttribute("src")).map((i) => i.currentSrc || i.src).slice(0, 5)).catch(() => []);
     for (const src of broken) note("image", `${role} ${path}`, `битое фото: ${src.replace(base, "")}`);
     await checkA11y(page, role, path);
-    // разметка schema.org: каждый блок должен парситься, а шаблоны товара, статьи и FAQ — нести свой тип
+    // разметка schema.org: каждый блок должен парситься, шаблоны товара, статьи и FAQ — нести свой тип,
+    // ссылки @id — вести на сущность, описанную хотя бы на одной странице, а поля — совпадать с видимым текстом
     if (role.startsWith("site")) {
       const ld = await page.evaluate(() => [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => s.textContent || "")).catch(() => []);
       const types = [];
+      const nodes = [];
       for (const src of ld) {
-        try { const d = JSON.parse(src); for (const it of Array.isArray(d) ? d : [d]) types.push(it["@type"]); } catch (e) { note("jsonld", `${role} ${path}`, `разметка не парсится: ${e.message.slice(0, 80)}`); }
+        try { const d = JSON.parse(src); for (const it of Array.isArray(d) ? d : [d]) { types.push(it["@type"]); nodes.push(it); } } catch (e) { note("jsonld", `${role} ${path}`, `разметка не парсится: ${e.message.slice(0, 80)}`); }
       }
-      const expect = asked.startsWith("/product/") ? "Product" : asked.startsWith("/journal/") && !asked.includes("feed") ? "Article" : asked === "/faq" ? "FAQPage" : null;
-      if (expect && !types.includes(expect)) note("jsonld", `${role} ${path}`, `нет разметки ${expect} (есть: ${types.join(", ") || "ничего"})`);
+      const walk = (node) => {
+        if (Array.isArray(node)) return node.forEach(walk);
+        if (!node || typeof node !== "object") return;
+        if (typeof node["@id"] === "string") {
+          const own = Object.keys(node).filter((k) => k !== "@id" && k !== "@context");
+          if (own.length) ldIds.defined.add(node["@id"]);
+          else if (!ldIds.referenced.has(node["@id"])) ldIds.referenced.set(node["@id"], `${role} ${path}`);
+        }
+        for (const v of Object.values(node)) walk(v);
+      };
+      walk(nodes);
+      const text = body.replace(/\s+/g, " ");
+      const has = (t) => !!t && text.includes(String(t).replace(/\s+/g, " ").trim().slice(0, 60));
+      const expect = asked.startsWith("/product/") ? ["Product", "ProductGroup"] : asked.startsWith("/journal/") && !asked.includes("feed") ? ["Article"] : asked === "/faq" ? ["FAQPage"] : null;
+      if (expect && !expect.some((t) => types.includes(t))) note("jsonld", `${role} ${path}`, `нет разметки ${expect.join("/")} (есть: ${types.join(", ") || "ничего"})`);
+      for (const n of nodes) {
+        const offerOk = (o) => o && typeof o === "object" && o.price && o.priceCurrency && o.availability;
+        if (n["@type"] === "ProductGroup") {
+          const vs = Array.isArray(n.hasVariant) ? n.hasVariant : [];
+          if (!vs.length) note("jsonld", `${role} ${path}`, "ProductGroup без вариантов");
+          for (const v of vs) if (!offerOk(v.offers)) note("jsonld", `${role} ${path}`, `вариант ${v.sku || "?"} без цены, валюты или наличия`);
+          if (!has(n.name)) note("jsonld", `${role} ${path}`, "название товара из разметки не найдено в тексте");
+        } else if (n["@type"] === "Product" && !offerOk(n.offers)) note("jsonld", `${role} ${path}`, "Product без цены, валюты или наличия");
+        if (n["@type"] === "Article") {
+          if (!n.datePublished || !n.author) note("jsonld", `${role} ${path}`, "Article без datePublished или author");
+          if (!has(n.headline)) note("jsonld", `${role} ${path}`, "заголовок статьи из разметки не найден в тексте");
+        }
+        if (n["@type"] === "FAQPage") for (const q of n.mainEntity ?? []) { if (!has(q.name)) note("jsonld", `${role} ${path}`, `вопрос FAQ не найден в тексте: ${String(q.name).slice(0, 50)}`); if (!has(q.acceptedAnswer?.text)) note("jsonld", `${role} ${path}`, `ответ FAQ не найден в тексте: ${String(q.name).slice(0, 50)}`); }
+        if (n["@type"] === "Organization") {
+          const logo = typeof n.logo === "object" ? n.logo?.url : n.logo;
+          if (logo && !ldIds.checkedLogo) { ldIds.checkedLogo = true; const r = await page.request.get(logo).catch(() => null); if (!r || r.status() !== 200 || !/image\/(png|jpeg)/.test(r.headers()["content-type"] || "")) note("jsonld", `${role} ${path}`, `логотип Organization недоступен или не PNG/JPEG: ${logo}`); }
+        }
+      }
       // Organization обязательна на индексируемых страницах витрины; кабинет, вход и оформление закрыты от индексации
       const indexable = !/^\/(account|login|register|forgot|reset|cart|checkout|unsubscribe)(\/|$)/.test(asked);
       if (indexable && !types.includes("Organization")) note("jsonld", `${role} ${path}`, "нет разметки Organization в макете");
@@ -174,6 +209,7 @@ async function crawl(role, viewport, startPaths, login) {
       stats.links++;
       const u = h.split("#")[0];
       if (role.startsWith("site") && u.startsWith("/crm")) continue; // обход CRM — отдельный этап
+      if (/\.(jpe?g|png|webp|gif|svg|pdf|xml|txt|docx?)$/i.test(u.split("?")[0])) continue; // файлы и фиды — не страницы; битые фото ловит отдельная проверка
       if (u && !seen.has(u)) queue.push(u);
     }
     // безопасные кнопки: type=button вне форм с данными, без «опасных» слов.
@@ -395,6 +431,7 @@ for (const [kind, list] of Object.entries(grouped)) {
   console.log(`\n== ${kind}: ${list.length}`);
   for (const p of list.slice(0, 40)) console.log(`  ${p.where} — ${p.detail}`);
 }
+for (const [id, where] of ldIds.referenced) if (!ldIds.defined.has(id)) note("jsonld", where, `ссылка @id на сущность, которой нет ни на одной странице: ${id}`);
 const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image", "crm-leak", "a11y", "jsonld"].includes(p.kind));
 console.log(`\nИТОГ: ${blocking.length === 0 ? "ОШИБОК НЕТ" : `${blocking.length} ошибок`} (замечаний всего ${problems.length})`);
 process.exit(blocking.length === 0 ? 0 : 1);

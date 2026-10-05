@@ -44,6 +44,8 @@ export default async function Settings() {
                 <label><span className="label">Яндекс Бизнес (ссылка на карточку)</span><input name="yandexBusiness" defaultValue={brand.yandexBusiness} placeholder="https://yandex.ru/maps/org/…" className="input py-2" /></label>
                 <label><span className="label">2ГИС (ссылка на карточку)</span><input name="twoGis" defaultValue={brand.twoGis} className="input py-2" /></label>
                 <label><span className="label">Wikidata</span><input name="wikidata" defaultValue={brand.wikidata} placeholder="https://www.wikidata.org/wiki/Q…" className="input py-2" /></label>
+                <label className="sm:col-span-2"><span className="label">Публикации о бренде (по одной на строку: «Издание, дата — ссылка»)</span><textarea name="pressLinks" rows={3} defaultValue={brand.pressLinks} placeholder="РБК Стиль, 12.11.2026 — https://style.rbc.ru/…" className="input py-2" /></label>
+                <p className="sm:col-span-2 text-xs text-muted">Список показывается на странице «Для прессы» как досье независимых публикаций: по нему журналисты, справочники и Wikidata подтверждают значимость бренда.</p>
               </div>
             </SettingsForm>
             <div className="mt-8">

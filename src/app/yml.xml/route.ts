@@ -46,7 +46,9 @@ export async function GET() {
       if (v.color) lines.push(`<param name="Цвет">${esc(v.color)}</param>`);
       if (p.composition) lines.push(`<param name="Состав">${esc(p.composition)}</param>`);
       if (p.madeIn) lines.push(`<country_of_origin>${esc(p.madeIn)}</country_of_origin>`);
-      lines.push("<pickup>true</pickup><delivery>true</delivery>");
+      // самовывоза без шоурума нет; sales_notes (до 50 знаков) показывается в карточке товара Яндекса
+      lines.push("<store>false</store><pickup>false</pickup><delivery>true</delivery>");
+      lines.push("<sales_notes>Примерка курьером в Москве и Петербурге</sales_notes>");
       lines.push("</offer>");
     }
   }

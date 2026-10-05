@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { byKey } from "@/lib/integrations/registry";
 import { getIntegration, recordCheck, saveIntegration } from "@/lib/integrations/store";
 import { errorMessage, type ActionState } from "@/lib/action-result";
+import { KEY_RE, getIndexNowKey } from "@/lib/indexnow";
 
 export async function saveIntegrationAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireSection("integrations");
@@ -19,8 +20,11 @@ export async function saveIntegrationAction(_: ActionState, formData: FormData):
     if (formData.get(`clear_${f.key}`) === "on") clear.push(f.key);
   }
   const enabled = formData.get("enabled") === "on";
+  if (key === "indexnow" && input.key.trim() && !KEY_RE.test(input.key.trim())) return { error: "Ключ IndexNow: 8–128 латинских букв, цифр или дефисов" };
   try {
     const keys = await saveIntegration(key, input, clear, enabled);
+    // ключ IndexNow создаётся сам, когда интеграцию включили с пустым полем
+    if (key === "indexnow" && enabled) await getIndexNowKey();
     await audit(me.id, "integration.save", "Integration", key, { enabled, keys });
   } catch (e) {
     return { error: errorMessage(e) };

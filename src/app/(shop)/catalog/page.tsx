@@ -6,7 +6,7 @@ import { ProductCard } from "@/components/shop/product-card";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
 import { Markdown } from "@/components/markdown";
-import { JsonLd } from "@/lib/seo";
+import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
 
 export async function generateMetadata({ searchParams }: PageProps<"/catalog">): Promise<Metadata> {
   const sp = await searchParams;
@@ -86,8 +86,12 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   };
   const toggleList = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]).join(",") || undefined;
   const activeCount = sizes.length + colors.length + materials.length + (price ? 1 : 0);
+  const listName = q ? `Поиск: «${q}»` : onlyNew ? "Новое" : current?.name ?? "Все вещи";
+  // структура ассортимента для краулеров: список вещей и путь к категории; при поиске и фильтрах — без разметки, это не самостоятельные страницы
+  const plain = !q && activeCount === 0;
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
+      {plain && products.length > 0 && <JsonLd data={[itemListJsonLd(`${listName} — T.Rodionova`, products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(current ? [{ name: current.name, path: `/catalog?category=${current.slug}` }] : [])])]} />}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-line py-2 text-[0.68rem] uppercase tracking-[0.1em]">
         <Link href={link({ category: undefined, new: undefined })} className={`py-2.5 ${!category && !onlyNew ? "underline underline-offset-4" : "text-muted hover:text-ink"}`}>Все</Link>
         <Link href={link({ category: undefined, new: "1" })} className={`py-2.5 ${onlyNew ? "underline underline-offset-4" : "text-muted hover:text-ink"}`}>Новое</Link>
@@ -122,7 +126,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
           </div>
         </details>
         <div className="min-w-0 py-4 md:py-5">
-          <h1 className="mb-4 text-base">{q ? `Поиск: «${q}»` : onlyNew ? "Новое" : current?.name ?? "Все вещи"}</h1>
+          <h1 className="mb-4 text-base">{listName}</h1>
           {products.length === 0 ? (
             <Empty title="Ничего не найдено" action={<Link href="/catalog" className="btn-outline">Весь каталог</Link>}>Попробуйте изменить фильтры или запрос.</Empty>
           ) : (

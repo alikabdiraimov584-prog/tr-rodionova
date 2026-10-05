@@ -10,7 +10,7 @@ import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductCard } from "@/components/shop/product-card";
 import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
-import { JsonLd, absolute, breadcrumbJsonLd, faqJsonLd, offerPoliciesJsonLd, siteUrl } from "@/lib/seo";
+import { JsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd } from "@/lib/seo";
 import { productFaq } from "@/lib/faq";
 
 async function load(slug: string) {
@@ -47,11 +47,12 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   if (p.earlyAccessUntil && p.earlyAccessUntil > new Date() && !user?.loyaltyTier?.earlyAccess) {
     redirect(`/circle?early=${p.slug}`);
   }
-  const [inWishlist, tier, related, delivery] = await Promise.all([
+  const [inWishlist, tier, related, delivery, seller] = await Promise.all([
     user ? db.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } }) : null,
     user?.loyaltyTier ?? db.loyaltyTier.findFirst({ orderBy: { threshold: "asc" } }),
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4 }),
     getSetting("delivery"),
+    getSetting("seller"),
   ]);
   const pts = Math.floor((p.price * (tier?.cashbackPct ?? 3)) / 100 / 100);
   // «С этим носят»: вещи из тех же образов лукбука, иначе соседи по категории
@@ -67,41 +68,12 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
     ...(p.isPreloved ? [["Состояние", p.condition] as [string, string | null]] : []),
     ...(p.isPreorder ? [["Отшив", p.preorderShipAt ? `к ${formatDate(p.preorderShipAt)}` : "4–6 недель"] as [string, string]] : []),
   ];
-  const inStock = p.isPreorder || p.variants.some((v) => v.stock - v.reserved > 0);
-  const colors = [...new Set(p.variants.map((v) => v.color).filter(Boolean))];
   const sizesAll = [...new Set(p.variants.map((v) => v.size))];
-  const faq = productFaq(p, sizesAll, delivery);
-  const productJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: p.name,
-    description: p.description ?? undefined,
-    sku: p.sku,
-    brand: { "@type": "Brand", name: "T.Rodionova" },
-    manufacturer: { "@id": `${siteUrl()}/#organization` },
-    material: p.composition ?? undefined,
-    ...(colors.length ? { color: colors.join(", ") } : {}),
-    ...(sizesAll.length ? { size: sizesAll } : {}),
-    ...(p.madeIn ? { countryOfOrigin: p.madeIn } : {}),
-    audience: { "@type": "PeopleAudience", suggestedGender: "female" },
-    category: p.category?.name,
-    image: p.images.map((i) => absolute(i.url)),
-    url: absolute(`/product/${p.slug}`),
-    offers: {
-      "@type": "Offer",
-      priceCurrency: "RUB",
-      price: (p.price / 100).toFixed(2),
-      availability: inStock ? (p.isPreorder ? "https://schema.org/PreOrder" : "https://schema.org/InStock") : "https://schema.org/OutOfStock",
-      itemCondition: p.isPreloved ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
-      url: absolute(`/product/${p.slug}`),
-      seller: { "@id": `${siteUrl()}/#organization` },
-      ...(p.isPreloved ? {} : offerPoliciesJsonLd(delivery)),
-    },
-    ...(rating ? { aggregateRating: { "@type": "AggregateRating", ratingValue: rating.toFixed(1), reviewCount: p.reviews.length } } : {}),
-  };
+  const faq = productFaq(p, sizesAll, delivery, pts);
+  const ld = productJsonLd(p, delivery, { hasStore: !!seller.showroom });
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-      <JsonLd data={[productJsonLd, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
+      <JsonLd data={[ld, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
       <nav className="py-3 text-[0.66rem] uppercase tracking-[0.1em] text-muted [&_a]:inline-block [&_a]:py-1">
         <Link href="/catalog" className="hover:text-ink">Каталог</Link>
         {p.category && <> / <Link href={`/catalog?category=${p.category.slug}`} className="hover:text-ink">{p.category.name}</Link></>}
@@ -132,7 +104,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           <ul className="mt-3 space-y-1 text-[0.78rem] text-ink/80">
             <li>Курьер по Москве и области завтра, по России 2–7 дней</li>
             <li>Примерка 15 минут перед покупкой: платите только за то, что подошло</li>
-            <li>Возврат 14 дней, курьер заберёт бесплатно</li>
+            <li>Возврат 14 дней; для уровня Privé обратный забор бесплатный</li>
           </ul>
           <div className="mt-3 flex gap-2">
             <form action={toggleWishlistAction} className="flex-1">

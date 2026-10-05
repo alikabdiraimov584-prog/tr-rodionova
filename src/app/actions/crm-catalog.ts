@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { pingIndexNow } from "@/lib/indexnow";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -75,6 +76,8 @@ export async function saveProductAction(_: ActionState, formData: FormData): Pro
   await audit(me.id, id ? "product.update" : "product.create", "Product", productId, { name: data.name });
   revalidatePath("/crm/products");
   revalidatePath("/", "layout");
+  // карточка вещи и каталог — поисковикам сразу (IndexNow), если интеграция включена; архив и черновик тоже: адрес пропал
+  await pingIndexNow([`/product/${data.slug}`, "/catalog", "/yml.xml"]);
   if (!id) redirect(`/crm/products/${productId}`);
   return { ok: true, message: "Сохранено" };
 }

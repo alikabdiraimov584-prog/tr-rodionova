@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Доставка и возврат" 
 export default async function Delivery() {
   const [d, seller] = await Promise.all([getSetting("delivery"), getSetting("seller")]);
   return (
-    <TextPage eyebrow="Покупателям" title="Доставка и возврат" intro={`Бесплатная доставка от ${formatMoney(d.freeFrom)} и для участниц Circle уровней Maison и Privé.`}>
+    <TextPage eyebrow="Покупателям" title="Доставка и возврат" intro={`Бесплатная доставка от ${formatMoney(d.freeFrom)} и для участниц Circle уровней Maison и Privé.`} crumbs={[{ name: "Доставка и возврат", path: "/delivery" }]}>
       <Section id="fitting" title="Курьер с примеркой">
         <p>Москва и Санкт-Петербург, 1–2 дня. Курьер привезёт заказ и подождёт до 20 минут, пока вы примерите. Можно заказать несколько размеров и оставить один. Стоимость {formatMoney(d.courier)}.</p>
       </Section>

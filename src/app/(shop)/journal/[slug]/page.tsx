@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/money";
 import { Markdown } from "@/components/markdown";
 import { ProductCard } from "@/components/shop/product-card";
 import { getSetting } from "@/lib/settings";
-import { JsonLd, absolute, breadcrumbJsonLd, founderJsonLd, siteUrl } from "@/lib/seo";
+import { JsonLd, articleJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 async function load(slug: string) {
   return db.article.findUnique({
@@ -50,27 +50,7 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
   const brand = await getSetting("brand");
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 md:px-8">
-      <JsonLd
-        data={[
-          {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            headline: a.title,
-            description: a.metaDescription ?? a.excerpt ?? undefined,
-            image: a.coverUrl ? [absolute(a.coverUrl)] : undefined,
-            datePublished: a.publishedAt?.toISOString(),
-            dateModified: a.updatedAt.toISOString(),
-            articleSection: a.category ?? undefined,
-            keywords: a.keywords.join(", ") || undefined,
-            inLanguage: "ru",
-            mainEntityOfPage: absolute(`/journal/${a.slug}`),
-            author: founderJsonLd(brand) ?? { "@type": "Organization", name: brand.name },
-            publisher: { "@id": `${siteUrl()}/#organization` },
-            ...(a.products.length ? { mentions: a.products.map((p) => ({ "@type": "Product", name: p.name, url: absolute(`/product/${p.slug}`) })) } : {}),
-          },
-          breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Журнал", path: "/journal" }, { name: a.title, path: `/journal/${a.slug}` }]),
-        ]}
-      />
+      <JsonLd data={[articleJsonLd(a, brand, a.products), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Журнал", path: "/journal" }, { name: a.title, path: `/journal/${a.slug}` }])]} />
       <nav className="mb-6 text-[0.65rem] uppercase tracking-[0.2em] text-muted">
         <Link href="/journal">Журнал</Link>
         {a.category && <> / <Link href={`/journal?category=${encodeURIComponent(a.category)}`}>{a.category}</Link></>}
@@ -81,9 +61,9 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
           <span>{formatDate(a.publishedAt)}</span>
         </div>
         <h1 className="mt-3">{a.title}</h1>
-        {a.excerpt && <p className="mt-4 text-sm leading-relaxed text-ink/75">{a.excerpt}</p>}
+        {a.excerpt && <p className="mt-4 text-sm leading-relaxed text-ink/80"><span className="eyebrow mr-2 !text-[0.62rem]">Коротко</span>{a.excerpt}</p>}
         <p className="mt-4 text-[0.68rem] uppercase tracking-[0.12em] text-muted">
-          Текст: <Link href="/about" className="underline underline-offset-4">{brand.founder || `Редакция ${brand.name}`}</Link>
+          Текст: <Link href="/about#founder" className="underline underline-offset-4">{brand.founder || `Редакция ${brand.name}`}</Link>
           {a.updatedAt.getTime() - (a.publishedAt?.getTime() ?? 0) > 86_400_000 && <> · обновлено {formatDate(a.updatedAt)}</>}
         </p>
       </header>
