@@ -24,13 +24,13 @@ await p.goto(`${base}/crm/finance?tab=expenses`);
 const form = p.locator('form:has(select[name="type"])');
 await form.locator('select[name="type"]').selectOption("EXPENSE_RENT");
 await form.locator('input[name="amount"]').fill("50000");
-const today = new Date().toISOString().slice(0, 10);
-await form.locator('input[name="date"]').fill(today);
+// дата как в форме по умолчанию (по Москве): запись встаёт первой в списке, даже если сегодня уже много проводок
+const today = await form.locator('input[name="date"]').inputValue();
 await form.locator('input[name="category"]').fill("Аренда шоурума (тест)");
 await form.locator('input[name="counterparty"]').fill("ООО Тест-Арендодатель");
 await form.locator('input[name="comment"]').fill("тестовая проводка");
 await form.locator("button.btn-primary").click();
-await p.waitForTimeout(1500);
+await p.getByText("Проводка добавлена").waitFor({ timeout: 15000 }).catch(() => {});
 let t = await body();
 check("расход добавлен", /Проводка добавлена/.test(t) && t.includes("ООО Тест-Арендодатель"));
 
@@ -39,6 +39,22 @@ const monthLabel = new Date().toLocaleDateString("ru-RU", { month: "short", year
 await p.goto(`${base}/crm/finance?tab=cashflow`);
 t = await body();
 check("ДДС показывает аренду", /Аренда/.test(t) && t.includes(monthLabel));
+// расход статьёй «Производство» (она в форме по умолчанию) должен быть виден в P&L за текущий месяц
+await p.goto(`${base}/crm/finance?tab=expenses`);
+await p.selectOption('select[name="type"]', "EXPENSE_PRODUCTION");
+await p.fill('input[name="amount"]', "7777");
+await p.fill('input[name="counterparty"]', "ООО Тест-Ткани");
+await p.fill('input[name="comment"]', "Ткань (тест)");
+await p.click('button:has-text("Добавить")');
+await p.getByText("Проводка добавлена").waitFor({ timeout: 15000 }).catch(() => {});
+await p.goto(`${base}/crm/finance?tab=pnl`);
+const prodRow = p.locator("tr", { hasText: "Производство: ткани, пошив" }).first();
+const prodCells = (await prodRow.count()) ? await prodRow.locator("td").allTextContents() : [];
+check("P&L: расход «Производство» виден в текущем месяце", prodCells.length > 2 && prodCells[prodCells.length - 2].trim() !== "—", prodCells.slice(-2).join(" | "));
+await p.goto(`${base}/crm/finance?tab=expenses`);
+p.once("dialog", (d) => d.accept());
+await p.locator("tr", { hasText: "ООО Тест-Ткани" }).first().locator("button", { hasText: "удалить" }).click();
+await p.waitForTimeout(1500);
 await p.goto(`${base}/crm/finance?tab=pnl`);
 t = await body();
 check("P&L и разбивка расходов", /Аренда шоурума \(тест\)/.test(t));
@@ -51,7 +67,7 @@ await p.waitForURL(/edit=/);
 const editForm = p.locator('form:has(input[name="id"])');
 await editForm.locator('input[name="amount"]').fill("55000");
 await editForm.locator("button.btn-primary").click();
-await p.waitForTimeout(1500);
+await p.getByText("Проводка изменена").waitFor({ timeout: 15000 }).catch(() => {});
 t = await body();
 check("расход изменён", /Проводка изменена/.test(t) && t.includes("55 000 ₽"));
 

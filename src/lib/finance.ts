@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { LedgerType } from "@/generated/prisma/enums";
+import type { PnlCostMethod } from "@/lib/settings";
 
 export type PnlRow = {
   key: string;
@@ -30,10 +31,14 @@ export type PnlRow = {
 const pct = (part: number, netRevenue: number) => (netRevenue > 0 ? Math.round((part / netRevenue) * 100) : 0);
 
 /**
- * P&L по начислению. Затраты на ткани и пошив (EXPENSE_PRODUCTION) — это вложение в запас: в P&L они входят
- * через себестоимость проданного по цене закупки из карточки, а не отдельной строкой, иначе одна закупка списалась бы дважды.
+ * P&L по месяцам. Себестоимость считается одним из двух способов (настройка «Финансы → P&L»), но не обоими сразу,
+ * иначе одна закупка списалась бы дважды:
+ * — production: фактические расходы на ткани и пошив (проводки «Производство») в месяце оплаты — просто и честно,
+ *   пока цена закупки в карточках не ведётся;
+ * — cogs: цена закупки из карточки списывается при продаже (EXPENSE_COGS, возвраты её восстанавливают),
+ *   а «Производство» остаётся только в ДДС как вложение в запас.
  */
-export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
+export async function pnlByMonth(months = 12, method: PnlCostMethod = "production"): Promise<PnlRow[]> {
   const from = monthRange(months);
   const rows = await db.$queryRaw<{ m: Date; type: LedgerType; amount: bigint }[]>`
     SELECT date_trunc('month', date) AS m, type, sum(amount)::bigint AS amount FROM "LedgerEntry"
@@ -52,7 +57,7 @@ export async function pnlByMonth(months = 12): Promise<PnlRow[]> {
     const e = map.get(key) ?? {};
     const g = (t: LedgerType) => e[t] ?? 0;
     const netRevenue = g("INCOME_SALE") + g("INCOME_OTHER") - g("REFUND");
-    const cogs = g("EXPENSE_COGS") - g("COGS_REVERSAL");
+    const cogs = method === "cogs" ? g("EXPENSE_COGS") - g("COGS_REVERSAL") : g("EXPENSE_PRODUCTION");
     const gross = netRevenue - cogs;
     const opex = g("EXPENSE_ACQUIRING") + g("EXPENSE_SHIPPING") + g("EXPENSE_MARKETING") + g("EXPENSE_SALARY") + g("EXPENSE_RENT") + g("EXPENSE_SERVICES") + g("EXPENSE_TAX") + g("EXPENSE_OTHER");
     out.push({

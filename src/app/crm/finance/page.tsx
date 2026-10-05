@@ -24,7 +24,7 @@ const PNL_LINES: { key: keyof PnlRow; label: string; strong?: boolean; neg?: boo
   { key: "otherIncome", label: "Прочие доходы" },
   { key: "refunds", label: "Возвраты покупателям", neg: true },
   { key: "netRevenue", label: "Чистая выручка", strong: true },
-  { key: "cogs", label: "Себестоимость проданного", neg: true },
+  { key: "cogs", label: "Себестоимость", neg: true },
   { key: "gross", label: "Валовая прибыль", strong: true, pct: "grossPct" },
   { key: "acquiring", label: "Эквайринг", neg: true },
   { key: "shipping", label: "Доставка", neg: true },
@@ -118,7 +118,7 @@ export default async function Finance({ searchParams }: PageProps<"/crm/finance"
   const finance = await getSetting("finance");
   const base = (p: Record<string, string | number | undefined>) => qs("/crm/finance", { tab, months, ...p });
 
-  const [rows, cash] = await Promise.all([pnlByMonth(months), cashFlowByMonth(months, finance)]);
+  const [rows, cash] = await Promise.all([pnlByMonth(months, finance.pnlCost), cashFlowByMonth(months, finance)]);
   const total = sumRows(rows);
   const cashTotal = sumCash(cash);
   const bs = await balanceSheetLite();
@@ -145,7 +145,7 @@ export default async function Finance({ searchParams }: PageProps<"/crm/finance"
 
       {tab === "overview" && <Overview rows={rows} total={total} cash={cash} cashTotal={cashTotal} bs={bs} months={months} from={from} />}
       {tab === "cashflow" && <CashFlow cash={cash} cashTotal={cashTotal} finance={finance} />}
-      {tab === "pnl" && <Pnl rows={rows} total={total} monthKey={monthKey} monthFrom={monthFrom} monthTo={monthTo} base={base} />}
+      {tab === "pnl" && <Pnl rows={rows} total={total} monthKey={monthKey} monthFrom={monthFrom} monthTo={monthTo} base={base} method={finance.pnlCost} />}
       {tab === "expenses" && <Expenses type={type} page={page} edit={edit} base={base} />}
       {tab === "stock" && <StockTab months={months} bs={bs} />}
     </div>
@@ -235,8 +235,9 @@ function CashFlow({ cash, cashTotal, finance }: { cash: CashRow[]; cashTotal: Ca
   );
 }
 
-async function Pnl({ rows, total, monthKey, monthFrom, monthTo, base }: { rows: PnlRow[]; total: PnlRow; monthKey: string; monthFrom: Date; monthTo: Date; base: (p: Record<string, string | number | undefined>) => string }) {
+async function Pnl({ rows, total, monthKey, monthFrom, monthTo, base, method }: { rows: PnlRow[]; total: PnlRow; monthKey: string; monthFrom: Date; monthTo: Date; base: (p: Record<string, string | number | undefined>) => string; method: "production" | "cogs" }) {
   const breakdown = await expenseBreakdown(monthFrom, monthTo);
+  const lines = PNL_LINES.map((l) => (l.key === "cogs" ? { ...l, label: method === "cogs" ? "Себестоимость проданного (по карточкам)" : "Производство: ткани, пошив" } : l));
   const sum = breakdown.reduce((s, b) => s + b.amount, 0);
   const prev = new Date(monthFrom); prev.setMonth(prev.getMonth() - 1);
   const next = new Date(monthFrom); next.setMonth(next.getMonth() + 1);
@@ -244,8 +245,17 @@ async function Pnl({ rows, total, monthKey, monthFrom, monthTo, base }: { rows: 
   return (
     <>
       <div className="card overflow-x-auto" tabIndex={0}>
-        <div className="p-5 pb-2"><Eyebrow>Отчёт о прибылях и убытках по месяцам</Eyebrow><p className="mt-1 text-xs text-muted">Выручка и себестоимость проданного считаются по дате оплаты заказа, возвраты уменьшают выручку и возвращают себестоимость. Закупка тканей и пошив — вложение в запас: они списываются по мере продаж через себестоимость, отдельной строкой здесь не повторяются (деньги по ним — в ДДС). Взносы и выводы собственника в P&L не входят.</p></div>
-        <MonthTable rows={rows} total={total} lines={PNL_LINES} netKey="netRevenue" />
+        <div className="p-5 pb-2">
+          <Eyebrow>Отчёт о прибылях и убытках по месяцам</Eyebrow>
+          <p className="mt-1 text-xs text-muted">
+            Выручка — по дате оплаты заказа, возвраты её уменьшают.{" "}
+            {method === "cogs"
+              ? "Себестоимость списывается при продаже по цене закупки из карточки вещи (возврат её восстанавливает); расходы «Производство» — вложение в запас, они видны в ДДС и в разбивке ниже, а в таблицу не входят."
+              : "Себестоимость — фактические расходы на ткани и пошив (статья «Производство») в месяце оплаты; цена закупки из карточек здесь не используется."}{" "}
+            Взносы и выводы собственника в P&L не входят.
+          </p>
+        </div>
+        <MonthTable rows={rows} total={total} lines={lines} netKey="netRevenue" />
       </div>
       <div className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -257,6 +267,16 @@ async function Pnl({ rows, total, monthKey, monthFrom, monthTo, base }: { rows: 
         ) : (
           <div className="mt-4"><HBar items={breakdown.map((b) => ({ label: `${LEDGER_TYPE[b.type].label}${b.category ? ` · ${b.category}` : ""} · ${b.count}`, value: b.amount, display: `${formatMoney(b.amount)} (${sum ? Math.round((b.amount / sum) * 100) : 0}%)` }))} /></div>
         )}
+      </div>
+      <div className="card p-5">
+        <Eyebrow>Как считать себестоимость в P&L</Eyebrow>
+        <p className="mt-1 text-xs text-muted">Один из двух способов, не оба сразу: иначе одна закупка ткани попала бы в отчёт дважды.</p>
+        <SettingsForm section="finance">
+          <div className="mt-3 space-y-2 text-sm">
+            <label className="flex gap-2"><input type="radio" name="pnlCost" value="production" defaultChecked={method === "production"} className="mt-1 accent-black" /><span><b>По расходам на производство</b> — то, что вы вводите на вкладке «Расходы» статьёй «Производство», в месяце оплаты. Подходит, пока цена закупки в карточках вещей не ведётся.</span></label>
+            <label className="flex gap-2"><input type="radio" name="pnlCost" value="cogs" defaultChecked={method === "cogs"} className="mt-1 accent-black" /><span><b>По цене закупки из карточек</b> — себестоимость списывается при продаже каждой вещи, запас на складе считается вложением. Точнее по месяцам, но требует заполненной цены закупки у всех вещей.</span></label>
+          </div>
+        </SettingsForm>
       </div>
     </>
   );

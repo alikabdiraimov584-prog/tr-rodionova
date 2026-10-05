@@ -33,9 +33,10 @@ export async function GET(request: Request) {
     for (const r of [...rows, total]) lines.push([r.key, ...cols.map((c) => rub(r[c[0]] as number))].join(";"));
   } else if (report === "pnl") {
     name = "pnl";
-    const rows = await pnlByMonth(months);
+    const finance = await getSetting("finance");
+    const rows = await pnlByMonth(months, finance.pnlCost);
     const total = sumRows(rows);
-    const cols: [keyof typeof total, string][] = [["sales", "Выручка от продаж"], ["otherIncome", "Прочие доходы"], ["refunds", "Возвраты"], ["netRevenue", "Чистая выручка"], ["cogs", "Себестоимость"], ["gross", "Валовая прибыль"], ["grossPct", "Валовая маржа, %"], ["acquiring", "Эквайринг"], ["shipping", "Доставка"], ["marketing", "Маркетинг"], ["salary", "Зарплаты"], ["rent", "Аренда"], ["services", "Сервисы и сайт"], ["tax", "Налоги и взносы"], ["other", "Прочие расходы"], ["opex", "Операционные расходы"], ["operating", "Операционная прибыль"], ["operatingPct", "Рентабельность, %"]];
+    const cols: [keyof typeof total, string][] = [["sales", "Выручка от продаж"], ["otherIncome", "Прочие доходы"], ["refunds", "Возвраты"], ["netRevenue", "Чистая выручка"], ["cogs", finance.pnlCost === "cogs" ? "Себестоимость проданного (по карточкам)" : "Производство: ткани, пошив"], ["gross", "Валовая прибыль"], ["grossPct", "Валовая маржа, %"], ["acquiring", "Эквайринг"], ["shipping", "Доставка"], ["marketing", "Маркетинг"], ["salary", "Зарплаты"], ["rent", "Аренда"], ["services", "Сервисы и сайт"], ["tax", "Налоги и взносы"], ["other", "Прочие расходы"], ["opex", "Операционные расходы"], ["operating", "Операционная прибыль"], ["operatingPct", "Рентабельность, %"]];
     lines = [["Месяц", ...cols.map((c) => c[1])].join(";")];
     for (const r of [...rows, total]) lines.push([r.key, ...cols.map((c) => (c[0].endsWith("Pct") ? String(r[c[0]]) : rub(r[c[0]] as number)))].join(";"));
   } else {

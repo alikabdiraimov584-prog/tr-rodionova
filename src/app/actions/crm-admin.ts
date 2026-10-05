@@ -173,7 +173,9 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
       const opening = balance ? parseRubles(balance) : 0;
       if (opening === null) return { error: "Остаток на начало — число в рублях (можно со знаком минус)" };
       if (Math.abs(opening) > MAX_AMOUNT) return { error: "Остаток на начало: до 20 000 000 ₽" };
-      await setSetting("finance", { openingBalance: opening, openingDate: date });
+      const cur = await getSetting("finance");
+      const pnlCost = formData.has("pnlCost") ? (String(formData.get("pnlCost")) === "cogs" ? "cogs" : "production") : cur.pnlCost;
+      await setSetting("finance", { openingBalance: formData.has("openingBalance") ? opening : cur.openingBalance, openingDate: formData.has("openingDate") ? date : cur.openingDate, pnlCost });
     } else if (section === "seller") {
       const f = (k: string) => String(formData.get(k) ?? "").trim();
       await setSetting("seller", {

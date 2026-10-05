@@ -65,13 +65,17 @@ export type SupportSettings = {
   reopenDays: number; // новое сообщение в закрытый диалог моложе N дней переоткрывает его
 };
 
+/** Чем считать себестоимость в P&L: фактическими расходами на производство (проводки «Производство») или ценой закупки из карточек при продаже. */
+export type PnlCostMethod = "production" | "cogs";
+
 export type FinanceSettings = {
   openingBalance: number; // остаток денег на начало учёта, копейки
   openingDate: string; // ГГГГ-ММ-ДД: с этой даты считается остаток в ДДС
+  pnlCost: PnlCostMethod;
 };
 
 const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings; seller: SellerSettings; finance: FinanceSettings } = {
-  finance: { openingBalance: 0, openingDate: "" },
+  finance: { openingBalance: 0, openingDate: "", pnlCost: "production" },
   seller: {
     name: "ИП Родионова Татьяна Ивановна",
     inn: "211501713609",

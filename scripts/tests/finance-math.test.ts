@@ -13,6 +13,7 @@ async function main() {
       { type: "INCOME_SALE", amount: 20_000_00, date: d(3), counterparty: tag },
       { type: "EXPENSE_RENT", amount: 5_000_00, date: d(20), counterparty: tag },
       { type: "EXPENSE_COGS", amount: 7_000_00, date: d(3), counterparty: tag },
+      { type: "EXPENSE_PRODUCTION", amount: 3_000_00, date: d(4), counterparty: tag },
     ] });
     const opening = `${y}-${String(m + 1).padStart(2, "0")}-15`;
     const rows = await cashFlowByMonth(1, { openingBalance: 100_000_00, openingDate: opening });
@@ -31,6 +32,11 @@ async function main() {
     const pnl = await pnlByMonth(1);
     const cur = pnl[pnl.length - 1];
     check("P&L: производство не входит в операционные расходы", cur.opex === cur.acquiring + cur.shipping + cur.marketing + cur.salary + cur.rent + cur.services + cur.tax + cur.other);
+    const prod = await db.$queryRaw<{ s: bigint }[]>`SELECT coalesce(sum(amount), 0)::bigint AS s FROM "LedgerEntry" WHERE type = 'EXPENSE_PRODUCTION' AND date >= ${new Date(Date.UTC(y, m, 1))}`;
+    check("P&L по расходам на производство: себестоимость = проводки «Производство» месяца", cur.cogs === Number(prod[0]?.s ?? 0), `${cur.cogs} vs ${Number(prod[0]?.s ?? 0)}`);
+    const byCogs = (await pnlByMonth(1, "cogs")).pop()!;
+    const cogsSum = await db.$queryRaw<{ s: bigint }[]>`SELECT coalesce(sum(CASE WHEN type = 'EXPENSE_COGS' THEN amount ELSE -amount END), 0)::bigint AS s FROM "LedgerEntry" WHERE type IN ('EXPENSE_COGS', 'COGS_REVERSAL') AND date >= ${new Date(Date.UTC(y, m, 1))}`;
+    check("P&L по цене закупки: себестоимость = COGS − сторно", byCogs.cogs === Number(cogsSum[0]?.s ?? 0), `${byCogs.cogs} vs ${Number(cogsSum[0]?.s ?? 0)}`);
     const neg = sumRows([{ ...cur, netRevenue: -10_000_00, gross: -6_000_00, operating: -8_000_00, sales: 0, otherIncome: 0, refunds: 10_000_00, cogs: -4_000_00 }]);
     check("проценты при отрицательной выручке = 0", neg.grossPct === 0 && neg.operatingPct === 0, `${neg.grossPct}/${neg.operatingPct}`);
   } finally {
