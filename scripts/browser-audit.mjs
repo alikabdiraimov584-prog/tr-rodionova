@@ -163,7 +163,9 @@ async function crawl(role, viewport, startPaths, login) {
       }
       const expect = asked.startsWith("/product/") ? "Product" : asked.startsWith("/journal/") && !asked.includes("feed") ? "Article" : asked === "/faq" ? "FAQPage" : null;
       if (expect && !types.includes(expect)) note("jsonld", `${role} ${path}`, `нет разметки ${expect} (есть: ${types.join(", ") || "ничего"})`);
-      if (!types.includes("Organization")) note("jsonld", `${role} ${path}`, "нет разметки Organization в макете");
+      // Organization обязательна на индексируемых страницах витрины; кабинет, вход и оформление закрыты от индексации
+      const indexable = !/^\/(account|login|register|forgot|reset|cart|checkout|unsubscribe)(\/|$)/.test(asked);
+      if (indexable && !types.includes("Organization")) note("jsonld", `${role} ${path}`, "нет разметки Organization в макете");
     }
     // ссылки
     const links = await page.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href"))).catch(() => []);
