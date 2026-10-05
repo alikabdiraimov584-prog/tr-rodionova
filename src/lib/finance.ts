@@ -232,8 +232,8 @@ export async function cashFlowByMonth(months: number, opening: { openingBalance:
     row.outflow = row.outRefunds + row.outProduction + row.outMarketing + row.outShipping + row.outSalary + row.outRent + row.outServices + row.outTax + row.outAcquiring + row.outOther;
     row.operating = row.inflow - row.outflow;
     row.net = row.operating + row.ownerIn - row.ownerOut;
-    // до даты начала учёта остаток не считается: показываем только с неё
-    const counted = !openingAt || new Date(key + "-01") >= new Date(openingAt.getFullYear(), openingAt.getMonth(), 1);
+    // остаток показывается только от даты начала учёта; без неё строка пустая, потоки считаются всё равно
+    const counted = !!openingAt && new Date(key + "-01") >= new Date(openingAt.getFullYear(), openingAt.getMonth(), 1);
     balance = counted ? balance + row.net : balance;
     row.balance = counted ? balance : NaN;
     out.push(row);
