@@ -2,6 +2,7 @@
 // Запуск: BASE_URL=https://tr-rodionova.ru [CRM_EMAIL=... CRM_PASSWORD=... CRM_TOTP_SECRET=...] [CUSTOMER_EMAIL=... CUSTOMER_PASSWORD=...] [CHROME_PATH=...] node scripts/browser-audit.mjs
 // На боевом сайте ничего не создаёт и не удаляет: заказ не подтверждается, в CRM только чтение и фильтры.
 import { chromium } from "playwright-core";
+import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { createHmac } from "node:crypto";
 
@@ -54,6 +55,29 @@ const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath
 const problems = [];
 const stats = { pages: 0, buttonsClicked: 0, forms: 0, links: 0 };
 const note = (kind, where, detail) => problems.push({ kind, where, detail: String(detail).slice(0, 400) });
+
+// Доступность: axe-core (WCAG 2.1 A/AA) на каждой загруженной странице. Источник подаётся через page.evaluate строкой —
+// это выполняется через протокол браузера и не упирается в CSP сайта. Нарушения копятся по правилам, чтобы одна
+// проблема шапки не превращалась в сотню строк. critical и serious считаются ошибками, остальные — замечаниями.
+const A11Y = process.env.A11Y !== "0";
+let axeSource = null;
+try { axeSource = A11Y ? readFileSync(new URL("../node_modules/axe-core/axe.min.js", import.meta.url), "utf8") : null; } catch { axeSource = null; }
+const a11y = new Map(); // id → { impact, help, pages: Set, example }
+async function checkA11y(page, role, path) {
+  if (!axeSource) return;
+  try {
+    await page.evaluate(axeSource);
+    const r = await page.evaluate(() => window.axe.run(document, { resultTypes: ["violations"], runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] } }));
+    for (const v of r.violations) {
+      const key = `${v.id}|${v.impact}`;
+      const cur = a11y.get(key) ?? { id: v.id, impact: v.impact, help: v.help, pages: new Set(), example: `${role} ${path} → ${v.nodes[0]?.target?.[0] ?? ""}`.slice(0, 160) };
+      cur.pages.add(`${role} ${path}`);
+      a11y.set(key, cur);
+    }
+  } catch (e) {
+    note("a11y-skip", `${role} ${path}`, e.message.split("\n")[0]);
+  }
+}
 
 // кнопки, которые меняют данные — на боевом сайте не нажимаем
 const DESTRUCTIVE = /удал|отмен|оплат|подтвер|отправ|сохран|создать|примен|выйти|отключ|включ|сброс|обезлич|заверш|принять|опубл|списать|начисл|возврат|перевести|заверш|обновить|добавить|загруз|импорт|экспорт|запрос|назнач|закрыть|ответ|повтор|применить|оформ|зарегистр|войти|получить код|сообщить/i;
@@ -129,6 +153,7 @@ async function crawl(role, viewport, startPaths, login) {
     // битые фото: <img> с src, у которого загрузка завершилась без размеров (файл или оптимизатор не ответили); ленивые ещё не грузились и не считаются
     const broken = await page.evaluate(() => [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.getAttribute("src")).map((i) => i.currentSrc || i.src).slice(0, 5)).catch(() => []);
     for (const src of broken) note("image", `${role} ${path}`, `битое фото: ${src.replace(base, "")}`);
+    await checkA11y(page, role, path);
     // ссылки
     const links = await page.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href"))).catch(() => []);
     for (const h of links) {
@@ -349,11 +374,14 @@ if (!only || only === "crm") await crmAudit();
 await browser.close();
 
 console.log(`Страниц: сайт ${siteDesktop ?? 0} (десктоп) + ${siteMobile ?? 0} (телефон); всего загрузок ${stats.pages}; ссылок ${stats.links}; безопасных кнопок нажато ${stats.buttonsClicked}; форм на страницах ${stats.forms}`);
+for (const v of [...a11y.values()].sort((a, b) => b.pages.size - a.pages.size)) {
+  note(["critical", "serious"].includes(v.impact) ? "a11y" : "a11y-minor", `${v.id} (${v.impact}, ${v.pages.size} стр.)`, `${v.help}; напр. ${v.example}`);
+}
 const grouped = problems.reduce((m, p) => { (m[p.kind] ??= []).push(p); return m; }, {});
 for (const [kind, list] of Object.entries(grouped)) {
   console.log(`\n== ${kind}: ${list.length}`);
   for (const p of list.slice(0, 40)) console.log(`  ${p.where} — ${p.detail}`);
 }
-const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image", "crm-leak"].includes(p.kind));
+const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image", "crm-leak", "a11y"].includes(p.kind));
 console.log(`\nИТОГ: ${blocking.length === 0 ? "ОШИБОК НЕТ" : `${blocking.length} ошибок`} (замечаний всего ${problems.length})`);
 process.exit(blocking.length === 0 ? 0 : 1);

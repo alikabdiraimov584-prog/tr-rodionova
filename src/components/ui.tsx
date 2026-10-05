@@ -56,8 +56,8 @@ export function Stat({ label, value, hint, tone }: { label: string; value: React
 export function Empty({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="card flex flex-col items-center px-6 py-16 text-center">
-      <Monogram className="text-5xl opacity-40" />
-      <h3 className="mt-4">{title}</h3>
+      <Monogram className="text-5xl opacity-60" />
+      <h2 className="mt-4 text-base">{title}</h2>
       {children && <p className="mt-2 max-w-md text-sm text-muted">{children}</p>}
       {action && <div className="mt-6">{action}</div>}
     </div>

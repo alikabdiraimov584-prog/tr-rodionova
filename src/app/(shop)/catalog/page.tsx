@@ -126,7 +126,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
           {products.length === 0 ? (
             <Empty title="Ничего не найдено" action={<Link href="/catalog" className="btn-outline">Весь каталог</Link>}>Попробуйте изменить фильтры или запрос.</Empty>
           ) : (
-            <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">{products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
+            <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">{products.map((p, i) => <ProductCard key={p.id} p={p} priority={i < 4} />)}</div>
           )}
           {current && !q && !onlyNew && activeCount === 0 && (current.seoText || faq.length > 0) && (
             <section className="mt-16 max-w-3xl border-t border-line pt-10">

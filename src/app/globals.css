@@ -16,6 +16,7 @@
   --accent: #1a1a1a; /* кнопки и активные элементы */
   --accent-fg: #f2f1ee;
   --champagne: #cdb58f; /* только для Circle */
+  --champagne-ink: #7a6440; /* шампань для текста: контраст ≥ 4.5:1 на светлом фоне */
   --success: #2f7d4f;
   --danger: #b3261e;
   --warning: #8a5a00;
@@ -51,6 +52,7 @@
   --color-taupe-dark: #6f655a;
   --color-champagne: var(--champagne);
   --color-champagne-dark: #a98f66;
+  --color-champagne-ink: var(--champagne-ink);
   --color-success: var(--success);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
@@ -85,13 +87,6 @@ h3 { font-size: 1rem; }
 .crm h3 { font-weight: 600; }
 .crm .serif { font-weight: 700; letter-spacing: -0.02em; }
 
-.eyebrow {
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.crm .eyebrow { letter-spacing: 0.04em; text-transform: none; font-size: 0.78rem; font-weight: 600; }
 
 .monogram { font-family: "Times New Roman", Times, serif; letter-spacing: -0.06em; color: var(--taupe-dark); }
 
@@ -102,6 +97,14 @@ h3 { font-size: 1rem; }
 .crm .btn { text-transform: none; letter-spacing: 0; font-size: 0.8rem; font-weight: 600; border-radius: 8px; }
 
 @layer components {
+  /* в слое components, чтобы утилиты вроде text-champagne могли переопределить цвет (например, на тёмной карточке Privé) */
+  .eyebrow {
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .crm .eyebrow { letter-spacing: 0.04em; text-transform: none; font-size: 0.78rem; font-weight: 600; }
   .btn-primary { @apply btn; background: var(--accent); color: var(--accent-fg); }
   .btn-primary:hover { background: #000; color: #fff; }
   .btn-outline { @apply btn border; border-color: var(--ink); color: var(--ink); background: var(--panel); }
@@ -159,3 +162,14 @@ h3 { font-size: 1rem; }
 @keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fade-up { animation: fade-up 0.4s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }
+
+/* На телефонах мелкий служебный текст укрупняется до читаемых ~12 px (Lighthouse: legible text ≥ 12px).
+   Правила вне @layer, поэтому перекрывают утилиты Tailwind; десктоп не меняется. */
+@media (max-width: 767px) {
+  .text-\[0\.58rem\], .text-\[0\.6rem\] { font-size: 0.68rem; }
+  .text-\[0\.62rem\], .text-\[0\.65rem\] { font-size: 0.72rem; }
+  .text-\[0\.68rem\], .text-\[0\.7rem\], .text-\[0\.72rem\] { font-size: 0.78rem; }
+  .\!text-\[0\.68rem\] { font-size: 0.78rem !important; }
+  .eyebrow { font-size: 0.72rem; }
+  .btn { font-size: 0.78rem; }
+}
