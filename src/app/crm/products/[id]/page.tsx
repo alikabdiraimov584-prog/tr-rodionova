@@ -32,7 +32,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
       </div>
       <div className="card p-5">
         <Eyebrow>Фотографии</Eyebrow>
-        <p className="mt-1 text-xs text-muted">Первая — главная в каталоге, вторая показывается при наведении. Рекомендуем 3:4, от 1600 px по высоте, JPG до 12 МБ.</p>
+        <p className="mt-1 text-xs text-muted">Первая — главная в каталоге, вторая показывается при наведении. Грузите исходники как есть (JPG, PNG, WebP, AVIF до 12 МБ): фото само поворачивается, приводится к 3000 px по длинной стороне и очищается от данных камеры и геометок.</p>
         <div className="mt-3 flex flex-wrap gap-3">
           {p.images.map((img, i) => (
             <div key={img.id} className="w-28">

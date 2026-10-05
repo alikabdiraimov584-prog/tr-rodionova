@@ -3,17 +3,36 @@
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
+import sharp from "sharp";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import type { ActionState } from "@/lib/action-result";
 
-const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" };
+type ImageMime = "image/jpeg" | "image/png" | "image/webp" | "image/avif";
 const MAX = 12 * 1024 * 1024;
+/** Длинная сторона после загрузки: для карточки на любом экране хватает, а витрина отдаёт уменьшенные копии сама. */
+const MAX_SIDE = 3000;
+
+/**
+ * Приводит фото к виду для витрины: поворот по EXIF, не больше MAX_SIDE по длинной стороне, без метаданных
+ * (включая геометки и серийный номер камеры). JPEG, WebP, AVIF и PNG без прозрачности → JPEG 90, 4:4:4;
+ * PNG с прозрачностью остаётся PNG.
+ */
+async function normalizeImage(buf: Buffer, mime: ImageMime) {
+  const img = sharp(buf, { failOn: "none", limitInputPixels: 120e6 }).rotate();
+  const meta = await img.metadata();
+  const keepPng = mime === "image/png" && !!meta.hasAlpha;
+  const resized = img.resize({ width: MAX_SIDE, height: MAX_SIDE, fit: "inside", withoutEnlargement: true });
+  const { data, info } = keepPng
+    ? await resized.png({ compressionLevel: 9 }).toBuffer({ resolveWithObject: true })
+    : await resized.jpeg({ quality: 90, chromaSubsampling: "4:4:4", mozjpeg: true }).toBuffer({ resolveWithObject: true });
+  return { data, ext: keepPng ? "png" : "jpg", width: info.width, height: info.height };
+}
 
 /** Тип файла определяется по сигнатуре содержимого, а не по заявленному MIME. */
-function sniffImage(buf: Buffer): keyof typeof TYPES | null {
+function sniffImage(buf: Buffer): ImageMime | null {
   if (buf.length < 12) return null;
   if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
   if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
@@ -34,22 +53,29 @@ export async function uploadProductImagesAction(_: ActionState, formData: FormDa
   await mkdir(dir, { recursive: true });
   let order = product.images.length;
   const added: string[] = [];
+  const sizes: string[] = [];
   for (const f of files) {
     if (f.size > MAX) return { error: `${f.name}: больше 12 МБ` };
     const buf = Buffer.from(await f.arrayBuffer());
     const mime = sniffImage(buf);
-    const ext = mime ? TYPES[mime] : undefined;
-    if (!ext) return { error: `${f.name}: это не изображение JPG, PNG, WEBP или AVIF` };
-    const name = `${Date.now().toString(36)}-${randomBytes(3).toString("hex")}.${ext}`;
-    await writeFile(path.join(dir, name), buf);
+    if (!mime) return { error: `${f.name}: это не изображение JPG, PNG, WEBP или AVIF` };
+    let out: Awaited<ReturnType<typeof normalizeImage>>;
+    try {
+      out = await normalizeImage(buf, mime);
+    } catch {
+      return { error: `${f.name}: файл не удалось прочитать как изображение` };
+    }
+    const name = `${Date.now().toString(36)}-${randomBytes(3).toString("hex")}.${out.ext}`;
+    await writeFile(path.join(dir, name), out.data);
     const url = `/uploads/products/${productId}/${name}`;
     await db.productImage.create({ data: { productId, url, alt: product.name, order: order++ } });
     added.push(url);
+    sizes.push(`${out.width}×${out.height}`);
   }
   await audit(me.id, "product.images", "Product", productId, { added });
   revalidatePath(`/crm/products/${productId}`);
   revalidatePath("/", "layout");
-  return { ok: true, message: `Загружено: ${added.length}` };
+  return { ok: true, message: `Загружено: ${added.length} (${sizes.join(", ")}), без данных камеры` };
 }
 
 export async function removeProductImageAction(formData: FormData) {
