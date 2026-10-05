@@ -35,6 +35,8 @@ jobs:
           done
           echo "== headers"; curl -sSI -m 30 "https://$D/" | grep -iE "^(HTTP|strict-transport|content-security|x-frame|server)" || true
           echo "== версия"; curl -sS -m 30 "https://$D/api/health" || true; echo
+          echo "== robots.txt"; curl -sS -m 30 "https://$D/robots.txt" | grep -iE "^(sitemap|host):|localhost" || true
+          echo "== llms.txt"; curl -sS -m 30 "https://$D/llms.txt" | head -3
           echo "== title"; curl -sS -m 30 "https://$D/" | grep -oE "<title>[^<]*" | head -1
           echo "== http→https"; curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}\n' "http://$D/" || true
       - name: Итог
@@ -45,6 +47,11 @@ jobs:
           echo "Главная: HTTP $code"; [ "$code" = "200" ] || fail="$fail главная HTTP $code;"
           health=$(curl -sS -m 30 "https://$DOMAIN/api/health" 2>/dev/null || echo '{}')
           echo "$health" | grep -q '"ok":true' || fail="$fail база или приложение не отвечают;"
+          # robots.txt и llms.txt должны ссылаться на боевой домен, а не на адрес сборки
+          robots=$(curl -sS -m 30 "https://$DOMAIN/robots.txt" 2>/dev/null || true)
+          echo "$robots" | grep -q "Sitemap: https://$DOMAIN/sitemap.xml" || fail="$fail robots.txt без ссылки на карту сайта боевого домена;"
+          echo "$robots" | grep -qi "localhost" && fail="$fail robots.txt ссылается на localhost;"
+          curl -sS -m 30 "https://$DOMAIN/llms.txt" 2>/dev/null | grep -q "https://$DOMAIN" || fail="$fail llms.txt не отдаётся или без боевого адреса;"
           now=$(date -u +%s)
           # ночной дамп должен быть не старше двух суток
           localAt=$(echo "$health" | sed -n 's/.*"localAt":"\([^"]*\)".*/\1/p')
