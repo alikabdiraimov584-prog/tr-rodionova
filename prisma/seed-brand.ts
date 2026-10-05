@@ -138,13 +138,22 @@ export async function seedBrand(db: PrismaClient) {
   }
 
   // Образы из вещей бренда — для лукбука и «купить образом»
-  const looks = [
+  const looks: { slug: string; title: string; description: string; cover: string | null; order: number; items: [string, string][] }[] = [
+    {
+      slug: "look-03-tr-halter",
+      title: "Look 03 — Платье TR Halter",
+      description: "Платье мини с воротником-халтер и съёмным шарфом по спине: открытая спина, монограмма TR на молнии и застёжке шарфа. Съёмка в студии, на модели размер S.",
+      // обложка не задана: берётся первое фото платья из карточки — новая съёмка попадает в лукбук сама
+      cover: null,
+      order: 0,
+      items: [["plate-tr-halter", "Шарф съёмный: с ним — вечер, без него — день"]],
+    },
     {
       slug: "look-01-body-trousers",
       title: "Look 01 — Боди и брюки",
       description: "Высокая горловина, открытые плечи и широкие брюки с разрезами. Строгий силуэт, в котором читается женственность: фирменная молния на спине и пуговица TR на поясе.",
       cover: "/images/brand/looks/look-01.jpg",
-      order: 0,
+      order: 1,
       items: [["bodi-tr-01", "Основа образа"], ["bryuki-tr-palazzo", "С разрезами на переде"]],
     },
     {
@@ -152,7 +161,7 @@ export async function seedBrand(db: PrismaClient) {
       title: "Look 02 — Жакет и юбка",
       description: "Жакет с открытой спиной и юбка-трапеция с фирменной пряжкой: вечерний комплект, который держит форму весь день.",
       cover: "/images/brand/TR-JK-101/01.jpg",
-      order: 1,
+      order: 2,
       items: [["zhaket-tr-noir", "Пряжка TR по талии"], ["yubka-tr-01", "Запах с разрезом"], ["bodi-tr-01", "Под жакет"]],
     },
   ];
@@ -161,7 +170,8 @@ export async function seedBrand(db: PrismaClient) {
   for (const l of looks) {
     const look = await db.look.upsert({
       where: { slug: l.slug },
-      update: { title: l.title, description: l.description, coverUrl: l.cover, order: l.order, season: "AW26", isPublished: true },
+      // обложку, выбранную в CRM, сид не трогает, если сам её не задаёт
+      update: { title: l.title, description: l.description, ...(l.cover ? { coverUrl: l.cover } : {}), order: l.order, season: "AW26", isPublished: true },
       create: { slug: l.slug, title: l.title, description: l.description, coverUrl: l.cover, order: l.order, season: "AW26", isPublished: true },
     });
     let order = 0;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { db } from "@/lib/db";
+import { withLookCovers } from "@/lib/looks";
 import { getCurrentCustomer } from "@/lib/auth";
 import { getSetting } from "@/lib/settings";
 import { circleCta, isStaffRole } from "@/lib/role-links";
@@ -12,7 +13,7 @@ export default async function Home() {
     db.product.findMany({ where: { status: "ACTIVE", isNew: true, isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4, orderBy: { createdAt: "desc" } }),
     db.product.findMany({ where: { status: "ACTIVE", isFeatured: true, isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 8, orderBy: { createdAt: "desc" } }),
     db.collection.findFirst({ where: { isActive: true }, orderBy: { slug: "desc" } }),
-    db.look.findMany({ where: { isPublished: true }, orderBy: { order: "asc" }, take: 2 }),
+    db.look.findMany({ where: { isPublished: true }, orderBy: { order: "asc" }, take: 2 }).then(withLookCovers),
     db.article.findFirst({ where: { publishedAt: { lte: new Date() } }, orderBy: { publishedAt: "desc" } }),
     db.loyaltyTier.findMany({ orderBy: { order: "asc" } }),
     getCurrentCustomer(),

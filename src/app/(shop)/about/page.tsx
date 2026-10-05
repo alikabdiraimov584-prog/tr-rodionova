@@ -5,6 +5,7 @@ import { getSetting } from "@/lib/settings";
 import { TextPage, Section } from "@/components/shop/page-shell";
 import { JsonLd, absolute, founderJsonLd, ids } from "@/lib/seo";
 import { BRAND_FACTS } from "@/lib/brand-facts";
+import { brandHeroImage } from "@/lib/looks";
 
 export const metadata: Metadata = {
   title: "О бренде",
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function About() {
-  const brand = await getSetting("brand");
+  const [brand, hero] = await Promise.all([getSetting("brand"), brandHeroImage()]);
   const founder = founderJsonLd(brand);
   return (
     <TextPage
@@ -27,7 +28,9 @@ export default async function About() {
           ...(founder ? [{ "@context": "https://schema.org", "@type": "ProfilePage", "@id": absolute("/about#founder"), name: founder.name, url: absolute("/about#founder"), inLanguage: "ru-RU", isPartOf: { "@id": ids().website }, mainEntity: founder }] : []),
         ]}
       />
-      <div className="relative aspect-[16/9] bg-sand"><Image src="/images/placeholder/hero.svg" alt="" fill unoptimized className="object-cover" /></div>
+      <div className="relative aspect-[16/9] bg-sand">
+        {hero ? <Image src={hero} alt={`${brand.name}: съёмка коллекции`} fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover object-top" /> : <Image src="/images/placeholder/hero.svg" alt="" fill unoptimized className="object-cover" />}
+      </div>
       <Section id="founder" title="Основательница">
         <p>{brand.founder || "Татьяна Родионова"} начинала как дизайнер в ателье индивидуального пошива. Десять лет работы с клиентками научили главному: женщине нужна не мода, а вещь, которая сидит и служит. Так в {brand.foundedYear || "2019"} году появилась марка с коротким списком правил.</p>
         <p className="text-muted-dark">Основательница и дизайнер {brand.name}; автор статей журнала о тканях, уходе и посадке.</p>

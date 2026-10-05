@@ -1,5 +1,7 @@
 // Привязывает фото из public/images/brand/<sku>/ к товарам (файлы по алфавиту = порядок галереи).
 // Использование: положите фото в public/images/brand/TR-SK-101/01.jpg, 02.jpg … и выполните `npx tsx scripts/attach-brand-photos.ts`.
+// Запускается при каждом старте контейнера. Фото, загруженные через CRM (/uploads/…), не трогает: добавляет только
+// недостающие файлы из папки и убирает ссылки на файлы, которых в папке больше нет.
 import "dotenv/config";
 import { readdirSync, existsSync } from "node:fs";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -12,11 +14,18 @@ async function main() {
   if (!existsSync(root)) return console.log("Нет папки", root);
   for (const sku of readdirSync(root)) {
     const files = readdirSync(`${root}/${sku}`).filter((f) => /\.(jpe?g|png|webp|avif)$/i.test(f)).sort();
-    const product = await db.product.findUnique({ where: { sku } });
+    const product = await db.product.findUnique({ where: { sku }, include: { images: { orderBy: { order: "asc" } } } });
     if (!product || files.length === 0) { console.log("пропуск", sku); continue; }
-    await db.productImage.deleteMany({ where: { productId: product.id } });
-    await db.productImage.createMany({ data: files.map((f, i) => ({ productId: product.id, url: `/images/brand/${sku}/${f}`, alt: product.name, order: i })) });
-    console.log(sku, "→", files.length, "фото");
+    const prefix = `/images/brand/${sku}/`;
+    const wanted = files.map((f) => prefix + f);
+    const stale = product.images.filter((i) => i.url.startsWith(prefix) && !wanted.includes(i.url));
+    if (stale.length) await db.productImage.deleteMany({ where: { id: { in: stale.map((i) => i.id) } } });
+    const have = new Set(product.images.map((i) => i.url));
+    const missing = wanted.filter((u) => !have.has(u));
+    let order = product.images.filter((i) => !stale.includes(i)).reduce((m, i) => Math.max(m, i.order + 1), 0);
+    if (missing.length) await db.productImage.createMany({ data: missing.map((url) => ({ productId: product.id, url, alt: product.name, order: order++ })) });
+    const crm = product.images.filter((i) => !i.url.startsWith(prefix)).length;
+    console.log(sku, "→ из папки", wanted.length, "добавлено", missing.length, "убрано", stale.length, crm ? `(из CRM: ${crm})` : "");
   }
 }
 main().finally(() => db.$disconnect());

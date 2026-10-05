@@ -2,16 +2,17 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
+import { withLookCovers } from "@/lib/looks";
 import { Empty, PageTitle } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Лукбук", description: "Образы коллекции T.Rodionova: как сочетать вещи между собой." };
 
 export default async function LookbookPage() {
-  const looks = await db.look.findMany({
+  const looks = await withLookCovers(await db.look.findMany({
     where: { isPublished: true },
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     include: { _count: { select: { items: true } } },
-  });
+  }));
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 md:px-8">
       <PageTitle eyebrow="Лукбук" title="Образы">Готовые сочетания из коллекции — каждую вещь можно купить отдельно или добавить в корзину весь образ.</PageTitle>
