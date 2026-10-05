@@ -116,6 +116,12 @@ async function crawl(role, viewport, startPaths, login) {
     }
     const body = (await page.textContent("body").catch(() => "")) ?? "";
     if (status >= 400) note("http", `${role} ${path}`, `HTTP ${status}`);
+    // витрина — для покупателей: ни ссылок в рабочие разделы, ни слова CRM, кем бы ни был вошедший
+    if (role.startsWith("site") && !landed.startsWith("/crm")) {
+      const crmLinks = await page.locator('a[href^="/crm"], a[href*="//"][href*="/crm"]').count().catch(() => 0);
+      if (crmLinks) note("crm-leak", `${role} ${path}`, `на витрине ссылка в CRM (${crmLinks} шт.)`);
+      if (/\bCRM\b/.test(body)) note("crm-leak", `${role} ${path}`, "на витрине слово CRM");
+    }
     if (/Application error|Internal Server Error|Unhandled Runtime|Произошла ошибка/i.test(body)) note("app-error", `${role} ${path}`, "текст ошибки на странице");
     for (const e of errors) note("console", `${role} ${path}`, e);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1).catch(() => false);
@@ -348,6 +354,6 @@ for (const [kind, list] of Object.entries(grouped)) {
   console.log(`\n== ${kind}: ${list.length}`);
   for (const p of list.slice(0, 40)) console.log(`  ${p.where} — ${p.detail}`);
 }
-const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image"].includes(p.kind));
+const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image", "crm-leak"].includes(p.kind));
 console.log(`\nИТОГ: ${blocking.length === 0 ? "ОШИБОК НЕТ" : `${blocking.length} ошибок`} (замечаний всего ${problems.length})`);
 process.exit(blocking.length === 0 ? 0 : 1);

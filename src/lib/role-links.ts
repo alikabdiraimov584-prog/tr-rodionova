@@ -2,8 +2,8 @@ import type { Role } from "@/generated/prisma/enums";
 
 /**
  * Ссылки витрины, которые зависят от того, кто смотрит сайт.
- * Гость — регистрация и вход; клиентка — её кабинет; сотрудник — CRM (а в Circle он может
- * зарегистрировать отдельный клиентский аккаунт, поэтому «Вступить» для него ведёт на регистрацию, а не в CRM).
+ * Гость — регистрация и вход; клиентка — её кабинет. Сотрудник видит витрину ровно как гость:
+ * рабочие разделы на витрине не упоминаются и не ссылаются, в них заходят только прямым адресом.
  */
 type Viewer = { role: Role } | null | undefined;
 
@@ -11,10 +11,9 @@ export function isStaffRole(role: Role | undefined | null) {
   return role === "SUPPORT" || role === "MANAGER" || role === "ADMIN";
 }
 
-/** Пункт «Кабинет / Войти / CRM» в шапке и мобильном меню. */
+/** Пункт «Кабинет / Войти» в шапке и мобильном меню. */
 export function cabinetLink(user: Viewer): readonly [href: string, label: string] {
-  if (!user) return ["/login", "Войти"];
-  if (isStaffRole(user.role)) return ["/crm", "CRM"];
+  if (!user || isStaffRole(user.role)) return ["/login", "Войти"];
   return ["/account", "Кабинет"];
 }
 
