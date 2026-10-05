@@ -65,8 +65,8 @@ export async function verifyPasswordOrDummy(password: string, hash: string | nul
   return bcrypt.compare(password, hash ?? DUMMY_HASH).then((ok) => ok && !!hash);
 }
 
-export async function loginAs(userId: string, role: Role, sessionVersion: number) {
-  await createSession(userId, role, sessionVersion);
+export async function loginAs(userId: string, role: Role, sessionVersion: number, twoFactorPassed = false) {
+  await createSession(userId, role, sessionVersion, twoFactorPassed);
   // корзина, собранная до входа, переезжает в аккаунт
   try {
     const { mergeGuestCart } = await import("@/lib/guest-cart");

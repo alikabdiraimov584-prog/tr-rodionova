@@ -13,6 +13,8 @@ export type SessionPayload = {
   /** версия сессии пользователя: при смене пароля или блокировке старые токены перестают действовать */
   sv: number;
   expiresAt: string;
+  /** сессия выдана после второго фактора (или 2FA включена в этой сессии) */
+  tf?: boolean;
 };
 
 function secret() {
@@ -43,10 +45,10 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
   }
 }
 
-export async function createSession(userId: string, role: Role, sv: number) {
+export async function createSession(userId: string, role: Role, sv: number, tf = false) {
   const days = sessionDays(role);
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-  const token = await encrypt({ userId, role, sv, expiresAt: expiresAt.toISOString() }, days);
+  const token = await encrypt({ userId, role, sv, expiresAt: expiresAt.toISOString(), tf }, days);
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,

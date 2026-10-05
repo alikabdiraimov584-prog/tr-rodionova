@@ -1,12 +1,45 @@
 // Браузерный аудит сайта и CRM: обход всех страниц, клики по безопасным кнопкам, формы, гостевой путь до оплаты.
-// Запуск: BASE_URL=https://tr-rodionova.ru [CRM_EMAIL=... CRM_PASSWORD=...] [CHROME_PATH=...] node scripts/browser-audit.mjs
+// Запуск: BASE_URL=https://tr-rodionova.ru [CRM_EMAIL=... CRM_PASSWORD=... CRM_TOTP_SECRET=...] [CUSTOMER_EMAIL=... CUSTOMER_PASSWORD=...] [CHROME_PATH=...] node scripts/browser-audit.mjs
 // На боевом сайте ничего не создаёт и не удаляет: заказ не подтверждается, в CRM только чтение и фильтры.
 import { chromium } from "playwright-core";
 import { mkdir } from "node:fs/promises";
+import { createHmac } from "node:crypto";
 
 const base = (process.env.BASE_URL ?? "http://localhost:3100").replace(/\/$/, "");
 const crmEmail = process.env.CRM_EMAIL;
 const crmPassword = process.env.CRM_PASSWORD;
+const crmTotp = process.env.CRM_TOTP_SECRET;
+const customerEmail = process.env.CUSTOMER_EMAIL; // клиентка для обхода витрины под её ролью
+const customerPassword = process.env.CUSTOMER_PASSWORD; // base32-ключ 2FA тестового сотрудника (CRM требует второй фактор)
+
+/** Код TOTP (RFC 6238, SHA-1, 30 с, 6 цифр) из base32-секрета — как в приложении-аутентификаторе. */
+function totpCode(secret) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = secret.toUpperCase().replace(/[^A-Z2-7]/g, "");
+  let bits = "";
+  for (const ch of clean) bits += alphabet.indexOf(ch).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 1000 / 30)));
+  const h = createHmac("sha1", key).update(counter).digest();
+  const o = h[h.length - 1] & 0xf;
+  return String(((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000)).padStart(6, "0");
+}
+
+/** Вход сотрудника: пароль и, если спросили, код из приложения. */
+async function staffLogin(page, email, password) {
+  await page.goto(`${base}/login`);
+  await page.fill('input[name="email"]', email);
+  await page.fill('input[name="password"]', password);
+  await page.click("form button.btn-primary");
+  await page.waitForURL((u) => !/^\/login\/?$/.test(u.pathname), { timeout: 20000 });
+  if (page.url().includes("/login/2fa")) {
+    if (!crmTotp) throw new Error("CRM требует код 2FA: задайте CRM_TOTP_SECRET");
+    await page.fill('input[name="code"]', totpCode(crmTotp));
+    await page.click("form button.btn-primary");
+    await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 });
+  }
+}
 const maxPages = Number(process.env.MAX_PAGES ?? 120);
 const perTemplate = Number(process.env.PER_TEMPLATE ?? 4); // сколько страниц одного шаблона (/product/*, /journal/*) обходить
 const budgetMs = Number(process.env.TIME_BUDGET_MIN ?? 20) * 60_000;
@@ -42,14 +75,10 @@ async function crawl(role, viewport, startPaths, login) {
   resetBudget(); // лимит времени — на каждый обход отдельно
   const { ctx, page, errors } = await newPage(viewport);
   if (login) {
-    await page.goto(`${base}/login`);
-    await page.fill('input[name="email"]', login.email);
-    await page.fill('input[name="password"]', login.password);
-    await page.click("form button.btn-primary");
     try {
-      await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 });
-    } catch {
-      note("login", role, "не удалось войти: " + (await page.locator("p.text-danger").first().textContent().catch(() => "без сообщения")));
+      await staffLogin(page, login.email, login.password);
+    } catch (e) {
+      note("login", role, "не удалось войти: " + (e instanceof Error ? e.message : String(e)) + " / " + (await page.locator("p.text-danger").first().textContent().catch(() => "без сообщения")));
       await ctx.close();
       return;
     }
@@ -78,6 +107,13 @@ async function crawl(role, viewport, startPaths, login) {
       continue;
     }
     stats.pages++;
+    // куда реально привела ссылка: с витрины нельзя попадать в CRM, а вошедшим — на форму входа
+    const landed = new URL(page.url()).pathname;
+    const asked = path.split("?")[0];
+    if (role.startsWith("site") && landed !== asked) {
+      if (landed.startsWith("/crm")) note("redirect", `${role} ${path}`, `ссылка витрины ведёт в CRM (${landed})`);
+      else if (login && landed.startsWith("/login")) note("redirect", `${role} ${path}`, `вошедшего отправило на форму входа (${landed})`);
+    }
     const body = (await page.textContent("body").catch(() => "")) ?? "";
     if (status >= 400) note("http", `${role} ${path}`, `HTTP ${status}`);
     if (/Application error|Internal Server Error|Unhandled Runtime|Произошла ошибка/i.test(body)) note("app-error", `${role} ${path}`, "текст ошибки на странице");
@@ -90,6 +126,7 @@ async function crawl(role, viewport, startPaths, login) {
       if (!h || h.startsWith("http") || h.startsWith("mailto") || h.startsWith("tel") || h.startsWith("#")) continue;
       stats.links++;
       const u = h.split("#")[0];
+      if (role.startsWith("site") && u.startsWith("/crm")) continue; // обход CRM — отдельный этап
       if (u && !seen.has(u)) queue.push(u);
     }
     // безопасные кнопки: type=button вне форм с данными, без «опасных» слов.
@@ -250,11 +287,7 @@ async function crmAudit() {
   const n = await crawl("crm-desktop", { width: 1440, height: 900 }, ["/crm", "/crm/security", "/crm/settings", "/crm/integrations", "/crm/orders", "/crm/customers", "/crm/products", "/crm/stock", "/crm/support", "/crm/analytics", "/crm/finance", "/crm/campaigns", "/crm/tasks", "/crm/staff", "/crm/audit"], { email: crmEmail, password: crmPassword });
   await crawl("crm-mobile", { width: 390, height: 844 }, ["/crm", "/crm/orders", "/crm/customers", "/crm/products", "/crm/settings"], { email: crmEmail, password: crmPassword });
   const { ctx, page, errors } = await newPage({ width: 1440, height: 900 });
-  await page.goto(`${base}/login`);
-  await page.fill('input[name="email"]', crmEmail);
-  await page.fill('input[name="password"]', crmPassword);
-  await page.click("form button.btn-primary");
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => null);
+  await staffLogin(page, crmEmail, crmPassword).catch((e) => note("login", "crm checks", e instanceof Error ? e.message : String(e)));
   const check = async (name, fn) => { try { await fn(); } catch (e) { note("crm", name, e.message.split("\n")[0]); } };
   await check("поиск по заказам", async () => { await page.goto(`${base}/crm/orders?q=1`, { waitUntil: "domcontentloaded" }); });
   await check("фильтр заказов по статусу", async () => { await page.goto(`${base}/crm/orders?status=PAID`, { waitUntil: "domcontentloaded" }); });
@@ -293,6 +326,10 @@ console.log("Аудит:", base, `(лимит ${maxPages} страниц, ${budg
 const only = process.env.ONLY ?? ""; // ONLY=journey|crm — запустить одну часть
 const siteDesktop = only && only !== "site" ? 0 : await crawl("site-desktop", { width: 1366, height: 900 }, ["/"]);
 const siteMobile = only && only !== "site" ? 0 : await crawl("site-mobile", { width: 390, height: 844 }, ["/", "/catalog", "/cart", "/login", "/register", "/journal", "/lookbook", "/gift", "/circle"]);
+// витрина глазами вошедшей клиентки и сотрудника: те же страницы, но ссылки «Кабинет», «Вступить», избранное зависят от роли
+const SITE_START = ["/", "/circle", "/catalog", "/cart", "/journal", "/lookbook", "/gift", "/sizes", "/preloved", "/showroom", "/account"];
+if ((!only || only === "site") && customerEmail && customerPassword) await crawl("site-customer", { width: 1366, height: 900 }, SITE_START, { email: customerEmail, password: customerPassword });
+if ((!only || only === "site") && crmEmail && crmPassword) await crawl("site-staff", { width: 1366, height: 900 }, SITE_START, { email: crmEmail, password: crmPassword });
 log("гостевой путь");
 if (!only || only === "journey") {
   await guestJourney({ width: 1366, height: 900 }, "desktop");
@@ -308,6 +345,6 @@ for (const [kind, list] of Object.entries(grouped)) {
   console.log(`\n== ${kind}: ${list.length}`);
   for (const p of list.slice(0, 40)) console.log(`  ${p.where} — ${p.detail}`);
 }
-const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm"].includes(p.kind));
+const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect"].includes(p.kind));
 console.log(`\nИТОГ: ${blocking.length === 0 ? "ОШИБОК НЕТ" : `${blocking.length} ошибок`} (замечаний всего ${problems.length})`);
 process.exit(blocking.length === 0 ? 0 : 1);

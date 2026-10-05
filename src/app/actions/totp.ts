@@ -33,7 +33,7 @@ export async function verifyTwoFactorAction(_: ActionState, formData: FormData):
   if (!user || !user.isActive || !user.totpSecret) return { error: "Аккаунт недоступен" };
   if (!verifyTotp(user.totpSecret, String(formData.get("code") ?? ""))) return { error: "Неверный код" };
   store.delete(PENDING_COOKIE);
-  await loginAs(user.id, user.role, user.sessionVersion);
+  await loginAs(user.id, user.role, user.sessionVersion, true);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login2fa", "User", user.id);
   const next = payload.next && payload.next.startsWith("/") && !payload.next.startsWith("//") ? payload.next : homeFor(user.role);
@@ -56,7 +56,9 @@ export async function confirmTotpAction(_: ActionState, formData: FormData): Pro
   if (!verifyTotp(me.totpSecret, String(formData.get("code") ?? ""))) return { error: "Код не подошёл. Проверьте время на телефоне и попробуйте снова." };
   await db.user.update({ where: { id: me.id }, data: { totpEnabledAt: new Date() } });
   await audit(me.id, "user.totpEnabled", "User", me.id);
-  revalidatePath("/crm/security");
+  // текущая сессия получает отметку о втором факторе, иначе остальные разделы останутся закрытыми
+  await loginAs(me.id, me.role, me.sessionVersion, true);
+  revalidatePath("/crm", "layout");
   return { ok: true, message: "Двухфакторная защита включена" };
 }
 
@@ -67,8 +69,8 @@ export async function disableTotpAction(_: ActionState, formData: FormData): Pro
   await db.user.update({ where: { id: me.id }, data: { totpSecret: null, totpEnabledAt: null, sessionVersion: { increment: 1 } } });
   await audit(me.id, "user.totpDisabled", "User", me.id);
   const fresh = await db.user.findUniqueOrThrow({ where: { id: me.id }, select: { sessionVersion: true } });
-  await loginAs(me.id, me.role, fresh.sessionVersion);
-  revalidatePath("/crm/security");
+  await loginAs(me.id, me.role, fresh.sessionVersion, false);
+  revalidatePath("/crm", "layout");
   return { ok: true, message: "Двухфакторная защита отключена" };
 }
 
@@ -81,4 +83,12 @@ export async function adminResetTotpAction(formData: FormData) {
   if (r.count === 0) throw new Error("Сотрудник не найден");
   await audit(me.id, "staff.totpReset", "User", id);
   revalidatePath("/crm/staff");
+}
+
+/** Сессии, выданные до появления отметки о втором факторе: сотрудник с включённой 2FA обновляет её одной кнопкой. */
+export async function refreshStaffSessionAction() {
+  const me = await requireStaff();
+  if (!me.totpSecret || !me.totpEnabledAt) return;
+  await loginAs(me.id, me.role, me.sessionVersion, true);
+  redirect(homeFor(me.role));
 }

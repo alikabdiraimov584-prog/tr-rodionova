@@ -1,12 +1,15 @@
 import { Suspense } from "react";
 import { ShopHeader, ShopFooter } from "@/components/shop/header";
 import { AccountNav } from "@/components/account/nav";
-import { requireUser } from "@/lib/auth";
+import { requireUser, isStaff } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/actions/auth";
 import { Analytics } from "@/components/analytics";
 
 export default async function AccountLayout({ children }: LayoutProps<"/account">) {
   const user = await requireUser("/account");
+  // у сотрудников нет клиентского кабинета: их рабочее место — CRM
+  if (isStaff(user.role)) redirect("/crm");
   return (
     <>
       <ShopHeader />

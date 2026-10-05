@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { beginTotpSetupAction, confirmTotpAction, disableTotpAction } from "@/app/actions/totp";
+import { beginTotpSetupAction, confirmTotpAction, disableTotpAction, refreshStaffSessionAction } from "@/app/actions/totp";
 import type { ActionState } from "@/lib/action-result";
 
 function Msg({ s }: { s: ActionState }) {
@@ -37,6 +37,14 @@ export function DisableForm() {
       <label><span className="label">Код для отключения</span><input name="code" inputMode="numeric" maxLength={7} required className="input w-40 py-2 text-center tracking-[0.3em]" /></label>
       <button className="btn-outline btn-sm" disabled={pending}>{pending ? "…" : "Отключить"}</button>
       <Msg s={state} />
+    </form>
+  );
+}
+
+export function RefreshSessionForm() {
+  return (
+    <form action={refreshStaffSessionAction} className="mt-3">
+      <button className="btn-primary btn-sm">Обновить сессию и продолжить</button>
     </form>
   );
 }

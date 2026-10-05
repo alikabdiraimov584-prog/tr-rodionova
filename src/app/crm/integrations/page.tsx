@@ -12,7 +12,7 @@ import { IntegrationForm } from "@/components/crm/integration-forms";
 
 export const metadata: Metadata = { title: "Интеграции" };
 
-const ORDER: IntegrationGroup[] = ["payments", "delivery", "messaging", "analytics", "search"];
+const ORDER: IntegrationGroup[] = ["payments", "delivery", "messaging", "analytics", "search", "service"];
 
 export default async function IntegrationsPage() {
   await requireSection("integrations");

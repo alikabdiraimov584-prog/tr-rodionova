@@ -1,5 +1,7 @@
 # Браузерный аудит боевого сайта и CRM с сервера GitHub: обход страниц, кнопки, формы, гостевой путь, CRM под тестовым сотрудником.
-# Секреты (необязательно, для CRM): CRM_TEST_EMAIL, CRM_TEST_PASSWORD — отдельный сотрудник с ролью MANAGER без 2FA.
+# Секреты (необязательно, для CRM): CRM_TEST_EMAIL, CRM_TEST_PASSWORD, CRM_TEST_TOTP_SECRET — отдельный сотрудник с ролью MANAGER
+# и включённой 2FA (ключ из раздела «Безопасность входа» при включении). CUSTOMER_TEST_EMAIL, CUSTOMER_TEST_PASSWORD — тестовая клиентка
+# для обхода витрины под её ролью.
 name: Browser audit
 on:
   workflow_dispatch:
@@ -28,6 +30,9 @@ jobs:
           BASE_URL: ${{ github.event.inputs.base_url || 'https://tr-rodionova.ru' }}
           CRM_EMAIL: ${{ secrets.CRM_TEST_EMAIL }}
           CRM_PASSWORD: ${{ secrets.CRM_TEST_PASSWORD }}
+          CRM_TOTP_SECRET: ${{ secrets.CRM_TEST_TOTP_SECRET }}
+          CUSTOMER_EMAIL: ${{ secrets.CUSTOMER_TEST_EMAIL }}
+          CUSTOMER_PASSWORD: ${{ secrets.CUSTOMER_TEST_PASSWORD }}
           ONLY: ${{ github.event.inputs.only }}
         run: node scripts/browser-audit.mjs
       - name: Скриншоты сбоев

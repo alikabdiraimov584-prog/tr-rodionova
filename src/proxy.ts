@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { allowedWithoutTwoFactor, twoFactorRequired } from "@/lib/two-factor-policy";
 
 const SESSION_COOKIE = "tr_session";
 
@@ -9,7 +10,7 @@ async function readSession(req: NextRequest) {
   if (!token || !secret || secret.length < 32) return null;
   try {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), { algorithms: ["HS256"] });
-    return payload as { userId: string; role: "CUSTOMER" | "SUPPORT" | "MANAGER" | "ADMIN" };
+    return payload as { userId: string; role: "CUSTOMER" | "SUPPORT" | "MANAGER" | "ADMIN"; tf?: boolean };
   } catch {
     return null;
   }
@@ -56,12 +57,18 @@ export async function proxy(req: NextRequest) {
     if (pathname.startsWith("/crm")) {
       if (!session) return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)));
       if (session.role === "CUSTOMER") return withCsp(NextResponse.redirect(new URL("/account", req.url)));
+      // обязательная 2FA: администратор и менеджер без второго фактора видят только страницу его настройки
+      if (twoFactorRequired(session.role) && session.tf !== true && !allowedWithoutTwoFactor(pathname)) {
+        return withCsp(NextResponse.redirect(new URL("/crm/security?required=1", req.url)));
+      }
     }
     // /checkout открыт гостям: корзина в cookie, аккаунт создаётся при оформлении
     if (pathname.startsWith("/account")) {
       if (!session) return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)));
     }
-    if ((pathname === "/login" || pathname === "/register") && session) {
+    // уже вошедшие не видят форму входа; регистрация закрыта только для клиенток (у них аккаунт уже есть),
+    // сотрудник может завести отдельный клиентский аккаунт, не попадая в CRM
+    if (session && (pathname === "/login" || (pathname === "/register" && session.role === "CUSTOMER"))) {
       const home = session.role === "CUSTOMER" ? "/account" : session.role === "SUPPORT" ? "/crm/support" : "/crm";
       return withCsp(NextResponse.redirect(new URL(home, req.url)));
     }

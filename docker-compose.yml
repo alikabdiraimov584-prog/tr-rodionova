@@ -12,6 +12,7 @@ services:
       - PORT=3000
     volumes:
       - uploads:/app/public/uploads
+      - backups:/app/backups:ro
     expose:
       - "3000"
     # /api/health проверяет и базу; при старте идут миграции и сид, поэтому start_period длинный
@@ -41,6 +42,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # Ночной дамп базы в общий том (pg_dump той же версии, что и сервер). Загрузку в S3 делает приложение
+  # (/api/cron?job=backup) по ключам из CRM → Интеграции. Локально хранится 7 дней.
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        dump() {
+          f="/backups/tr-rodionova-$$(date -u +%Y%m%d-%H%M).sql.gz"
+          if pg_dump "$$DATABASE_URL" | gzip -9 > "$$f.tmp"; then mv "$$f.tmp" "$$f" && echo "backup ok $$f"; else rm -f "$$f.tmp"; echo "backup failed"; fi
+          find /backups -name '*.sql.gz' -mtime +7 -delete
+        }
+        sleep 60
+        # при старте — копия за сегодня, если её ещё нет
+        ls /backups/tr-rodionova-$$(date -u +%Y%m%d)-*.sql.gz >/dev/null 2>&1 || dump
+        while true; do
+          [ "$$(date -u +%H%M)" = "0020" ] && dump && sleep 60
+          sleep 30
+        done
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -57,7 +82,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
-  # Планировщик: ежедневные задачи в 03:10 МСК (00:10 UTC) и ежечасные (напоминания об оплате, снятие резерва) в :05
+  # Планировщик: ежедневные задачи в 03:10 МСК (00:10 UTC), загрузка бэкапа в S3 в 00:40 UTC, ежечасные (напоминания об оплате, снятие резерва) в :05
   cron:
     image: curlimages/curl:latest
     restart: unless-stopped
@@ -72,6 +97,9 @@ services:
           if [ "$$now" = "0010" ]; then
             curl -fsS -H "Authorization: Bearer $$CRON_SECRET" http://web:3000/api/cron || echo "daily cron failed"
             sleep 60
+          elif [ "$$now" = "0040" ]; then
+            curl -fsS -H "Authorization: Bearer $$CRON_SECRET" "http://web:3000/api/cron?job=backup" || echo "backup upload failed"
+            sleep 60
           elif [ "$${now#??}" = "05" ]; then
             curl -fsS -H "Authorization: Bearer $$CRON_SECRET" "http://web:3000/api/cron?job=hourly" || echo "hourly cron failed"
             sleep 60
@@ -82,5 +110,6 @@ services:
 volumes:
   pgdata:
   uploads:
+  backups:
   caddy_data:
   caddy_config:

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { cabinetLink } from "@/lib/role-links";
 import { getGuestToken, guestCartCount } from "@/lib/guest-cart";
 import { getSettingOrDefault } from "@/lib/settings";
 import { db } from "@/lib/db";
@@ -16,6 +17,7 @@ const NAV = [
 
 export async function ShopHeader() {
   const user = await getCurrentUser();
+  const cabinet = cabinetLink(user);
   const [cartCount, categories] = await Promise.all([
     user ? db.cartItem.aggregate({ where: { userId: user.id }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount),
     db.category.findMany({ orderBy: { order: "asc" }, where: { products: { some: { status: "ACTIVE" } } } }),
@@ -26,7 +28,7 @@ export async function ShopHeader() {
         Бесплатная доставка от 15 000 ₽ <span className="hidden sm:inline">· Примерка курьером в Москве и Петербурге </span>· <Link href="/circle" className="inline-block py-1 underline underline-offset-2">Circle: 2 000 баллов за регистрацию</Link>
       </div>
       <div className="mx-auto grid max-w-[1440px] grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-1.5 md:grid-cols-[1fr_auto_1fr] md:gap-4 md:px-6 md:py-2">
-        <MobileMenu nav={NAV} categories={categories.map((c) => [`/catalog?category=${c.slug}`, c.name] as const)} loggedIn={!!user} cartCount={cartCount || 0} />
+        <MobileMenu nav={NAV} categories={categories.map((c) => [`/catalog?category=${c.slug}`, c.name] as const)} account={cabinet} cartCount={cartCount || 0} />
         <nav className="hidden gap-3 text-[0.68rem] uppercase tracking-[0.1em] md:flex lg:gap-5">
           {NAV.map(([href, label]) => (
             <Link key={href} href={href} className="py-2.5 hover:underline underline-offset-4">{label}</Link>
@@ -35,7 +37,7 @@ export async function ShopHeader() {
         <div className="flex justify-center md:justify-start"><Logo className="py-3" /></div>
         <nav className="flex items-center justify-end gap-3 text-[0.68rem] uppercase tracking-[0.1em] lg:gap-5">
           <Link href="/catalog?q=" className="hidden py-2.5 lg:inline hover:underline underline-offset-4">Поиск</Link>
-          <Link href={user ? "/account" : "/login"} className="hidden py-2.5 sm:inline hover:underline underline-offset-4">{user ? "Кабинет" : "Войти"}</Link>
+          <Link href={cabinet[0]} className="hidden py-2.5 sm:inline hover:underline underline-offset-4">{cabinet[1]}</Link>
           <Link href="/cart" className="-mr-2 inline-flex min-h-11 items-center px-2 whitespace-nowrap hover:underline underline-offset-4 md:mr-0 md:px-0">Корзина {cartCount || 0}</Link>
         </nav>
       </div>

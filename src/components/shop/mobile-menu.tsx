@@ -8,7 +8,7 @@ import { Logo } from "@/components/ui";
 type Item = readonly [string, string];
 
 /** Мобильное меню витрины: кнопка-«бургер» в шапке и выезжающая панель со всеми разделами. */
-export function MobileMenu({ nav, categories, loggedIn, cartCount }: { nav: readonly Item[]; categories: Item[]; loggedIn: boolean; cartCount: number }) {
+export function MobileMenu({ nav, categories, account, cartCount }: { nav: readonly Item[]; categories: Item[]; account: readonly [string, string]; cartCount: number }) {
   // Панель «привязана» к адресу, на котором её открыли: переход по ссылке закрывает её без эффектов
   const path = usePathname();
   const [openedAt, setOpenedAt] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function MobileMenu({ nav, categories, loggedIn, cartCount }: { nav: read
               <Link href="/gift" className={item}>Сертификаты</Link>
               <div className="eyebrow mt-6 mb-1">Вы</div>
               <Link href="/catalog?q=" className={item}>Поиск</Link>
-              <Link href={loggedIn ? "/account" : "/login"} className={item}>{loggedIn ? "Кабинет" : "Войти"}</Link>
+              <Link href={account[0]} className={item}>{account[1]}</Link>
               <Link href="/cart" className={item}><span>Корзина</span><span className="text-muted">{cartCount}</span></Link>
               <Link href="/circle" className={item}>Circle</Link>
             </nav>

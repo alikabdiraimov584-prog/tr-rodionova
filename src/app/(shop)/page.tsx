@@ -1,19 +1,25 @@
 import Link from "next/link";
 import Image from "next/image";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { getSetting } from "@/lib/settings";
+import { circleCta, isStaffRole } from "@/lib/role-links";
 import { ProductCard } from "@/components/shop/product-card";
 import { formatMoney } from "@/lib/money";
 
 export default async function Home() {
-  const [newest, featured, collection, looks, article, tiers] = await Promise.all([
+  const [newest, featured, collection, looks, article, tiers, user, loyalty] = await Promise.all([
     db.product.findMany({ where: { status: "ACTIVE", isNew: true, isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4, orderBy: { createdAt: "desc" } }),
     db.product.findMany({ where: { status: "ACTIVE", isFeatured: true, isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 8, orderBy: { createdAt: "desc" } }),
     db.collection.findFirst({ where: { isActive: true }, orderBy: { slug: "desc" } }),
     db.look.findMany({ where: { isPublished: true }, orderBy: { order: "asc" }, take: 2 }),
     db.article.findFirst({ where: { publishedAt: { lte: new Date() } }, orderBy: { publishedAt: "desc" } }),
     db.loyaltyTier.findMany({ orderBy: { order: "asc" } }),
+    getCurrentUser(),
+    getSetting("loyalty"),
   ]);
   const hero = featured.slice(0, 2);
+  const cta = circleCta(user, loyalty.welcomePoints);
   return (
     <div className="mx-auto max-w-[1440px] px-4 md:px-6">
       <section className="mt-1 grid gap-1 md:grid-cols-2">
@@ -64,8 +70,8 @@ export default async function Home() {
         <div className="bg-ivory p-6">
           <div className="eyebrow">T.Rodionova Circle</div>
           <h2 className="mt-2">Баллы с каждой покупки</h2>
-          <p className="mt-2 text-sm text-ink/80">2 000 баллов за регистрацию, подарок ко дню рождения, закрытые показы и персональный стилист.</p>
-          <Link href="/register" className="btn-primary mt-5">Вступить</Link>
+          <p className="mt-2 text-sm text-ink/80">{loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию, подарок ко дню рождения, закрытые показы и персональный стилист.</p>
+          <Link href={cta.href} className="btn-primary mt-5">{user && !isStaffRole(user.role) ? "Мой кабинет" : "Вступить"}</Link>
         </div>
         {tiers.map((t) => (
           <div key={t.id} className="bg-ivory p-6">

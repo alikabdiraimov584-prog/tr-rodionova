@@ -14,13 +14,14 @@ main() {
   GIT_SHA=$(git rev-parse --short HEAD)
   BUILD_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
+  chmod 600 .env 2>/dev/null || true
   docker compose build web
 
   local old new count status
   old=$(docker compose ps -q web || true)
   if [ -z "$old" ]; then
     # первый запуск или web остановлен: обычный старт
-    docker compose up -d web cron
+    docker compose up -d web cron backup
   else
     count=$(printf '%s\n' "$old" | wc -l)
     # новый контейнер из нового образа рядом со старым (--no-recreate не трогает работающий)
@@ -45,7 +46,7 @@ main() {
       docker stop -t 30 "$c" >/dev/null && docker rm "$c" >/dev/null
     done
     docker compose up -d --no-deps --no-recreate --scale web=1 web >/dev/null
-    docker compose up -d --no-deps cron
+    docker compose up -d --no-deps cron backup
   fi
 
   # Caddy: конфиг перечитывается без разрыва соединений, если он менялся

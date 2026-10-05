@@ -1,4 +1,5 @@
-# Внешняя проверка продакшена: DNS, сертификат, ответ сайта и CRM. Запуск вручную (Actions → Check site).
+# Внешняя проверка продакшена каждый час: DNS, сертификат, ответ сайта и CRM, база, свежесть бэкапов.
+# При сбое — письмо владельцу репозитория от GitHub и, если заданы секреты, сообщение в Telegram.
 name: Check site
 on:
   schedule:
@@ -37,6 +38,43 @@ jobs:
           echo "== title"; curl -sS -m 30 "https://$D/" | grep -oE "<title>[^<]*" | head -1
           echo "== http→https"; curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}\n' "http://$D/" || true
       - name: Итог
+        id: verdict
         run: |
+          fail=""
           code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' "https://$DOMAIN/" 2>/dev/null || true)
-          echo "Главная: HTTP $code"; [ "$code" = "200" ]
+          echo "Главная: HTTP $code"; [ "$code" = "200" ] || fail="$fail главная HTTP $code;"
+          health=$(curl -sS -m 30 "https://$DOMAIN/api/health" 2>/dev/null || echo '{}')
+          echo "$health" | grep -q '"ok":true' || fail="$fail база или приложение не отвечают;"
+          now=$(date -u +%s)
+          # ночной дамп должен быть не старше двух суток
+          localAt=$(echo "$health" | sed -n 's/.*"localAt":"\([^"]*\)".*/\1/p')
+          if [ -n "$localAt" ]; then
+            age=$(( (now - $(date -u -d "$localAt" +%s)) / 3600 ))
+            echo "Локальный дамп: $localAt (${age} ч)"; [ "$age" -le 48 ] || fail="$fail локальный бэкап старше 2 суток;"
+          else
+            echo "Локальный дамп: нет"; fail="$fail нет локального бэкапа;"
+          fi
+          # копия в S3 проверяется только когда интеграция включена
+          if echo "$health" | grep -q '"s3Enabled":true'; then
+            upAt=$(echo "$health" | sed -n 's/.*"uploadedAt":"\([^"]*\)".*/\1/p')
+            if [ -n "$upAt" ]; then
+              age=$(( (now - $(date -u -d "$upAt" +%s)) / 3600 ))
+              echo "Копия в S3: $upAt (${age} ч)"; [ "$age" -le 48 ] || fail="$fail копия в S3 старше 2 суток;"
+            else
+              echo "Копия в S3: ещё не загружалась"; fail="$fail копия в S3 не загружалась;"
+            fi
+          fi
+          echo "fail=$fail" >> "$GITHUB_OUTPUT"
+          [ -z "$fail" ] || { echo "ПРОБЛЕМЫ:$fail"; exit 1; }
+      # Тревога в Telegram: секреты TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID в настройках репозитория (Settings → Secrets).
+      # Без них шаг просто пропускается, а письмо о падении приходит владельцу репозитория от GitHub.
+      - name: Тревога в Telegram
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FAIL: ${{ steps.verdict.outputs.fail }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || { echo "Telegram не настроен"; exit 0; }
+          text="⚠️ tr-rodionova.ru: проверка не прошла.${FAIL:+ $FAIL} Подробности: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          curl -sS -m 20 -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$text" -o /dev/null || true

@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
+import { getCurrentUser } from "@/lib/auth";
+import { circleCta } from "@/lib/role-links";
 import { formatMoney } from "@/lib/money";
 import { Eyebrow, Monogram, Star } from "@/components/ui";
 
@@ -9,7 +11,8 @@ export const metadata: Metadata = { title: "T.Rodionova Circle — програ�
 
 export default async function CirclePage({ searchParams }: PageProps<"/circle">) {
   const sp = await searchParams;
-  const [tiers, s] = await Promise.all([db.loyaltyTier.findMany({ orderBy: { order: "asc" } }), getSetting("loyalty")]);
+  const [tiers, s, user] = await Promise.all([db.loyaltyTier.findMany({ orderBy: { order: "asc" } }), getSetting("loyalty"), getCurrentUser()]);
+  const cta = circleCta(user, s.welcomePoints);
   const early = typeof sp.early === "string";
   return (
     <div>
@@ -21,7 +24,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
         <p className="mx-auto mt-5 max-w-xl px-4 text-sm text-muted">
           Баллы с каждой покупки, подарки ко дню рождения и привилегии, которые растут вместе с вами. 1 балл = 1 ₽.
         </p>
-        <Link href="/register" className="btn-primary mt-8">Вступить и получить {s.welcomePoints.toLocaleString("ru-RU")} баллов</Link>
+        <Link href={cta.href} className="btn-primary mt-8">{cta.label}</Link>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-20 md:px-8">

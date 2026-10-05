@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { backupStatus } from "@/lib/backups";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,9 @@ export async function GET() {
   } catch {
     dbOk = false;
   }
+  const backup = dbOk ? await backupStatus().catch(() => null) : null;
   return NextResponse.json(
-    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString() },
+    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), backup },
     { status: dbOk ? 200 : 503, headers: { "cache-control": "no-store" } },
   );
 }

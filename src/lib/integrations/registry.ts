@@ -5,7 +5,7 @@ import "server-only";
  * Секретные поля (secret: true) шифруются в базе и не возвращаются в интерфейс.
  */
 
-export type IntegrationGroup = "payments" | "delivery" | "analytics" | "search" | "messaging";
+export type IntegrationGroup = "payments" | "delivery" | "analytics" | "search" | "messaging" | "service";
 
 export type IntegrationField = { key: string; label: string; secret?: boolean; hint?: string; placeholder?: string; multiline?: boolean };
 
@@ -30,6 +30,7 @@ export const GROUPS: Record<IntegrationGroup, { title: string; hint: string }> =
   messaging: { title: "Мессенджеры, почта и SMS", hint: "Каналы единого inbox и уведомлений — настраиваются на отдельной странице" },
   analytics: { title: "Аналитика", hint: "Счётчики ставятся на сайт только после согласия на cookie" },
   search: { title: "Поисковики", hint: "Подтверждение прав на сайт для Яндекс Вебмастера и Google Search Console" },
+  service: { title: "Резервные копии", hint: "Копии базы за пределами сервера: если диск погибнет, данные восстановятся из бакета" },
 };
 
 async function json<T>(url: string, init?: RequestInit): Promise<{ status: number; body: T }> {
@@ -121,6 +122,32 @@ export const INTEGRATIONS: IntegrationDef[] = [
     test: async (c) => {
       const { testCredentials } = await import("@/lib/payments/dolyame");
       return testCredentials(c);
+    },
+  },
+  {
+    key: "s3_backup",
+    group: "service",
+    name: "Резервные копии в S3",
+    summary: "Каждую ночь дамп базы уходит в S3-бакет (Timeweb Cloud или любой совместимый). Хранится 30 копий, локально на сервере ещё 7 дней.",
+    effect: "При включении свежий ночной дамп загружается в бакет ежедневно; результат и ошибки видны здесь и на /api/health, внешняя проверка «Check site» поднимет тревогу, если копия старше двух суток.",
+    fields: [
+      { key: "endpoint", label: "Адрес S3", placeholder: "https://s3.twcstorage.ru", hint: "Timeweb Cloud: панель → S3-хранилище → настройки бакета" },
+      { key: "region", label: "Регион", placeholder: "ru-1" },
+      { key: "bucket", label: "Бакет", placeholder: "tr-rodionova-backups", hint: "Создайте приватный бакет, доступ по ключам" },
+      { key: "accessKey", label: "Access Key" },
+      { key: "secretKey", label: "Secret Key", secret: true },
+      { key: "prefix", label: "Папка в бакете", placeholder: "db/" },
+      { key: "keep", label: "Сколько копий хранить", placeholder: "30" },
+    ],
+    guide: [
+      "В панели Timeweb Cloud создайте S3-хранилище (приватный бакет) и пару ключей доступа к нему.",
+      "Вставьте адрес, бакет и ключи, нажмите «Проверить подключение»: приложение проверит доступ к бакету и покажет число копий.",
+      "Включите интеграцию. Первая копия уйдёт ближайшей ночью; проверить вручную можно кнопкой проверки через день.",
+      "Раз в месяц скачивайте копию из бакета и разворачивайте на тестовой базе: бэкап, который никто не открывал, не считается.",
+    ],
+    test: async (c) => {
+      const { testS3 } = await import("@/lib/backups");
+      return testS3(c);
     },
   },
   {
