@@ -82,6 +82,10 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
         </div>
         <h1 className="mt-3">{a.title}</h1>
         {a.excerpt && <p className="mt-4 text-sm leading-relaxed text-ink/75">{a.excerpt}</p>}
+        <p className="mt-4 text-[0.68rem] uppercase tracking-[0.12em] text-muted">
+          Текст: <Link href="/about" className="underline underline-offset-4">{brand.founder || `Редакция ${brand.name}`}</Link>
+          {a.updatedAt.getTime() - (a.publishedAt?.getTime() ?? 0) > 86_400_000 && <> · обновлено {formatDate(a.updatedAt)}</>}
+        </p>
       </header>
       {a.coverUrl && (
         <div className="relative mx-auto mt-10 aspect-[16/9] max-w-5xl bg-sand">
