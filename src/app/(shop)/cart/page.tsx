@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { getSetting } from "@/lib/settings";
@@ -12,7 +12,7 @@ import { getGuestToken, guestCartItems } from "@/lib/guest-cart";
 export const metadata: Metadata = { title: "Корзина" };
 
 export default async function CartPage() {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   const items = user
     ? await db.cartItem.findMany({
         where: { userId: user.id },

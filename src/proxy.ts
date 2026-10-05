@@ -65,12 +65,14 @@ export async function proxy(req: NextRequest) {
     // /checkout открыт гостям: корзина в cookie, аккаунт создаётся при оформлении
     if (pathname.startsWith("/account")) {
       if (!session) return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)));
+      // у сотрудника нет клиентского кабинета: предлагаем войти под клиентским аккаунтом, а не уводим в CRM
+      if (session.role !== "CUSTOMER") return withCsp(NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(pathname)}&as=customer`, req.url)));
     }
     // уже вошедшие не видят форму входа; регистрация закрыта только для клиенток (у них аккаунт уже есть),
     // сотрудник может завести отдельный клиентский аккаунт, не попадая в CRM
-    if (session && (pathname === "/login" || (pathname === "/register" && session.role === "CUSTOMER"))) {
-      const home = session.role === "CUSTOMER" ? "/account" : session.role === "SUPPORT" ? "/crm/support" : "/crm";
-      return withCsp(NextResponse.redirect(new URL(home, req.url)));
+    // вошедшая клиентка не видит формы входа и регистрации; сотрудник может войти под клиентским аккаунтом
+    if (session && session.role === "CUSTOMER" && (pathname === "/login" || pathname === "/register")) {
+      return withCsp(NextResponse.redirect(new URL("/account", req.url)));
     }
   }
   return withCsp(NextResponse.next({ request: { headers: requestHeaders } }));

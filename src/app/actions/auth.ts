@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { hashPassword, verifyPasswordOrDummy, loginAs, logout } from "@/lib/auth";
 import { checkRate, clearRate, clientIp } from "@/lib/ratelimit";
 import { startTwoFactor } from "@/lib/two-factor";
+import { twoFactorRequired } from "@/lib/two-factor-policy";
 import { isStaff } from "@/lib/auth";
 import { addPoints, recalcTier } from "@/lib/loyalty";
 import { getSetting } from "@/lib/settings";
@@ -50,6 +51,8 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
   await loginAs(user.id, user.role, user.sessionVersion);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login", "User", user.id);
+  // сотруднику, для которого второй фактор обязателен, сразу показываем его настройку (адрес в строке будет точным)
+  if (isStaff(user.role) && twoFactorRequired(user.role)) redirect("/crm/security?required=1");
   redirect(safeNext(formData.get("next"), homeFor(user.role)));
 }
 

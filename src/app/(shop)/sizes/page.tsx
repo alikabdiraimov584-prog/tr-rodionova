@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { MEASURE_GUIDE, SIZE_CHARTS, SIZE_CHART_KEYS, recommendSize } from "@/lib/sizes";
 import { Eyebrow, PageTitle } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Таблица размеров" };
 
 export default async function SizesPage() {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   const hasMeasures = !!user && !!(user.bust || user.waist || user.hips);
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 md:px-8">

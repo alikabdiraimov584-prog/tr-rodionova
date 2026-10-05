@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { ProductCard } from "@/components/shop/product-card";
 import { Empty, Eyebrow, PageTitle, Star } from "@/components/ui";
 import { RESALE_CONDITIONS } from "@/lib/resale";
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Pre-loved — вещи с истор
 
 export default async function PrelovedPage() {
   const [user, products] = await Promise.all([
-    getCurrentUser(),
+    getCurrentCustomer(),
     db.product.findMany({
       where: { isPreloved: true, status: "ACTIVE" },
       include: { images: { orderBy: { order: "asc" } }, variants: true },

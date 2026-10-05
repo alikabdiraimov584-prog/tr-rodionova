@@ -112,7 +112,7 @@ async function crawl(role, viewport, startPaths, login) {
     const asked = path.split("?")[0];
     if (role.startsWith("site") && landed !== asked) {
       if (landed.startsWith("/crm")) note("redirect", `${role} ${path}`, `ссылка витрины ведёт в CRM (${landed})`);
-      else if (login && landed.startsWith("/login")) note("redirect", `${role} ${path}`, `вошедшего отправило на форму входа (${landed})`);
+      else if (role === "site-customer" && landed.startsWith("/login")) note("redirect", `${role} ${path}`, `вошедшую клиентку отправило на форму входа (${landed})`);
     }
     const body = (await page.textContent("body").catch(() => "")) ?? "";
     if (status >= 400) note("http", `${role} ${path}`, `HTTP ${status}`);

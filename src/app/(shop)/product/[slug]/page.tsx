@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { formatMoney, formatDate } from "@/lib/money";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductCard } from "@/components/shop/product-card";
@@ -41,7 +41,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const { slug } = await params;
   const p = await load(slug);
   if (!p || p.status !== "ACTIVE") notFound();
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (p.earlyAccessUntil && p.earlyAccessUntil > new Date() && !user?.loyaltyTier?.earlyAccess) {
     redirect(`/circle?early=${p.slug}`);
   }

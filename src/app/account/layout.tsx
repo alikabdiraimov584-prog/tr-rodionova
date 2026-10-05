@@ -8,8 +8,8 @@ import { Analytics } from "@/components/analytics";
 
 export default async function AccountLayout({ children }: LayoutProps<"/account">) {
   const user = await requireUser("/account");
-  // у сотрудников нет клиентского кабинета: их рабочее место — CRM
-  if (isStaff(user.role)) redirect("/crm");
+  // у сотрудников нет клиентского кабинета: предлагаем войти под клиентским аккаунтом (proxy делает то же самое раньше)
+  if (isStaff(user.role)) redirect("/login?next=%2Faccount&as=customer");
   return (
     <>
       <ShopHeader />

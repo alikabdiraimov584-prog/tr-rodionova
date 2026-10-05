@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { ProductCard } from "@/components/shop/product-card";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
@@ -46,7 +46,7 @@ const arr = (v: string | string[] | undefined) => (typeof v === "string" ? v.spl
 
 export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   const sp = await searchParams;
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   const category = typeof sp.category === "string" ? sp.category : undefined;
   const sort = typeof sp.sort === "string" && sp.sort in SORTS ? sp.sort : "new";
   const onlyNew = sp.new === "1";

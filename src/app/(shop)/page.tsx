@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { getSetting } from "@/lib/settings";
 import { circleCta, isStaffRole } from "@/lib/role-links";
 import { ProductCard } from "@/components/shop/product-card";
@@ -15,7 +15,7 @@ export default async function Home() {
     db.look.findMany({ where: { isPublished: true }, orderBy: { order: "asc" }, take: 2 }),
     db.article.findFirst({ where: { publishedAt: { lte: new Date() } }, orderBy: { publishedAt: "desc" } }),
     db.loyaltyTier.findMany({ orderBy: { order: "asc" } }),
-    getCurrentUser(),
+    getCurrentCustomer(),
     getSetting("loyalty"),
   ]);
   const hero = featured.slice(0, 2);

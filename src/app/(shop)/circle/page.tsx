@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { circleCta } from "@/lib/role-links";
 import { formatMoney } from "@/lib/money";
 import { Eyebrow, Monogram, Star } from "@/components/ui";
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "T.Rodionova Circle — програ�
 
 export default async function CirclePage({ searchParams }: PageProps<"/circle">) {
   const sp = await searchParams;
-  const [tiers, s, user] = await Promise.all([db.loyaltyTier.findMany({ orderBy: { order: "asc" } }), getSetting("loyalty"), getCurrentUser()]);
+  const [tiers, s, user] = await Promise.all([db.loyaltyTier.findMany({ orderBy: { order: "asc" } }), getSetting("loyalty"), getCurrentCustomer()]);
   const cta = circleCta(user, s.welcomePoints);
   const early = typeof sp.early === "string";
   return (

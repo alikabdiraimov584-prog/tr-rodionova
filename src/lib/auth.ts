@@ -32,6 +32,15 @@ export function isStaff(role: Role | undefined | null): boolean {
   return role === "SUPPORT" || role === "MANAGER" || role === "ADMIN";
 }
 
+/**
+ * Клиентка, если вошла именно она. Сотрудник на витрине — как гость: кабинет, избранное, мерки и выкуп
+ * относятся к клиентскому аккаунту, а в CRM ведёт только ссылка «CRM» в шапке.
+ */
+export async function getCurrentCustomer(): Promise<CurrentUser | null> {
+  const user = await getCurrentUser();
+  return user && !isStaff(user.role) ? user : null;
+}
+
 /** Любой сотрудник. Для конкретного раздела используйте requireSection. */
 export async function requireStaff(): Promise<CurrentUser> {
   const user = await getCurrentUser();

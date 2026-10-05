@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { formatMoney } from "@/lib/money";
 import { Eyebrow } from "@/components/ui";
 import { LookCart } from "@/components/shop/look-cart";
@@ -29,7 +29,7 @@ export default async function LookPage({ params }: PageProps<"/lookbook/[slug]">
   const { slug } = await params;
   const look = await load(slug);
   if (!look || !look.isPublished) notFound();
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   const items = look.items.filter((i) => i.product.status === "ACTIVE");
   const total = items.reduce((s, i) => s + i.product.price, 0);
   return (

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCustomer } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PageTitle } from "@/components/ui";
 import { CheckoutForm } from "@/components/shop/checkout-form";
@@ -12,7 +12,7 @@ import { activeIntegration } from "@/lib/integrations/store";
 export const metadata: Metadata = { title: "Оформление заказа" };
 
 export default async function CheckoutPage() {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   const count = user ? await db.cartItem.count({ where: { userId: user.id } }) : await guestCartCount(await getGuestToken());
   if (count === 0) redirect("/cart");
   const [addresses, seller, dadata, initialQuote] = await Promise.all([
