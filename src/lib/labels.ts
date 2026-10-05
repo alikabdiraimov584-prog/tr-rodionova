@@ -120,6 +120,7 @@ export const TRAFFIC_CHANNEL: Record<string, string> = {
   EMAIL: "Рассылки",
   REFERRAL: "Переходы с сайтов",
   INTERNAL: "Ссылки бренда",
+  AI: "ИИ-ответы",
 };
 
 import type { GiftCardStatus, ResaleStatus, SelectionStatus } from "@/generated/prisma/enums";

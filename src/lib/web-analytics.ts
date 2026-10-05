@@ -9,6 +9,8 @@ export const CONSENT_COOKIE = "tr_consent";
 const SESSION_TTL_MIN = 30;
 
 const SEARCH = /(^|\.)(google|yandex|ya|bing|duckduckgo|mail|rambler|yahoo)\./i;
+// ИИ-ассистенты и нейропоиск: по рефереру видно, что покупательница пришла из ответа ИИ (GEO-канал)
+const AI = /(^|\.)(alice\.yandex\.ru|chatgpt\.com|chat\.openai\.com|openai\.com|perplexity\.ai|gigachat\.ru|giga\.chat|copilot\.microsoft\.com|gemini\.google\.com|claude\.ai|you\.com|mistral\.ai|chat\.deepseek\.com|deepseek\.com|grok\.com|x\.ai|poe\.com)$/i;
 const SOCIAL = /(^|\.)(instagram|facebook|fb|vk|vkontakte|t|telegram|pinterest|tiktok|youtube|threads|dzen|ok|whatsapp|wa)\.(com|ru|me|org)$/i;
 const BOT = /bot|crawl|spider|slurp|facebookexternalhit|preview|lighthouse|headless|curl|wget|python-requests/i;
 
@@ -26,6 +28,7 @@ export function classify(referrerHost: string | null, utm: Utm, ownHost: string 
     return { channel: "INTERNAL", source };
   }
   if (!referrerHost || (ownHost && referrerHost === ownHost)) return { channel: "DIRECT", source: null };
+  if (AI.test(referrerHost)) return { channel: "AI", source: referrerHost.replace(/^(www|chat)\./, "") };
   if (SEARCH.test(referrerHost)) return { channel: "ORGANIC", source: referrerHost.replace(/^www\./, "") };
   if (SOCIAL.test(referrerHost)) return { channel: "SOCIAL", source: referrerHost.replace(/^(www|m|l)\./, "") };
   return { channel: "REFERRAL", source: referrerHost.replace(/^www\./, "") };

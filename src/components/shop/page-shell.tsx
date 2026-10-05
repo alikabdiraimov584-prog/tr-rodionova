@@ -17,9 +17,9 @@ export function TextPage({ eyebrow, title, intro, children, aside }: { eyebrow?:
   );
 }
 
-export function Section({ title, children }: { title: string; children: ReactNode }) {
+export function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
   return (
-    <section className="grid gap-3 border-t border-line pt-5 md:grid-cols-[200px_1fr]">
+    <section id={id} className="grid gap-3 border-t border-line pt-5 scroll-mt-24 md:grid-cols-[200px_1fr]">
       <h2 className="text-base">{title}</h2>
       <div className="space-y-3 text-ink/85">{children}</div>
     </section>

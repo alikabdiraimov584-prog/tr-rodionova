@@ -809,6 +809,7 @@ enum TrafficChannel {
   EMAIL
   REFERRAL
   INTERNAL // переходы из рассылок и ссылок бренда (трекинговые ссылки без medium)
+  AI // переходы из ИИ-ответов: Алиса AI, ChatGPT, Perplexity, GigaChat, Copilot, Gemini
 }
 
 /** Трекинговая ссылка бренда: /go/<slug> → целевая страница с UTM. */

@@ -24,14 +24,14 @@ export default async function Showroom() {
         </div>
       }
     >
-      <Section title="Примерка дома">
+      <Section id="home-fitting" title="Примерка дома">
         <p>Для Москвы и области привезём до 6 вещей на примерку с курьером: до 20 минут на примерку, оплата на месте только за то, что подошло. Выбирается при оформлении заказа.</p>
       </Section>
-      <Section title="Запись к стилисту">
+      <Section id="stylist" title="Запись к стилисту">
         <p>Час с персональным стилистом онлайн: подбор капсулы под ваш гардероб и события сезона. Бесплатно для участниц Circle. <Link href="/account/support?topic=stylist" className="underline">Записаться</Link>.</p>
       </Section>
       {hasShowroom && (
-        <Section title="Как добраться">
+        <Section id="map" title="Как добраться">
           <p>{seller.showroom}. Часы работы: {seller.hours}.</p>
         </Section>
       )}
