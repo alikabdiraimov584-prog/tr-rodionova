@@ -6,12 +6,17 @@ on:
       urls:
         description: "Адреса через пробел"
         required: true
+      mode:
+        description: "structure — разметка и шрифты; shots — скриншоты"
+        required: true
+        default: structure
 jobs:
   study:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Структура и шрифты
+        if: github.event.inputs.mode == 'structure'
         env:
           URLS: ${{ github.event.inputs.urls }}
         run: |
@@ -43,6 +48,7 @@ jobs:
             done
           done
       - name: Скриншоты
+        if: github.event.inputs.mode == 'shots'
         env:
           URLS: ${{ github.event.inputs.urls }}
         run: |
@@ -54,7 +60,7 @@ jobs:
             google-chrome --headless=new --no-sandbox --hide-scrollbars --window-size=1440,2600 --screenshot=/tmp/d$n.png "$U" >/dev/null 2>&1 || true
             for f in m d; do
               [ -f /tmp/$f$n.png ] || continue
-              python3 scripts/ci/shrink-shot.py /tmp/$f$n.png /tmp/$f$n.jpg $([ $f = m ] && echo 520 || echo 1100)
+              if [ $f = m ]; then python3 scripts/ci/shrink-shot.py /tmp/$f$n.png /tmp/$f$n.jpg 300 2200; else python3 scripts/ci/shrink-shot.py /tmp/$f$n.png /tmp/$f$n.jpg 560 1700; fi
               echo "=== SHOT $f$n $U ==="
               base64 -w0 /tmp/$f$n.jpg | fold -w 4000
               echo "=== END $f$n ==="
