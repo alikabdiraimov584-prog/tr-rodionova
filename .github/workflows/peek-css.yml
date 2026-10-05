@@ -1,0 +1,36 @@
+name: Peek CSS
+# Разобрать галерею чужой страницы для сравнения: правила CSS слайдера, размеры картинок.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Полный адрес страницы"
+        required: true
+jobs:
+  peek:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Галерея и CSS
+        env:
+          U: ${{ github.event.inputs.url }}
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+          origin=$(echo "$U" | grep -oE '^https?://[^/]+')
+          html=$(curl -sS -m 30 -L -A "$UA" "$U")
+          echo "== блок галереи (первые 60 строк вокруг product-card__slider)"
+          echo "$html" | tr -d '\r' | awk '/product-card__slider|product-swiper/{f=1} f{print; n++} n>70{exit}' | sed 's/^\s*//' | cut -c1-220
+          echo "== размеры первых картинок галереи"
+          for u in $(echo "$html" | awk '/product-swiper/{f=1} f' | grep -oE '(src|data-src)="[^"]*\.(webp|jpe?g|png)"' | grep -oE '"[^"]*"' | tr -d '"' | head -4); do
+            case "$u" in http*) full="$u";; *) full="$origin$u";; esac
+            curl -sS -m 30 -A "$UA" -o /tmp/img "$full"; echo "$u: $(identify -format '%wx%h %m %b' /tmp/img 2>/dev/null || echo '?')"
+          done
+          echo "== CSS-правила про слайдер и карточку"
+          for css in $(echo "$html" | grep -oE '<link[^>]*rel="stylesheet"[^>]*href="[^"]*"' | grep -oE 'href="[^"]*"' | grep -oE '"[^"]*"' | tr -d '"' | head -8); do
+            case "$css" in http*) full="$css";; //*) full="https:$css";; *) full="$origin$css";; esac
+            curl -sS -m 30 -A "$UA" "$full" | tr '}' '}\n' | grep -E 'product-card__(slider|gallery|info|top|wrap)|product-swiper|swiper-slide|sliderPagination|slider__pagination' | head -40 | cut -c1-300
+          done
+          echo "== media-запросы с product-card"
+          for css in $(echo "$html" | grep -oE '<link[^>]*rel="stylesheet"[^>]*href="[^"]*"' | grep -oE 'href="[^"]*"' | grep -oE '"[^"]*"' | tr -d '"' | head -8); do
+            case "$css" in http*) full="$css";; //*) full="https:$css";; *) full="$origin$css";; esac
+            curl -sS -m 30 -A "$UA" "$full" | grep -oE '@media[^{]*\{[^@]*product-card__slider[^}]*\}' | head -8 | cut -c1-400
+          done
