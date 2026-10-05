@@ -6,6 +6,10 @@ const deploymentId = process.env.GIT_SHA && process.env.GIT_SHA !== "unknown" ? 
 
 const nextConfig: NextConfig = {
   deploymentId,
+  // Фото в карточку вещи грузятся через server action: по умолчанию Next принимает тело не больше 1 МБ,
+  // а кадр со съёмки весит 2–10 МБ. Лимит действия — 12 МБ на файл, до пяти файлов за раз плюс служебные байты.
+  // Второй порог — буфер тела запроса для proxy.ts (по умолчанию 10 МБ, иначе «Unexpected end of form»).
+  experimental: { serverActions: { bodySizeLimit: "64mb" }, proxyClientMaxBodySize: "64mb" },
   // Фото отдаются через оптимизатор Next: под ширину экрана и в WebP, исходники любого размера (до 12 МБ из CRM)
   images: {
     localPatterns: [{ pathname: "/images/**", search: "" }, { pathname: "/uploads/**", search: "" }],
