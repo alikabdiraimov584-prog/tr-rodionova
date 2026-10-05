@@ -37,7 +37,8 @@ export default async function PressPage() {
     ["Продавец", `${seller.name}${seller.inn ? `, ИНН ${seller.inn}` : ""}`],
     ["Сайт", absolute("/")],
   ];
-  const boilerplate = `${brand.name} — ${(brand.description || "премиальная женская одежда из натуральных волокон").replace(/\.$/, "")}. Марка основана в ${brand.foundedYear || "2019"} году${brand.founder ? ` дизайнером ${brand.founder}` : ""}; ${brand.city || "Москва"}. Продаёт напрямую: сайт ${absolute("/").replace(/^https?:\/\//, "").replace(/\/$/, "")}, примерка курьером в Москве и Санкт-Петербурге${seller.showroom ? `, шоурум по адресу ${seller.showroom}` : ""}.`;
+  // имя основательницы не склоняется: оно приходит из настроек как есть
+  const boilerplate = `${brand.name} — ${(brand.description || "премиальная женская одежда из натуральных волокон").replace(/\.$/, "")}. Марка основана в ${brand.foundedYear || "2019"} году${brand.founder ? `, основательница и дизайнер — ${brand.founder}` : ""}, город — ${brand.city || "Москва"}. Продаёт напрямую: сайт ${absolute("/").replace(/^https?:\/\//, "").replace(/\/$/, "")}, примерка курьером в Москве и Санкт-Петербурге${seller.showroom ? `, шоурум по адресу ${seller.showroom}` : ""}.`;
   // «Издание, дата — https://…» по строке; строка без ссылки показывается как есть
   const press = brand.pressLinks.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const m = l.match(/^(.*?)\s*[—–-]\s*(https?:\/\/\S+)$/); return m ? { title: m[1] || m[2], url: m[2] } : { title: l, url: "" }; });
   return (
