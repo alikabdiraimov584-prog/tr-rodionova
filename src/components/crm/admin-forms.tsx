@@ -14,7 +14,7 @@ export function LedgerForm() {
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 md:items-end xl:grid-cols-[200px_140px_150px_1fr_1.5fr_auto]">
       <label><span className="label">Статья</span>
-        <select name="type" className="input py-2">
+        <select aria-label="Тип" name="type" className="input py-2">
           <option value="EXPENSE_MARKETING">Маркетинг</option>
           <option value="EXPENSE_PRODUCTION">Производство</option>
           <option value="EXPENSE_SALARY">Зарплаты</option>
@@ -44,7 +44,7 @@ export function StaffForm() {
       <label><span className="label">Рабочий email</span><input name="email" type="email" className="input py-2" /></label>
       <label><span className="label">Телефон</span><input name="phone" className="input py-2" /></label>
       <label><span className="label">Роль</span>
-        <select name="role" defaultValue="SUPPORT" className="input py-2"><option value="SUPPORT">Поддержка</option><option value="MANAGER">Менеджер</option><option value="ADMIN">Администратор</option></select>
+        <select aria-label="Роль" name="role" defaultValue="SUPPORT" className="input py-2"><option value="SUPPORT">Поддержка</option><option value="MANAGER">Менеджер</option><option value="ADMIN">Администратор</option></select>
       </label>
       <button className="btn-primary btn-sm" disabled={pending}>Создать</button>
       <div className="sm:col-span-2 md:col-span-3 xl:col-span-6"><Msg s={state} /></div>

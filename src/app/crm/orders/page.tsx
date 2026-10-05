@@ -54,7 +54,7 @@ export default async function CrmOrders({ searchParams }: PageProps<"/crm/orders
           <input name="q" defaultValue={q} placeholder="№, имя, email, телефон, трек" className="input w-full py-2 sm:w-72" />
         </form>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
           <thead><tr><th>№</th><th>Дата</th><th>Клиент</th><th>Уровень</th><th>Шт.</th><th>Доставка</th><th>Статус</th><th className="text-right">Сумма</th></tr></thead>
           <tbody>

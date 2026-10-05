@@ -104,7 +104,7 @@ export default async function Finance({ searchParams }: PageProps<"/crm/finance"
         </div>
       </div>
 
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <div className="p-5 pb-2"><Eyebrow>Отчёт о прибылях и убытках</Eyebrow></div>
         <table className="table text-xs">
           <thead><tr><th>Статья</th>{rows.map((r) => <th key={r.key} className="text-right">{r.label}</th>)}<th className="text-right">Итого</th></tr></thead>
@@ -148,7 +148,7 @@ export default async function Finance({ searchParams }: PageProps<"/crm/finance"
         <div className="mt-3"><LedgerForm /></div>
       </div>
 
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <div className="flex flex-wrap items-center gap-2 p-5 pb-2">
           <Eyebrow>Проводки</Eyebrow>
           <Link href={qs("/crm/finance", { months })} className={`badge ${!type ? "border-ink bg-ink text-ivory" : "border-line"}`}>Все</Link>

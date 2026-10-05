@@ -42,7 +42,7 @@ export function LookItemAddForm({ lookId, products }: { lookId: string; products
   return (
     <form action={action} className="grid gap-2 md:grid-cols-[1.4fr_1fr_auto]">
       <input type="hidden" name="lookId" value={lookId} />
-      <select name="productId" defaultValue="" className="input py-2" required>
+      <select aria-label="Товар" name="productId" defaultValue="" className="input py-2" required>
         <option value="">Выберите товар</option>
         {products.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}
       </select>
@@ -84,7 +84,7 @@ export function ArticleForm({ article, products, covers }: { article?: ArticleDa
       <label className="md:col-span-2"><span className="label">Текст статьи — Markdown (## заголовки, **жирный**, списки через «- »)</span><textarea name="body" defaultValue={article?.body ?? ""} rows={18} required className="input font-mono text-xs leading-relaxed" /></label>
       <label className="md:col-span-2">
         <span className="label">Вещи из статьи (Ctrl/Cmd — несколько)</span>
-        <select name="productIds" multiple defaultValue={article?.productIds ?? []} className="input h-40">
+        <select aria-label="Товары" name="productIds" multiple defaultValue={article?.productIds ?? []} className="input h-40">
           {products.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}
         </select>
       </label>

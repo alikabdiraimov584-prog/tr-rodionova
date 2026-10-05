@@ -37,7 +37,7 @@ export default async function Movements({ searchParams }: PageProps<"/crm/stock/
         ))}
         <form className="w-full sm:ml-auto sm:w-auto">{type && <input type="hidden" name="type" value={type} />}<input name="q" defaultValue={q} placeholder="Артикул или товар" className="input w-full py-2 sm:w-60" /></form>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
           <thead><tr><th>Дата</th><th>Операция</th><th>Товар</th><th className="text-right">Кол-во</th><th className="text-right">Себест. ед.</th><th>Основание</th><th>Сотрудник</th></tr></thead>
           <tbody>

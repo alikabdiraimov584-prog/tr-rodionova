@@ -43,7 +43,7 @@ export default async function Campaigns() {
       {campaigns.length === 0 ? (
         <Empty title="Рассылок ещё нет" action={<Link href="/crm/campaigns/new" className="btn-primary">Создать первую</Link>}>Начните с готового сегмента: «Сгорают баллы» или «Спящие».</Empty>
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="card overflow-x-auto" tabIndex={0}>
           <table className="table">
             <thead><tr><th>Рассылка</th><th>Канал</th><th>Статус</th><th className="text-right">Аудитория</th><th className="text-right">Доставлено</th><th className="text-right">Клики</th><th className="text-right">Заказы</th><th className="text-right">Выручка</th><th>Дата</th><th /></tr></thead>
             <tbody>

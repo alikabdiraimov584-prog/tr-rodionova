@@ -79,7 +79,7 @@ export default async function CampaignPage({ params }: PageProps<"/crm/campaigns
           <pre className="mt-2 whitespace-pre-wrap font-sans text-sm">{c.text}</pre>
           {link && <p className="mt-3 text-xs text-muted">Ссылка: /go/{link.slug} → {link.targetPath}</p>}
         </div>
-        <div className="card overflow-x-auto">
+        <div className="card overflow-x-auto" tabIndex={0}>
           <div className="p-5 pb-2"><Eyebrow>Получатели</Eyebrow></div>
           {c.recipients.length === 0 ? <p className="p-5 text-sm text-muted">Список сформируется при отправке.</p> : (
             <table className="table">

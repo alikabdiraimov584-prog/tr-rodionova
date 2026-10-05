@@ -68,7 +68,7 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <label><span className="label">Название рассылки</span><input name="name" defaultValue={c?.name} required className="input py-2" placeholder="Закрытый показ AW26" /></label>
             <label><span className="label">Канал</span>
-              <select name="channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="input py-2">
+              <select aria-label="Канал" name="channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="input py-2">
                 {CHANNELS.map((ch) => <option key={ch} value={ch}>{CHANNEL[ch].label}</option>)}
               </select>
             </label>
@@ -124,16 +124,16 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
             <label><span className="label">Регистрация за N дней</span><input name="registeredDays" type="number" defaultValue={seg.registeredDays ?? ""} onChange={num("registeredDays")} className="input py-2" /></label>
             <label><span className="label">Баллы сгорают в N дней</span><input name="pointsExpiringDays" type="number" defaultValue={seg.pointsExpiringDays ?? ""} onChange={num("pointsExpiringDays")} className="input py-2" /></label>
             <label><span className="label">Месяц рождения</span>
-              <select name="birthdayMonth" value={seg.birthdayMonth ?? ""} onChange={(e) => setSeg((s) => ({ ...s, birthdayMonth: Number(e.target.value) || undefined }))} className="input py-2"><option value="">Любой</option>{Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{new Date(2026, i, 1).toLocaleDateString("ru-RU", { month: "long" })}</option>)}</select>
+              <select aria-label="Месяц рождения" name="birthdayMonth" value={seg.birthdayMonth ?? ""} onChange={(e) => setSeg((s) => ({ ...s, birthdayMonth: Number(e.target.value) || undefined }))} className="input py-2"><option value="">Любой</option>{Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{new Date(2026, i, 1).toLocaleDateString("ru-RU", { month: "long" })}</option>)}</select>
             </label>
             <label><span className="label">Покупали товар</span>
-              <select name="productBought" value={seg.productBought ?? ""} onChange={(e) => setSeg((s) => ({ ...s, productBought: e.target.value || undefined }))} className="input py-2"><option value="">—</option>{opts.products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+              <select aria-label="Купленный товар" name="productBought" value={seg.productBought ?? ""} onChange={(e) => setSeg((s) => ({ ...s, productBought: e.target.value || undefined }))} className="input py-2"><option value="">—</option>{opts.products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
             </label>
             <label><span className="label">Покупали категорию</span>
-              <select name="categoryBought" value={seg.categoryBought ?? ""} onChange={(e) => setSeg((s) => ({ ...s, categoryBought: e.target.value || undefined }))} className="input py-2"><option value="">—</option>{opts.categories.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+              <select aria-label="Купленная категория" name="categoryBought" value={seg.categoryBought ?? ""} onChange={(e) => setSeg((s) => ({ ...s, categoryBought: e.target.value || undefined }))} className="input py-2"><option value="">—</option>{opts.categories.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
             </label>
             <label><span className="label">Смотрели товар (30 дн.)</span>
-              <select name="viewedProductId" value={seg.viewedProductId ?? ""} onChange={(e) => setSeg((s) => ({ ...s, viewedProductId: e.target.value || undefined }))} className="input py-2"><option value="">—</option>{opts.products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+              <select aria-label="Просмотренный товар" name="viewedProductId" value={seg.viewedProductId ?? ""} onChange={(e) => setSeg((s) => ({ ...s, viewedProductId: e.target.value || undefined }))} className="input py-2"><option value="">—</option>{opts.products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
             </label>
           </div>
           <div className="flex flex-wrap gap-5 text-sm">

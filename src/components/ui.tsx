@@ -36,7 +36,7 @@ const toneClass: Record<Tone, string> = {
   success: "border-success/20 bg-success/10 text-success",
   warning: "border-warning/20 bg-warning/10 text-warning",
   danger: "border-danger/20 bg-danger/10 text-danger",
-  gold: "border-champagne-dark/40 bg-champagne/30 text-champagne-dark",
+  gold: "border-champagne-dark/40 bg-champagne/30 text-champagne-ink",
 };
 
 export function Badge({ tone = "neutral", children, className = "" }: { tone?: Tone; children: ReactNode; className?: string }) {

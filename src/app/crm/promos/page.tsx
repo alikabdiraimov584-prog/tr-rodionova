@@ -17,7 +17,7 @@ export default async function Promos() {
     <div className="space-y-6">
       <PageTitle title="Промокоды">Промокоды не суммируются между собой. Баллы можно списать дополнительно к промокоду.</PageTitle>
       <div className="card p-5"><PromoForm /></div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
           <thead><tr><th>Код</th><th>Условия</th><th>Период</th><th className="text-right">Использований</th><th className="text-right">Выручка</th><th>Статус</th><th /></tr></thead>
           <tbody>

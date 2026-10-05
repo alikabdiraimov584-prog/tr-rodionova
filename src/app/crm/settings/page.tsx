@@ -79,7 +79,7 @@ export default async function Settings() {
                 {DAYS.map((d, i) => <label key={d} className="flex gap-1"><input type="checkbox" name="workDays" value={i + 1} defaultChecked={support.workDays.includes(i + 1)} className="accent-black" />{d}</label>)}
               </div>
               <label className="flex gap-2 text-sm"><input type="checkbox" name="autoReply" defaultChecked={support.autoReply} className="accent-black" /> Автоответ в нерабочее время</label>
-              <textarea name="autoReplyText" rows={3} defaultValue={support.autoReplyText} className="input" />
+              <textarea name="autoReplyText" aria-label="Текст автоответа" rows={3} defaultValue={support.autoReplyText} className="input" />
             </SettingsForm>
           </div>
         </div>

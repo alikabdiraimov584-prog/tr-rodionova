@@ -119,7 +119,7 @@ export function SimulateForm() {
   const [state, action, pending] = useActionState(simulateInboundAction, undefined);
   return (
     <form action={action} className="grid gap-2 md:grid-cols-[140px_1fr_1fr_2fr_auto]">
-      <select name="channel" className="input py-2" defaultValue="TELEGRAM">
+      <select aria-label="Канал" name="channel" className="input py-2" defaultValue="TELEGRAM">
         {Object.entries(CHANNEL).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
       </select>
       <input name="name" placeholder="Имя" className="input py-2" />

@@ -73,7 +73,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
         </div>
       </div>
 
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <div className="flex flex-wrap items-center gap-2 p-5 pb-2">
           <Eyebrow>Источники трафика</Eyebrow>
           {DIMS.map((d) => <Link key={d.key} href={qs("/crm/analytics", { days, dim: d.key })} className={`badge ${dim === d.key ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>{d.label}</Link>)}
@@ -100,7 +100,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <div className="card overflow-x-auto">
+        <div className="card overflow-x-auto" tabIndex={0}>
           <div className="p-5 pb-2"><Eyebrow>Интерес к товарам</Eyebrow></div>
           <table className="table">
             <thead><tr><th>Товар</th><th className="text-right">Просмотры</th><th className="text-right">В корзину</th><th className="text-right">Избранное</th><th className="text-right">Ждут</th></tr></thead>
@@ -131,7 +131,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
           <p className="mt-1 text-xs text-muted">Короткая ссылка для сторис, блогеров, QR-кодов в шоуруме и рассылок. Считает клики, визиты, заказы и выручку.</p>
         </div>
         <TrackingLinkForm />
-        <div className="-mx-5 overflow-x-auto px-5">
+        <div className="-mx-5 overflow-x-auto px-5" tabIndex={0}>
         <table className="table">
           <thead><tr><th>Ссылка</th><th>Метки</th><th className="text-right">Клики</th><th className="text-right">Визиты</th><th className="text-right">Заказы</th><th className="text-right">Выручка</th><th /></tr></thead>
           <tbody>

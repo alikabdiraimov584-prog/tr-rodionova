@@ -41,7 +41,7 @@ export default async function ContentPage({ searchParams }: PageProps<"/crm/cont
         (looks.length === 0 ? (
           <Empty title="Образов пока нет" action={<Link href="/crm/content/looks/new" className="btn-primary btn-sm">Создать образ</Link>} />
         ) : (
-          <div className="card overflow-x-auto">
+          <div className="card overflow-x-auto" tabIndex={0}>
             <table className="table">
               <thead><tr><th>Образ</th><th>Сезон</th><th>Адрес</th><th className="text-right">Вещей</th><th className="text-right">Порядок</th><th>Статус</th><th /></tr></thead>
               <tbody>
@@ -65,7 +65,7 @@ export default async function ContentPage({ searchParams }: PageProps<"/crm/cont
         (articles.length === 0 ? (
           <Empty title="Статей пока нет" action={<Link href="/crm/content/articles/new" className="btn-primary btn-sm">Написать статью</Link>} />
         ) : (
-          <div className="card overflow-x-auto">
+          <div className="card overflow-x-auto" tabIndex={0}>
             <table className="table">
               <thead><tr><th>Статья</th><th>Рубрика</th><th>Адрес</th><th className="text-right">Товаров</th><th>Публикация</th><th>Статус</th><th /></tr></thead>
               <tbody>

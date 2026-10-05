@@ -65,7 +65,7 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
         </form>
         <details className="relative ml-auto">
           <summary className="-mr-2 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg px-2 text-sm hover:bg-white/10">
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-[#5e8e3e] text-[0.7rem] font-bold">{initials}</span>
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-[#3f6b2a] text-[0.7rem] font-bold">{initials}</span>
             <span className="hidden sm:inline">{user.firstName}</span>
           </summary>
           <div className="absolute right-0 mt-1 w-56 rounded-xl bg-white p-2 text-sm text-ink shadow-lg">

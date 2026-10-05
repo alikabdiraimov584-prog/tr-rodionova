@@ -68,7 +68,7 @@ export function PromoForm() {
     <form action={action} className="grid gap-3 md:grid-cols-4 md:items-end">
       <label><span className="label">Код</span><input name="code" placeholder="PRIVE15" className="input py-2 uppercase" /></label>
       <label><span className="label">Тип</span>
-        <select name="type" className="input py-2"><option value="PERCENT">Скидка, %</option><option value="FIXED">Скидка, ₽</option><option value="FREE_SHIPPING">Бесплатная доставка</option></select>
+        <select aria-label="Тип" name="type" className="input py-2"><option value="PERCENT">Скидка, %</option><option value="FIXED">Скидка, ₽</option><option value="FREE_SHIPPING">Бесплатная доставка</option></select>
       </label>
       <label><span className="label">Размер</span><input name="value" placeholder="10" className="input py-2" /></label>
       <label><span className="label">Мин. сумма, ₽</span><input name="minSubtotal" placeholder="0" className="input py-2" /></label>

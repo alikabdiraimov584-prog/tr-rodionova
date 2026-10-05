@@ -58,7 +58,7 @@ export default async function CrmGiftCards({ searchParams }: PageProps<"/crm/gif
           <input name="q" defaultValue={q} placeholder="Код, покупатель, получатель" className="input w-full py-2 sm:w-72" />
         </form>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
           <thead><tr><th>Код</th><th className="text-right">Номинал</th><th className="text-right">Остаток</th><th>Статус</th><th>Покупатель</th><th>Получатель</th><th>Срок</th><th /></tr></thead>
           <tbody>

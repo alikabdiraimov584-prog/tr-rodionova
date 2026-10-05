@@ -47,7 +47,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
         </div>
         <div className="mt-4"><ImageUpload productId={p.id} /></div>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <div className="p-5 pb-2"><Eyebrow>Варианты (размер × цвет)</Eyebrow></div>
         <table className="table">
           <thead><tr><th>Артикул</th><th>Размер</th><th>Цвет</th><th className="text-right">Остаток</th><th className="text-right">Резерв</th><th className="text-right">Ждут</th><th>Цена / штрихкод / цвет</th></tr></thead>

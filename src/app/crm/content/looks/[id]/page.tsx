@@ -52,7 +52,7 @@ export default async function LookEdit({ params }: PageProps<"/crm/content/looks
         }
       />
       <div className="card p-6"><LookForm look={look} covers={coverList} /></div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <div className="flex items-center justify-between p-5 pb-2">
           <Eyebrow>Состав образа · {look.items.length} вещей · {formatMoney(total)}</Eyebrow>
         </div>

@@ -40,14 +40,14 @@ export function AddItemForm({ selectionId, products, preferredSize }: { selectio
       <input type="hidden" name="selectionId" value={selectionId} />
       <label className="block">
         <span className="label">Товар</span>
-        <select name="productId" value={productId} onChange={(e) => setProductId(e.target.value)} className="input py-2" required>
+        <select aria-label="Товар" name="productId" value={productId} onChange={(e) => setProductId(e.target.value)} className="input py-2" required>
           <option value="">Выберите из каталога</option>
           {products.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.price}</option>)}
         </select>
       </label>
       <label className="block">
         <span className="label">Рекомендуемый размер{preferredSize ? ` (в профиле: ${preferredSize})` : ""}</span>
-        <select key={productId} name="variantId" defaultValue={defaultVariant} className="input py-2" disabled={!product}>
+        <select aria-label="Вариант" key={productId} name="variantId" defaultValue={defaultVariant} className="input py-2" disabled={!product}>
           <option value="">Без рекомендации</option>
           {product?.variants.map((v) => (
             <option key={v.id} value={v.id}>{v.size}{v.color ? ` · ${v.color}` : ""}{v.available <= 0 ? " — нет в наличии" : ""}</option>

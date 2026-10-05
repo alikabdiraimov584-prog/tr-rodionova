@@ -36,7 +36,7 @@ export default async function Staff() {
         <Eyebrow>Новый сотрудник</Eyebrow>
         <div className="mt-3"><StaffForm /></div>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
           <thead><tr><th>Сотрудник</th><th>Роль</th><th>Статус</th><th className="text-right">Диалогов в работе</th><th className="text-right">Ответов за 7 дней</th><th className="text-right">Задач</th><th>Последний вход</th><th /></tr></thead>
           <tbody>
@@ -47,7 +47,7 @@ export default async function Staff() {
                   <form action={updateStaffAction} className="flex gap-1">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="op" value="role" />
-                    <select name="role" defaultValue={s.role} className="border border-line bg-white px-2 py-1 text-xs">
+                    <select aria-label="Роль" name="role" defaultValue={s.role} className="border border-line bg-white px-2 py-1 text-xs">
                       <option value="SUPPORT">{ROLE.SUPPORT}</option><option value="MANAGER">{ROLE.MANAGER}</option><option value="ADMIN">{ROLE.ADMIN}</option>
                     </select>
                     <SubmitButton className="text-xs underline">ок</SubmitButton>
@@ -79,7 +79,7 @@ export default async function Staff() {
           </tbody>
         </table>
       </div>
-      <div className="card overflow-x-auto p-5">
+      <div className="card overflow-x-auto p-5" tabIndex={0}>
         <Eyebrow>Права ролей</Eyebrow>
         <table className="table mt-3 text-xs">
           <thead><tr><th>Раздел</th><th className="text-center">Поддержка</th><th className="text-center">Менеджер</th><th className="text-center">Администратор</th></tr></thead>

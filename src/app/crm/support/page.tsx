@@ -134,11 +134,11 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
             <form className="flex flex-wrap gap-2">
               <input type="hidden" name="view" value={view} />
               <input name="q" defaultValue={q} placeholder="Поиск по имени, тексту" className="input min-w-0 flex-1 basis-40 py-1.5 text-xs" />
-              <select name="channel" defaultValue={channel ?? ""} className="min-h-10 border border-line bg-white px-1 text-xs">
+              <select aria-label="Канал" name="channel" defaultValue={channel ?? ""} className="min-h-10 border border-line bg-white px-1 text-xs">
                 <option value="">Все</option>
                 {Object.entries(CHANNEL).map(([k, v]) => <option key={k} value={k}>{v.short}</option>)}
               </select>
-              <select name="status" defaultValue={status} className="min-h-10 border border-line bg-white px-1 text-xs">
+              <select aria-label="Статус" name="status" defaultValue={status} className="min-h-10 border border-line bg-white px-1 text-xs">
                 <option value="active">Активные</option>
                 <option value="OPEN">Ждут ответа</option>
                 <option value="PENDING">Ждём клиента</option>
@@ -196,7 +196,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
                   <Badge tone={CONVERSATION_STATUS[conv.status].tone}>{CONVERSATION_STATUS[conv.status].label}</Badge>
                   <form action={updateConversationAction} className="flex gap-1">
                     <input type="hidden" name="conversationId" value={conv.id} />
-                    <select name="assigneeId" defaultValue={conv.assignee?.id ?? ""} className="min-h-9 border border-line bg-white px-2 py-1 text-xs">
+                    <select aria-label="Ответственный" name="assigneeId" defaultValue={conv.assignee?.id ?? ""} className="min-h-9 border border-line bg-white px-2 py-1 text-xs">
                       <option value="">Без ответственного</option>
                       {staff.map((s) => <option key={s.id} value={s.id}>{s.firstName}</option>)}
                     </select>

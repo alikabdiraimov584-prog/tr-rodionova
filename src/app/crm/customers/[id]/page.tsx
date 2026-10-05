@@ -74,7 +74,7 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
 
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <div className="min-w-0 space-y-6">
-          <div className="card overflow-x-auto">
+          <div className="card overflow-x-auto" tabIndex={0}>
             <div className="p-4 pb-0"><Eyebrow>Заказы</Eyebrow></div>
             <table className="table">
               <thead><tr><th>№</th><th>Дата</th><th>Состав</th><th>Статус</th><th className="text-right">Сумма</th></tr></thead>
@@ -93,7 +93,7 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
             {c.orders.length === 0 && <p className="p-4 text-sm text-muted">Заказов нет</p>}
           </div>
 
-          <div className="card overflow-x-auto">
+          <div className="card overflow-x-auto" tabIndex={0}>
             <div className="p-4 pb-0"><Eyebrow>Движение баллов</Eyebrow></div>
             <table className="table">
               <tbody>

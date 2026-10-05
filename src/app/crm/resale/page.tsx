@@ -47,7 +47,7 @@ export default async function ResaleList({ searchParams }: PageProps<"/crm/resal
       {requests.length === 0 ? (
         <Empty title="Заявок нет" />
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="card overflow-x-auto" tabIndex={0}>
           <table className="table">
             <thead>
               <tr><th>Дата</th><th>Клиентка</th><th>Вещь</th><th>Состояние</th><th className="text-right">Цена покупки</th><th className="text-right">Предложение</th><th>Статус</th></tr>

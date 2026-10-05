@@ -31,7 +31,7 @@
   --bg: #f1f2f4;
   --panel: #ffffff;
   --ink: #1f2328;
-  --muted: #6b7078;
+  --muted: #5f6570; /* контраст ≥ 4.5:1 на фоне CRM */
   --line: #e3e5e9;
   --line-soft: #eceef1;
   --sand: #f1f2f4;

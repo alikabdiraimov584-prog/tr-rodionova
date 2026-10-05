@@ -44,7 +44,7 @@ export function ListForm({ id, condition, suggestedPrice }: { id: string; condit
         </label>
         <label className="block">
           <span className="label">Состояние</span>
-          <select name="condition" defaultValue={condition ?? ""} className="input py-2" required>
+          <select aria-label="Состояние" name="condition" defaultValue={condition ?? ""} className="input py-2" required>
             <option value="" disabled>Выберите</option>
             {RESALE_CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>

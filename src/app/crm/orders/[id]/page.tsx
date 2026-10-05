@@ -47,7 +47,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="min-w-0 space-y-6">
-          <div className="card overflow-x-auto">
+          <div className="card overflow-x-auto" tabIndex={0}>
             <table className="table">
               <thead><tr><th>Товар</th><th>Артикул</th><th>Размер</th><th>Кол-во</th><th>Возврат</th><th className="text-right">Цена</th><th className="text-right">Себест.</th></tr></thead>
               <tbody>

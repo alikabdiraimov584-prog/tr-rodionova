@@ -34,13 +34,13 @@ export function ProductForm({ p, categories, collections }: { p?: P; categories:
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <label><span className="label">Категория</span>
-          <select name="categoryId" defaultValue={p?.categoryId ?? ""} className="input"><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select aria-label="Категория" name="categoryId" defaultValue={p?.categoryId ?? ""} className="input"><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         </label>
         <label><span className="label">Коллекция</span>
-          <select name="collectionId" defaultValue={p?.collectionId ?? ""} className="input"><option value="">—</option>{collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select aria-label="Коллекция" name="collectionId" defaultValue={p?.collectionId ?? ""} className="input"><option value="">—</option>{collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         </label>
         <label><span className="label">Статус</span>
-          <select name="status" defaultValue={p?.status ?? "DRAFT"} className="input"><option value="DRAFT">Черновик</option><option value="ACTIVE">В продаже</option><option value="ARCHIVED">Архив</option></select>
+          <select aria-label="Статус" name="status" defaultValue={p?.status ?? "DRAFT"} className="input"><option value="DRAFT">Черновик</option><option value="ACTIVE">В продаже</option><option value="ARCHIVED">Архив</option></select>
         </label>
       </div>
       <label className="md:col-span-2"><span className="label">Описание</span><textarea name="description" defaultValue={p?.description ?? ""} rows={3} className="input" /></label>
@@ -83,13 +83,13 @@ export function StockOperationForm({ variants, preset }: { variants: { id: strin
   return (
     <form action={action} className="grid gap-3 md:grid-cols-[1.6fr_170px_110px_1fr_auto] md:items-end">
       <label><span className="label">Позиция</span>
-        <select name="variantId" defaultValue={preset ?? ""} className="input py-2">
+        <select aria-label="Вариант" name="variantId" defaultValue={preset ?? ""} className="input py-2">
           <option value="">Выберите товар и размер</option>
           {variants.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
         </select>
       </label>
       <label><span className="label">Операция</span>
-        <select name="op" value={op} onChange={(e) => setOp(e.target.value)} className="input py-2">
+        <select aria-label="Операция" name="op" value={op} onChange={(e) => setOp(e.target.value)} className="input py-2">
           <option value="receipt">Приход</option>
           <option value="writeoff">Списание</option>
           <option value="adjust">Инвентаризация</option>

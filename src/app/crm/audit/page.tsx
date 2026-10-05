@@ -26,7 +26,7 @@ export default async function Audit({ searchParams }: PageProps<"/crm/audit">) {
         <a href="/crm/audit" className={`badge ${!action ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>Все</a>
         {groups.map((g) => <a key={g.g} href={qs("/crm/audit", { action: g.g })} className={`badge ${action === g.g ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>{g.g} · {Number(g.n)}</a>)}
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table text-xs">
           <thead><tr><th>Время</th><th>Кто</th><th>Действие</th><th>Объект</th><th>Детали</th></tr></thead>
           <tbody>

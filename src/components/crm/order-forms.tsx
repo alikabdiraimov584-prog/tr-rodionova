@@ -13,7 +13,7 @@ export function StatusForm({ orderId, next, tracking }: { orderId: string; next:
       <input type="hidden" name="orderId" value={orderId} />
       <label className="block">
         <span className="label">Новый статус</span>
-        <select name="status" className="input" defaultValue={next[0]}>
+        <select aria-label="Статус" name="status" className="input" defaultValue={next[0]}>
           {next.map((s) => <option key={s} value={s}>{ORDER_STATUS[s].label}</option>)}
         </select>
       </label>

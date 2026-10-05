@@ -32,7 +32,7 @@ export function TaskForm({ customerId, staff }: { customerId?: string; staff: { 
       <input name="title" placeholder="Что сделать" className="input py-2" required />
       <div className="grid grid-cols-2 gap-2">
         <input name="dueAt" type="date" className="input py-2" />
-        <select name="assigneeId" className="input py-2" defaultValue="">
+        <select aria-label="Ответственный" name="assigneeId" className="input py-2" defaultValue="">
           <option value="">Мне</option>
           {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>

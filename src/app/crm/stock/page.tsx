@@ -55,7 +55,7 @@ export default async function Stock({ searchParams }: PageProps<"/crm/stock">) {
         </form>
         <Link href={qs("/crm/stock", { q, low: low ? undefined : 1 })} className={`badge ${low ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>Заканчивается (≤ 1)</Link>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
           <thead><tr><th>Товар</th><th>Артикул</th><th>Размер</th><th className="text-right">На складе</th><th className="text-right">Резерв</th><th className="text-right">Свободно</th><th className="text-right">Продано 30 дн.</th><th className="text-right">Ждут</th><th className="text-right">Себест. остатка</th><th /></tr></thead>
           <tbody>

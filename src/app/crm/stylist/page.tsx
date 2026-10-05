@@ -45,7 +45,7 @@ export default async function StylistList({ searchParams }: PageProps<"/crm/styl
           {selections.length === 0 ? (
             <Empty title="Подборок нет">Создайте первую: выберите клиентку справа.</Empty>
           ) : (
-            <div className="card overflow-x-auto">
+            <div className="card overflow-x-auto" tabIndex={0}>
               <table className="table">
                 <thead><tr><th>Подборка</th><th>Клиентка</th><th>Стилист</th><th>Статус</th><th className="text-right">Вещей</th><th>Дата</th></tr></thead>
                 <tbody>
@@ -70,7 +70,7 @@ export default async function StylistList({ searchParams }: PageProps<"/crm/styl
           <form action="/crm/stylist/new" className="space-y-2">
             <label className="block">
               <span className="label">Клиентка</span>
-              <select name="customer" className="input py-2" required defaultValue="">
+              <select aria-label="Клиентка" name="customer" className="input py-2" required defaultValue="">
                 <option value="" disabled>Выберите</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>{c.lastName ? `${c.lastName} ${c.firstName}` : c.firstName} · {c.email}{c.preferredSize ? ` · ${c.preferredSize}` : ""}</option>

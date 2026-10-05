@@ -32,7 +32,7 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
       <div className="min-w-0 space-y-6">
         <div className="card space-y-4 p-5">
           <div className="eyebrow">Покупатель</div>
-          <select name="customerId" value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input">
+          <select aria-label="Клиентка" name="customerId" value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input">
             <option value="">Новый / без карты Circle</option>
             {customers.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
@@ -64,12 +64,12 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
         </div>
         <div className="card grid gap-4 p-5 sm:grid-cols-2">
           <label><span className="label">Оплата</span>
-            <select name="paymentMethod" className="input" defaultValue="CARD">
+            <select aria-label="Способ оплаты" name="paymentMethod" className="input" defaultValue="CARD">
               {Object.entries(PAYMENT_METHOD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
           <label><span className="label">Получение</span>
-            <select name="deliveryMethod" className="input" defaultValue="PICKUP">
+            <select aria-label="Способ доставки" name="deliveryMethod" className="input" defaultValue="PICKUP">
               {Object.entries(DELIVERY_METHOD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </label>
