@@ -5,6 +5,7 @@ import path from "node:path";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { db } from "@/lib/db";
 import { activeIntegration, recordCheck } from "@/lib/integrations/store";
+import { sendAlert } from "@/lib/alerts";
 
 /**
  * Резервные копии базы. Дамп делает сервис `backup` в docker compose (pg_dump каждую ночь) в общий том,
@@ -86,6 +87,7 @@ export async function uploadLatestBackup(): Promise<{ ok: boolean; uploaded?: st
   if (!local) {
     await saveState({ lastError: "локальный дамп не найден: проверьте сервис backup", lastErrorAt: new Date().toISOString() });
     await recordCheck("s3_backup", false, "локальный дамп не найден");
+    await sendAlert("копия базы не загружена в S3: на сервере нет дампа. Проверьте CRM → Интеграции → «Резервные копии в S3».", { key: "backup-no-dump" });
     return { ok: false, error: "локальный дамп не найден" };
   }
   const st = await state();
@@ -104,6 +106,7 @@ export async function uploadLatestBackup(): Promise<{ ok: boolean; uploaded?: st
   } catch (e) {
     const msg = e instanceof Error ? e.message : "S3 недоступен";
     await saveState({ lastError: msg, lastErrorAt: new Date().toISOString() });
+    await sendAlert(`не удалось загрузить копию базы в S3: ${msg}`, { key: "backup-upload" });
     await recordCheck("s3_backup", false, msg);
     return { ok: false, error: msg };
   }
@@ -144,4 +147,21 @@ export async function backupStatus() {
     objects: st.objects ?? null,
     error: st.lastError ?? null,
   };
+}
+
+const STALE_HOURS = 36;
+
+/**
+ * Ежедневная проверка копий (вызывается после загрузки в S3): дамп не сделался или старше STALE_HOURS,
+ * копия в S3 при включённой интеграции старше STALE_HOURS — тревога владельцу.
+ */
+export async function checkBackupHealth() {
+  const st = await backupStatus();
+  const problems: string[] = [];
+  const age = (iso: string | null) => (iso ? (Date.now() - Date.parse(iso)) / 3_600_000 : Infinity);
+  if (st.localStatus.startsWith("failed")) problems.push(`дамп базы не сделан: ${st.localStatus}`);
+  else if (age(st.localAt) > STALE_HOURS) problems.push(st.localAt ? `последний дамп базы сделан ${Math.round(age(st.localAt))} ч назад` : `дампов базы на сервере нет (${st.localStatus})`);
+  if (st.s3Enabled && age(st.uploadedAt) > STALE_HOURS) problems.push(st.uploadedAt ? `копия в S3 старше ${Math.round(age(st.uploadedAt))} ч` : "копия в S3 ещё ни разу не загружалась");
+  if (problems.length) await sendAlert(`резервные копии: ${problems.join("; ")}.`, { key: "backup-health" });
+  return { problems };
 }

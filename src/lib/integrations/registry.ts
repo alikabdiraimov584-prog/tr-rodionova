@@ -151,6 +151,27 @@ export const INTEGRATIONS: IntegrationDef[] = [
     },
   },
   {
+    key: "telegram_alerts",
+    group: "service",
+    name: "Тревоги в Telegram",
+    summary: "Сообщение владельцу, когда что-то сломалось: не прошло автообновление, не сделался дамп базы, устарела копия в S3, упали ночные задачи.",
+    effect: "Тревоги приходят в указанный чат; одна и та же проблема не повторяется чаще раза в 6 часов. Внешняя проверка «Check site» в GitHub шлёт свои тревоги отдельно (секреты в GitHub).",
+    fields: [
+      { key: "botToken", label: "Токен бота", secret: true, hint: "Создайте бота у @BotFather в Telegram и скопируйте токен" },
+      { key: "chatId", label: "Chat id", placeholder: "123456789", hint: "Напишите боту любое сообщение, затем откройте https://api.telegram.org/bot<токен>/getUpdates и возьмите chat → id; для группы id начинается с минуса" },
+    ],
+    guide: [
+      "В Telegram откройте @BotFather, команда /newbot, назовите бота, скопируйте токен.",
+      "Напишите боту «Привет» (или добавьте его в группу и напишите там).",
+      "Откройте в браузере https://api.telegram.org/bot<токен>/getUpdates и найдите chat → id.",
+      "Вставьте токен и chat id, нажмите «Проверить подключение»: в чат придёт пробное сообщение. Включите интеграцию.",
+    ],
+    test: async (c) => {
+      const { testTelegramAlerts } = await import("@/lib/alerts");
+      return testTelegramAlerts(c);
+    },
+  },
+  {
     key: "cdek",
     group: "delivery",
     name: "СДЭК",
