@@ -67,18 +67,18 @@ check("остаток на конец месяца считается", /Ост�
 
 // экспорт
 for (const rep of ["ledger", "cashflow", "pnl"]) {
-  const r = await ctx.request.get(`${base}/crm/finance/export?months=6&report=${rep}`);
-  const txt = await r.text();
-  check(`экспорт ${rep}`, r.status() === 200 && txt.split("\n").length > 1 && /text\/csv/.test(r.headers()["content-type"] ?? ""), `${r.status()} ${txt.split("\n")[0].slice(0, 60)}`);
+  // запрос из страницы: cookie сессии уходит как в браузере
+  const r = await p.evaluate(async (u) => { const res = await fetch(u, { credentials: "include" }); return { status: res.status, type: res.headers.get("content-type") ?? "", text: await res.text() }; }, `${base}/crm/finance/export?months=6&report=${rep}`);
+  check(`экспорт ${rep}`, r.status === 200 && r.text.split("\n").length > 1 && /text\/csv/.test(r.type), `${r.status} ${r.text.split("\n")[0].slice(0, 60)}`);
 }
 
 // удаление и сброс настроек
 await p.goto(`${base}/crm/finance?tab=expenses`);
 p.once("dialog", (d) => d.accept());
 await p.locator("tr", { hasText: "ООО Тест-Арендодатель" }).first().locator("button", { hasText: "удалить" }).click();
-await p.waitForTimeout(1500);
-t = await body();
-check("расход удалён", !t.includes("ООО Тест-Арендодатель"));
+let gone = false;
+for (let i = 0; i < 10 && !gone; i++) { await p.waitForTimeout(1000); await p.goto(`${base}/crm/finance?tab=expenses`); gone = (await p.locator("tr", { hasText: "ООО Тест-Арендодатель" }).count()) === 0; }
+check("расход удалён", gone);
 await p.goto(`${base}/crm/finance?tab=cashflow`);
 await sf.locator('input[name="openingBalance"]').fill(""); await sf.locator('input[name="openingDate"]').fill(""); await sf.locator("button").last().click(); await p.waitForTimeout(800);
 await p.screenshot({ path: "/tmp/claude-0/-home-user/47d9bdc7-3d40-50f3-8f07-a9b3eaf7f2d7/scratchpad/finance-cashflow.png", fullPage: true });
