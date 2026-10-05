@@ -1,0 +1,30 @@
+name: Peek page
+# Посмотреть страницу боевого сайта снаружи: заголовок, картинки и JSON-LD. Нужен, когда с рабочего места сайт не открыть.
+on:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: "Путь на сайте, например /product/plate-tr-halter"
+        required: true
+        default: "/"
+jobs:
+  peek:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Страница
+        env:
+          DOMAIN: tr-rodionova.ru
+          P: ${{ github.event.inputs.path }}
+        run: |
+          html=$(curl -sS -m 30 -L "https://$DOMAIN$P")
+          echo "== статус"; curl -sS -m 30 -o /dev/null -w '%{http_code}\n' "https://$DOMAIN$P"
+          echo "== заголовок"; echo "$html" | grep -oE '<title>[^<]*' | head -1
+          echo "== картинки (src и url из /_next/image)"
+          echo "$html" | grep -oE '<img[^>]*' | grep -oE '(src|srcset)="[^"]*"' | sed 's/&amp;/\&/g' | grep -oE '(url=[^&" ]*|/[^" ,]*\.(jpg|jpeg|png|webp|avif|svg))' | sed 's/^url=//' | python3 -c 'import sys,urllib.parse; seen=[]
+          for l in sys.stdin:
+              v=urllib.parse.unquote(l.strip())
+              if v and v not in seen: seen.append(v)
+          print("\n".join(seen) if seen else "нет картинок")'
+          echo "== JSON-LD image"
+          echo "$html" | grep -oE '"image":\[?"[^"]*"' | head -5
+          echo "== версия"; curl -sS -m 30 "https://$DOMAIN/api/health" | head -c 200; echo
