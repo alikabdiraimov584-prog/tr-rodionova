@@ -151,7 +151,7 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
         {preview && preview.noAddress > 0 && <p className="text-xs text-warning">{preview.noAddress} без адреса в этом канале — будут пропущены</p>}
         <ul className="space-y-1 text-xs text-muted">{preview?.sample.map((s) => <li key={s}>{s}</li>)}{preview && preview.total > preview.sample.length && <li>… и ещё {preview.total - preview.sample.length}</li>}</ul>
         <div className="border-t border-line pt-4">
-          <label><span className="label">Запланировать на</span><input name="scheduledAt" type="datetime-local" defaultValue={c?.scheduledAt ?? ""} className="input py-2" /></label>
+          <label><span className="label">Запланировать на</span><input aria-label="Дата отправки" name="scheduledAt" type="datetime-local" defaultValue={c?.scheduledAt ?? ""} className="input py-2" /></label>
         </div>
         {state?.error && <p className="text-sm text-danger">{state.error}</p>}
         <div className="grid gap-2">

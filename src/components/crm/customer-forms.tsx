@@ -15,7 +15,7 @@ export function PointsForm({ userId }: { userId: string }) {
     <form action={action} className="space-y-2">
       <input type="hidden" name="userId" value={userId} />
       <div className="grid grid-cols-[110px_1fr] gap-2">
-        <input name="amount" type="number" placeholder="+500 / −500" className="input py-2" />
+        <input aria-label="Сумма" name="amount" type="number" placeholder="+500 / −500" className="input py-2" />
         <input name="comment" placeholder="Причина (видна клиенту)" className="input py-2" />
       </div>
       <button className="btn-outline btn-sm" disabled={pending}>Провести</button>
@@ -31,7 +31,7 @@ export function TaskForm({ customerId, staff }: { customerId?: string; staff: { 
       {customerId && <input type="hidden" name="customerId" value={customerId} />}
       <input name="title" placeholder="Что сделать" className="input py-2" required />
       <div className="grid grid-cols-2 gap-2">
-        <input name="dueAt" type="date" className="input py-2" />
+        <input aria-label="Срок" name="dueAt" type="date" className="input py-2" />
         <select aria-label="Ответственный" name="assigneeId" className="input py-2" defaultValue="">
           <option value="">Мне</option>
           {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -53,7 +53,7 @@ export function CustomerEditForm({ c }: { c: { id: string; tags: string[]; sourc
         <label className="block"><span className="label">Телефон</span><input name="phone" defaultValue={c.phone ?? ""} className="input py-2" /></label>
         <label className="block"><span className="label">Размер</span><input name="preferredSize" defaultValue={c.preferredSize ?? ""} className="input py-2" /></label>
         <label className="block"><span className="label">Источник</span><input name="source" defaultValue={c.source ?? ""} className="input py-2" /></label>
-        <label className="block"><span className="label">Дата рождения</span><input name="birthday" type="date" defaultValue={c.birthday ?? ""} className="input py-2" /></label>
+        <label className="block"><span className="label">Дата рождения</span><input aria-label="Дата рождения" name="birthday" type="date" defaultValue={c.birthday ?? ""} className="input py-2" /></label>
       </div>
       <button className="btn-outline btn-sm" disabled={pending}>Сохранить</button>
       <Msg s={state} />

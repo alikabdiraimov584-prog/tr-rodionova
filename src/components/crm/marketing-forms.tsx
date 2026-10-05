@@ -74,8 +74,8 @@ export function PromoForm() {
       <label><span className="label">Мин. сумма, ₽</span><input name="minSubtotal" placeholder="0" className="input py-2" /></label>
       <label><span className="label">Лимит использований</span><input name="maxUses" placeholder="без лимита" className="input py-2" /></label>
       <label><span className="label">На клиента</span><input name="perUser" defaultValue="1" className="input py-2" /></label>
-      <label><span className="label">С</span><input name="startsAt" type="date" className="input py-2" /></label>
-      <label><span className="label">По</span><input name="endsAt" type="date" className="input py-2" /></label>
+      <label><span className="label">С</span><input aria-label="Начало" name="startsAt" type="date" className="input py-2" /></label>
+      <label><span className="label">По</span><input aria-label="Окончание" name="endsAt" type="date" className="input py-2" /></label>
       <div className="flex items-center gap-3 md:col-span-4"><button className="btn-primary btn-sm" disabled={pending}>Создать</button><Msg s={state} /></div>
     </form>
   );

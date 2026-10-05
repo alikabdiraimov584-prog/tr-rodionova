@@ -26,7 +26,7 @@ export function LedgerForm() {
         </select>
       </label>
       <label><span className="label">Сумма, ₽</span><input name="amount" className="input py-2" /></label>
-      <label><span className="label">Дата</span><input name="date" type="date" className="input py-2" /></label>
+      <label><span className="label">Дата</span><input aria-label="Дата" name="date" type="date" className="input py-2" /></label>
       <label><span className="label">Категория</span><input name="category" placeholder="Блогеры, ткани…" className="input py-2" /></label>
       <label><span className="label">Комментарий</span><input name="comment" className="input py-2" /></label>
       <button className="btn-primary btn-sm" disabled={pending}>Добавить</button>

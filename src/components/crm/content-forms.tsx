@@ -80,7 +80,7 @@ export function ArticleForm({ article, products, covers }: { article?: ArticleDa
         <input name="coverUrl" list="article-covers" defaultValue={article?.coverUrl ?? ""} placeholder="/images/placeholder/hero.svg" className="input font-mono text-xs" />
         <datalist id="article-covers">{covers.map((c) => <option key={c} value={c} />)}</datalist>
       </label>
-      <label><span className="label">Дата публикации (пусто — черновик)</span><input name="publishedAt" type="datetime-local" defaultValue={article?.publishedAt ?? ""} className="input" /></label>
+      <label><span className="label">Дата публикации (пусто — черновик)</span><input aria-label="Дата публикации" name="publishedAt" type="datetime-local" defaultValue={article?.publishedAt ?? ""} className="input" /></label>
       <label className="md:col-span-2"><span className="label">Текст статьи — Markdown (## заголовки, **жирный**, списки через «- »)</span><textarea name="body" defaultValue={article?.body ?? ""} rows={18} required className="input font-mono text-xs leading-relaxed" /></label>
       <label className="md:col-span-2">
         <span className="label">Вещи из статьи (Ctrl/Cmd — несколько)</span>

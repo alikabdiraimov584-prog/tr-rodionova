@@ -70,7 +70,7 @@ export function VariantForm({ productId }: { productId: string }) {
       <input name="colorHex" placeholder="#A89B8C" className="input py-2" />
       <input name="sku" placeholder="Артикул (авто)" className="input py-2" />
       <input name="price" placeholder="Цена, ₽" className="input py-2" />
-      <input name="stock" type="number" min={0} placeholder="Приход" className="input py-2" />
+      <input aria-label="Остаток" name="stock" type="number" min={0} placeholder="Приход" className="input py-2" />
       <button className="btn-outline btn-sm" disabled={pending}>Добавить</button>
       <div className="md:col-span-7"><Msg s={state} /></div>
     </form>
@@ -95,7 +95,7 @@ export function StockOperationForm({ variants, preset }: { variants: { id: strin
           <option value="adjust">Инвентаризация</option>
         </select>
       </label>
-      <label><span className="label">{op === "adjust" ? "Факт, шт." : "Кол-во"}</span><input name="qty" type="number" min={0} required className="input py-2" /></label>
+      <label><span className="label">{op === "adjust" ? "Факт, шт." : "Кол-во"}</span><input aria-label="Количество" name="qty" type="number" min={0} required className="input py-2" /></label>
       <label><span className="label">{op === "receipt" ? "Себестоимость ед., ₽ / поставщик" : "Причина"}</span>
         <div className="flex gap-2">
           {op === "receipt" && <input name="unitCost" placeholder="по карточке" className="input w-32 py-2" />}

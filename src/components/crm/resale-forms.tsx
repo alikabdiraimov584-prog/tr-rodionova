@@ -17,7 +17,7 @@ export function OfferForm({ id, suggested, maxByCondition, current, note }: { id
       <input type="hidden" name="id" value={id} />
       <label className="block">
         <span className="label">Баллов за вещь</span>
-        <input name="points" type="number" min={1} step={1} defaultValue={current ?? suggested} className="input py-2" required />
+        <input aria-label="Баллы" name="points" type="number" min={1} step={1} defaultValue={current ?? suggested} className="input py-2" required />
       </label>
       <p className="text-xs text-muted">
         Расчёт от цены покупки: {maxByCondition.map((m) => `${m.label.toLowerCase()} — до ${m.pct}% = ${m.points.toLocaleString("ru-RU")} б.`).join(", ")}. По указанному состоянию: <span className="text-ink">{suggested.toLocaleString("ru-RU")}</span>.
@@ -40,7 +40,7 @@ export function ListForm({ id, condition, suggestedPrice }: { id: string; condit
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
           <span className="label">Цена на витрине, ₽</span>
-          <input name="price" type="number" min={1} step={1} defaultValue={suggestedPrice} className="input py-2" required />
+          <input aria-label="Цена" name="price" type="number" min={1} step={1} defaultValue={suggestedPrice} className="input py-2" required />
         </label>
         <label className="block">
           <span className="label">Состояние</span>

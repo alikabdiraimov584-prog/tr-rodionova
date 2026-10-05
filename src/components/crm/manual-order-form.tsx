@@ -54,7 +54,7 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
                   <option value="">Выберите товар и размер</option>
                   {variants.map((v) => <option key={v.id} value={v.id} disabled={v.available <= 0}>{v.label} · {formatMoney(v.price)} · своб. {v.available}</option>)}
                 </select>
-                <input name={`qty_${i}`} type="number" min={1} max={v?.available ?? 10} value={r.qty} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, qty: Math.max(1, Number(e.target.value)) } : x)))} className="input" />
+                <input aria-label="Количество" name={`qty_${i}`} type="number" min={1} max={v?.available ?? 10} value={r.qty} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, qty: Math.max(1, Number(e.target.value)) } : x)))} className="input" />
                 <input name={`price_${i}`} value={r.price} placeholder={v ? `${v.price / 100} ₽` : "Цена, ₽"} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} className="input" />
                 <button type="button" className="btn-ghost btn-sm" onClick={() => setRows(rows.length > 1 ? rows.filter((_, j) => j !== i) : rows)}>✕</button>
               </div>

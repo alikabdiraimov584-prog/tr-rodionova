@@ -51,7 +51,7 @@ export default async function Channels() {
             <div key={ch} className="card space-y-4 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs text-white" style={{ background: CHANNEL[ch].color }}>{CHANNEL[ch].short}</span>
+                  <span aria-hidden="true" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs text-white" style={{ background: CHANNEL[ch].color }}>{CHANNEL[ch].short}</span>
                   <span className="serif text-xl">{CHANNEL[ch].label}</span>
                 </div>
                 <Badge tone={i?.enabled ? (i.lastError ? "warning" : "success") : "neutral"}>{i?.enabled ? (i.lastError ? "Есть ошибки" : "Подключён") : "Выключен"}</Badge>
