@@ -154,6 +154,17 @@ async function crawl(role, viewport, startPaths, login) {
     const broken = await page.evaluate(() => [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.getAttribute("src")).map((i) => i.currentSrc || i.src).slice(0, 5)).catch(() => []);
     for (const src of broken) note("image", `${role} ${path}`, `битое фото: ${src.replace(base, "")}`);
     await checkA11y(page, role, path);
+    // разметка schema.org: каждый блок должен парситься, а шаблоны товара, статьи и FAQ — нести свой тип
+    if (role.startsWith("site")) {
+      const ld = await page.evaluate(() => [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => s.textContent || "")).catch(() => []);
+      const types = [];
+      for (const src of ld) {
+        try { const d = JSON.parse(src); for (const it of Array.isArray(d) ? d : [d]) types.push(it["@type"]); } catch (e) { note("jsonld", `${role} ${path}`, `разметка не парсится: ${e.message.slice(0, 80)}`); }
+      }
+      const expect = asked.startsWith("/product/") ? "Product" : asked.startsWith("/journal/") && !asked.includes("feed") ? "Article" : asked === "/faq" ? "FAQPage" : null;
+      if (expect && !types.includes(expect)) note("jsonld", `${role} ${path}`, `нет разметки ${expect} (есть: ${types.join(", ") || "ничего"})`);
+      if (!types.includes("Organization")) note("jsonld", `${role} ${path}`, "нет разметки Organization в макете");
+    }
     // ссылки
     const links = await page.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href"))).catch(() => []);
     for (const h of links) {
@@ -382,6 +393,6 @@ for (const [kind, list] of Object.entries(grouped)) {
   console.log(`\n== ${kind}: ${list.length}`);
   for (const p of list.slice(0, 40)) console.log(`  ${p.where} — ${p.detail}`);
 }
-const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image", "crm-leak", "a11y"].includes(p.kind));
+const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image", "crm-leak", "a11y", "jsonld"].includes(p.kind));
 console.log(`\nИТОГ: ${blocking.length === 0 ? "ОШИБОК НЕТ" : `${blocking.length} ошибок`} (замечаний всего ${problems.length})`);
 process.exit(blocking.length === 0 ? 0 : 1);
