@@ -120,6 +120,9 @@ async function crawl(role, viewport, startPaths, login) {
     for (const e of errors) note("console", `${role} ${path}`, e);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1).catch(() => false);
     if (overflow) note("layout", `${role} ${path}`, "горизонтальная прокрутка");
+    // битые фото: <img> с src, у которого загрузка завершилась без размеров (файл или оптимизатор не ответили); ленивые ещё не грузились и не считаются
+    const broken = await page.evaluate(() => [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.getAttribute("src")).map((i) => i.currentSrc || i.src).slice(0, 5)).catch(() => []);
+    for (const src of broken) note("image", `${role} ${path}`, `битое фото: ${src.replace(base, "")}`);
     // ссылки
     const links = await page.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href"))).catch(() => []);
     for (const h of links) {
@@ -345,6 +348,6 @@ for (const [kind, list] of Object.entries(grouped)) {
   console.log(`\n== ${kind}: ${list.length}`);
   for (const p of list.slice(0, 40)) console.log(`  ${p.where} — ${p.detail}`);
 }
-const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect"].includes(p.kind));
+const blocking = problems.filter((p) => ["http", "app-error", "navigation", "journey", "login", "crm", "redirect", "image"].includes(p.kind));
 console.log(`\nИТОГ: ${blocking.length === 0 ? "ОШИБОК НЕТ" : `${blocking.length} ошибок`} (замечаний всего ${problems.length})`);
 process.exit(blocking.length === 0 ? 0 : 1);
