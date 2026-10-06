@@ -1,39 +1,52 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { uploadProductImagesAction } from "@/app/actions/crm-upload";
 
 const MAX_FILE = 12 * 1024 * 1024;
 const MAX_TOTAL = 60 * 1024 * 1024;
 const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} МБ`;
 
-/** Загрузка фото в карточку вещи. Размер проверяется ещё в браузере, чтобы не ждать ответа сервера ради «файл слишком большой». */
+/**
+ * Загрузка фото в карточку вещи одной кнопкой: «Загрузить фото» открывает выбор файлов (на телефоне — галерею
+ * или камеру), выбранные кадры сразу уходят на сервер. Размер проверяется ещё в браузере, чтобы не ждать ответа
+ * сервера ради «файл слишком большой».
+ */
 export function ImageUpload({ productId }: { productId: string }) {
   const [state, action, pending] = useActionState(uploadProductImagesAction, undefined);
-  const [picked, setPicked] = useState<{ count: number; total: number; tooBig: string[] }>({ count: 0, total: 0, tooBig: [] });
-  const blocked = picked.tooBig.length > 0 || picked.total > MAX_TOTAL;
+  const [problem, setProblem] = useState<string | null>(null);
+  const form = useRef<HTMLFormElement>(null);
+  const id = `files-${productId}`;
   return (
-    <form action={action} className="flex flex-wrap items-center gap-3">
+    <form ref={form} action={action} className="flex flex-wrap items-center gap-3">
       <input type="hidden" name="productId" value={productId} />
       <input
-        id="files"
+        id={id}
         name="files"
         type="file"
-        aria-label="Файлы фото"
         accept="image/jpeg,image/png,image/webp,image/avif"
         multiple
-        className="text-xs"
+        disabled={pending}
+        className="peer sr-only"
         onChange={(e) => {
-          const files = Array.from(e.currentTarget.files ?? []);
-          setPicked({ count: files.length, total: files.reduce((s, f) => s + f.size, 0), tooBig: files.filter((f) => f.size > MAX_FILE).map((f) => f.name) });
+          const input = e.currentTarget;
+          const files = Array.from(input.files ?? []);
+          if (files.length === 0) return;
+          const tooBig = files.filter((f) => f.size > MAX_FILE).map((f) => f.name);
+          const total = files.reduce((s, f) => s + f.size, 0);
+          const error = tooBig.length ? `Больше 12 МБ: ${tooBig.join(", ")} — уменьшите или загрузите по одному` : total > MAX_TOTAL ? `Всего ${mb(total)}: за раз не больше 60 МБ, загрузите частями` : null;
+          setProblem(error);
+          if (error) input.value = "";
+          else form.current?.requestSubmit();
         }}
       />
-      <button className="btn-outline btn-sm" disabled={pending || blocked}>{pending ? "Загружаем…" : "Загрузить фото"}</button>
-      {picked.count > 0 && !blocked && <span className="text-xs text-muted">{picked.count} файл(ов), {mb(picked.total)}</span>}
-      {picked.tooBig.length > 0 && <span className="text-xs text-danger">Больше 12 МБ: {picked.tooBig.join(", ")} — уменьшите или загрузите по одному</span>}
-      {picked.tooBig.length === 0 && picked.total > MAX_TOTAL && <span className="text-xs text-danger">Всего {mb(picked.total)}: за раз не больше 60 МБ, загрузите частями</span>}
-      {state?.error && <span className="text-xs text-danger">{state.error}</span>}
-      {state?.message && <span className="text-xs text-success">{state.message}</span>}
+      <label htmlFor={id} aria-disabled={pending} className={`btn-primary btn-sm cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink ${pending ? "pointer-events-none opacity-60" : ""}`}>
+        {pending ? "Загружаем…" : "Загрузить фото"}
+      </label>
+      <span className="text-xs text-muted">JPG, PNG, WEBP или AVIF до 12 МБ, можно несколько сразу</span>
+      {problem && <span className="text-xs text-danger" role="alert">{problem}</span>}
+      {!problem && state?.error && <span className="text-xs text-danger" role="alert">{state.error}</span>}
+      {!problem && state?.message && <span className="text-xs text-success" role="status">{state.message}</span>}
     </form>
   );
 }

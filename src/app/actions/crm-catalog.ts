@@ -63,12 +63,12 @@ export async function saveProductAction(_: ActionState, formData: FormData): Pro
   let productId = id;
   try {
     if (id) {
+      // фото существующей вещи меняются только в блоке «Фотографии»: сохранение карточки их не трогает
       await db.product.update({ where: { id }, data });
     } else {
       productId = (await db.product.create({ data })).id;
+      if (images.length) await db.productImage.createMany({ data: images.map((url, i) => ({ productId, url, alt: data.name, order: i })) });
     }
-    await db.productImage.deleteMany({ where: { productId } });
-    if (images.length) await db.productImage.createMany({ data: images.map((url, i) => ({ productId, url, alt: data.name, order: i })) });
   } catch (e) {
     const msg = errorMessage(e);
     return { error: msg.includes("Unique") ? "Артикул или адрес страницы уже заняты" : msg };

@@ -49,7 +49,9 @@ export function ProductForm({ p, categories, collections }: { p?: P; categories:
         <label><span className="label">Уход</span><input name="care" defaultValue={p?.care ?? ""} className="input" /></label>
         <label><span className="label">Производство</span><input name="madeIn" defaultValue={p?.madeIn ?? "Europe"} className="input" /></label>
       </div>
-      <label className="md:col-span-2"><span className="label">Фото — по одному URL в строке</span><textarea name="images" defaultValue={(p?.images ?? []).join("\n")} rows={3} className="input font-mono text-xs" /></label>
+      {/* у существующей вещи фото ведутся в блоке «Фотографии» (загрузка, порядок, удаление): поле со ссылками
+          там перезаписывало бы только что загруженные кадры при сохранении карточки */}
+      {!p?.id && <label className="md:col-span-2"><span className="label">Фото — по одному URL в строке (необязательно, можно загрузить после создания)</span><textarea name="images" rows={3} className="input font-mono text-xs" /></label>}
       <div className="flex flex-wrap items-center gap-6 md:col-span-2">
         <label className="flex gap-2 text-sm"><input type="checkbox" name="isNew" defaultChecked={p?.isNew} className="accent-black" /> Новинка</label>
         <label className="flex gap-2 text-sm"><input type="checkbox" name="isFeatured" defaultChecked={p?.isFeatured} className="accent-black" /> На главной</label>
