@@ -50,15 +50,20 @@ async function main() {
     const stale = product.images.filter((i) => i.url.startsWith(prefix) && !wanted.includes(i.url));
     if (stale.length) await db.productImage.deleteMany({ where: { id: { in: stale.map((i) => i.id) } } });
     const have = new Set(product.images.map((i) => i.url));
-    // владелица уже ведёт фото в CRM (загружала свои или удаляла кадры): папка больше ничего не добавляет —
-    // удалённое в CRM не возвращается, — только убирает ссылки на исчезнувшие файлы
-    const removedInCrm = await db.auditLog.count({ where: { action: "product.imageRemove", entityId: product.id } });
-    const curated = removedInCrm > 0 || product.images.some((i) => i.url.startsWith("/uploads/"));
-    const missing = curated ? [] : wanted.filter((u) => !have.has(u));
+    // кадры, удалённые владелицей в CRM, из папки не возвращаются; новые файлы папки добавляются всегда,
+    // даже если фото вещи уже ведутся в CRM (загруженные через CRM остаются на своих местах)
+    const removed = await db.auditLog.findMany({ where: { action: "product.imageRemove", entityId: product.id }, select: { payload: true } });
+    const removedUrls = new Set(removed.map((r) => (r.payload as { url?: string } | null)?.url).filter((u): u is string => !!u));
+    const missing = wanted.filter((u) => !have.has(u) && !removedUrls.has(u));
     let order = product.images.filter((i) => !stale.includes(i)).reduce((m, i) => Math.max(m, i.order + 1), 0);
     if (missing.length) await db.productImage.createMany({ data: missing.map((url) => ({ productId: product.id, url, alt: product.name, order: order++ })) });
-    const crm = product.images.filter((i) => !i.url.startsWith(prefix)).length;
-    console.log(sku, "→ из папки", wanted.length, "добавлено", missing.length, "убрано", stale.length, crm ? `(из CRM: ${crm}, папка только убирает исчезнувшее)` : "");
+    // заглушки каталога уходят в конец галереи: настоящие кадры (из CRM и из папки) всегда впереди
+    const all = await db.productImage.findMany({ where: { productId: product.id }, orderBy: { order: "asc" } });
+    const sorted = [...all].sort((a, b) => Number(a.url.startsWith("/images/placeholder/")) - Number(b.url.startsWith("/images/placeholder/")));
+    for (const [i, img] of sorted.entries()) if (img.order !== i) await db.productImage.update({ where: { id: img.id }, data: { order: i } });
+    const crm = product.images.filter((i) => i.url.startsWith("/uploads/")).length;
+    const skipped = wanted.filter((u) => !have.has(u) && removedUrls.has(u)).length;
+    console.log(sku, "→ из папки", wanted.length, "добавлено", missing.length, "убрано", stale.length, crm ? `(из CRM: ${crm})` : "", skipped ? `(удалённых в CRM не возвращаем: ${skipped})` : "");
   }
 }
 main().finally(() => db.$disconnect());
