@@ -1,5 +1,6 @@
 // Привязывает фото из public/images/brand/<sku>/ к товарам (файлы по алфавиту = порядок галереи).
 // Использование: положите фото в public/images/brand/TR-SK-101/01.jpg, 02.jpg … и выполните `npx tsx scripts/attach-brand-photos.ts`.
+// Новый главный кадр: имя, которое по алфавиту идёт первым (например, 00-studio.jpg), — при добавлении он встанет первым.
 // Запускается при каждом старте контейнера. Фото, загруженные через CRM (/uploads/…), не трогает: добавляет только
 // недостающие файлы из папки и убирает ссылки на файлы, которых в папке больше нет.
 import "dotenv/config";
@@ -54,7 +55,15 @@ async function main() {
     const curated = product.images.some((i) => i.url.startsWith("/uploads/"));
     const missing = curated ? [] : wanted.filter((u) => !have.has(u));
     let order = product.images.filter((i) => !stale.includes(i)).reduce((m, i) => Math.max(m, i.order + 1), 0);
-    if (missing.length) await db.productImage.createMany({ data: missing.map((url) => ({ productId: product.id, url, alt: product.name, order: order++ })) });
+    if (missing.length) {
+      await db.productImage.createMany({ data: missing.map((url) => ({ productId: product.id, url, alt: product.name, order: order++ })) });
+      // в папку добавили кадры — порядок галереи снова по алфавиту файлов (кадр «00-…» встаёт первым);
+      // пока в папку ничего не добавляют, порядок, выставленный в CRM, не трогаем
+      const all = await db.productImage.findMany({ where: { productId: product.id }, orderBy: { order: "asc" } });
+      const folder = all.filter((i) => i.url.startsWith(prefix)).sort((a, b) => wanted.indexOf(a.url) - wanted.indexOf(b.url));
+      const rest = all.filter((i) => !i.url.startsWith(prefix));
+      await db.$transaction([...folder, ...rest].map((img, i) => db.productImage.update({ where: { id: img.id }, data: { order: i } })));
+    }
     const crm = product.images.filter((i) => !i.url.startsWith(prefix)).length;
     console.log(sku, "→ из папки", wanted.length, "добавлено", missing.length, "убрано", stale.length, crm ? `(из CRM: ${crm}, папка только убирает исчезнувшее)` : "");
   }
