@@ -35,6 +35,17 @@ export function canTransition(from: OrderStatus, to: OrderStatus) {
   return ORDER_TRANSITIONS[from].includes(to);
 }
 
+/**
+ * Возврат денег провайдер не делает сам: после проводки REFUND в ленте заказа появляется напоминание сотруднику
+ * провести возврат в кабинете ЮKassa / CloudPayments / Долями (для наличных и перевода — вручную).
+ */
+async function refundReminder(tx: Tx, orderId: string, amount: number, createdBy?: string | null) {
+  if (amount <= 0) return;
+  const paid = await tx.payment.findFirst({ where: { orderId, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"] } }, orderBy: { createdAt: "desc" } });
+  const where = paid?.method === "CARD" || paid?.method === "SBP" ? "в кабинете платёжного провайдера" : paid?.method === "INSTALLMENT" ? "через сервис рассрочки" : "переводом клиентке";
+  await addOrderEvent(tx, orderId, `К возврату клиентке ${Math.round(amount / 100).toLocaleString("ru-RU")} ₽: провести ${where} (автоматический возврат не подключён)`, null, createdBy);
+}
+
 export async function addOrderEvent(tx: Tx, orderId: string, message: string, status?: OrderStatus | null, createdBy?: string | null) {
   await tx.orderEvent.create({ data: { orderId, message, status: status ?? null, createdBy: createdBy ?? null } });
 }
@@ -425,6 +436,7 @@ export async function cancelOrder(orderId: string, opts: { reason?: string; crea
       );
       await tx.payment.updateMany({ where: { orderId, status: "SUCCEEDED" }, data: { status: "REFUNDED" } });
       await tx.ledgerEntry.create({ data: { type: "REFUND", amount: order.total, orderId, comment: `Отмена заказа №${order.number}`, createdBy: opts.createdBy } });
+      await refundReminder(tx, orderId, order.total, opts.createdBy);
       await reverseCogs(tx, order, order.items.filter((i) => !i.isPreorder).map((i) => ({ costPrice: i.costPrice, qty: i.quantity - i.returnedQty })), `Сторно себестоимости: отмена заказа №${order.number}`, opts.createdBy);
     }
     if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
@@ -457,6 +469,7 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
       const refund = Math.max(0, order.total - order.deliveryCost) - refundFor(order, alreadyReturned);
       await tx.payment.updateMany({ where: { orderId, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED"] } }, data: { status: "REFUNDED" } });
       if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
+      await refundReminder(tx, orderId, refund, opts.createdBy);
       await reverseCogs(tx, order, order.items.filter((i) => !i.isPreorder).map((i) => ({ costPrice: i.costPrice, qty: i.quantity - i.returnedQty })), `Сторно себестоимости: возврат по заказу №${order.number}`, opts.createdBy);
       if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
       // оплаченное сертификатом возвращается на сертификат
@@ -494,6 +507,7 @@ export async function partialReturn(orderId: string, lines: { orderItemId: strin
     if (value > 0) {
       const refund = refundFor(order, value);
       if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Частичный возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
+      await refundReminder(tx, orderId, refund, opts.createdBy);
       if (opts.restock !== false) {
         const byId = new Map(order.items.map((i) => [i.id, i]));
         await reverseCogs(
