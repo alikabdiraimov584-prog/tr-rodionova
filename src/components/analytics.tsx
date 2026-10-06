@@ -46,17 +46,15 @@ export function Analytics() {
   return (
     <>
       {/* Распорка под компактный баннер, чтобы он не перекрывал подвал и кнопки */}
-      <div aria-hidden className="h-24 sm:h-14" />
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ivory/95 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 text-[0.72rem] leading-snug backdrop-blur sm:py-2.5">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p className="min-w-0 flex-1 basis-60 text-muted">
-            Сайт ведёт обезличенную статистику посещений без передачи третьим лицам. С вашего согласия запоминаем ваш браузер между визитами и подключаем счётчик Яндекс Метрики.{" "}
-            <Link href="/privacy#section-14" className="underline">Подробнее</Link>
-          </p>
-          <div className="flex shrink-0 gap-2">
-            <button type="button" className="btn-ghost btn-sm !min-h-10 !py-1.5 !text-[0.68rem]" onClick={() => setConsent("necessary")}>Только необходимые</button>
-            <button type="button" className="btn-primary btn-sm !min-h-10 !py-1.5 !text-[0.68rem]" onClick={() => setConsent("all")}>Принять</button>
-          </div>
+      <div aria-hidden className="h-28 md:h-0" />
+      <div role="region" aria-label="Согласие на cookie" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ivory px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-[0.78rem] leading-snug md:inset-x-auto md:bottom-5 md:left-5 md:max-w-sm md:border md:p-5 md:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+        <p className="text-muted">
+          Ведём обезличенную статистику посещений. С вашего согласия запоминаем браузер между визитами и подключаем Яндекс Метрику.{" "}
+          <Link href="/privacy#section-14" className="text-ink underline underline-offset-2">Подробнее</Link>
+        </p>
+        <div className="mt-3 flex gap-2">
+          <button type="button" className="btn-outline btn-sm flex-1 !min-h-10" onClick={() => setConsent("necessary")}>Только необходимые</button>
+          <button type="button" className="btn-primary btn-sm flex-1 !min-h-10" onClick={() => setConsent("all")}>Принять</button>
         </div>
       </div>
     </>

@@ -14,13 +14,12 @@ export function SizeAdvisor({ product, user }: { product: AdvisorProduct; user: 
   const advice = user ? recommendSize(chart, user) : null;
   if (!advice) {
     return (
-      <div className="border border-dashed border-line px-4 py-3 text-xs text-muted">
-        <Link href={user ? "/account/profile" : `/login?next=/product/${product.slug}`} className="underline underline-offset-4 hover:text-ink">
-          Укажите мерки — подскажем размер
+      <p className="text-[0.78rem] text-muted">
+        Не знаете размер?{" "}
+        <Link href={user ? "/account/profile" : `/login?next=/product/${product.slug}`} className="text-ink underline underline-offset-4 hover:opacity-70">
+          Укажите мерки — подскажем
         </Link>
-        {" · "}
-        <Link href="/sizes" className="hover:text-ink">таблица размеров</Link>
-      </div>
+      </p>
     );
   }
   const tone = advice.fit === "точно" ? "text-success" : advice.fit === "нужна примерка" ? "text-warning" : "text-ink";

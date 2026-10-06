@@ -8,6 +8,9 @@ import { formatMoney, formatDate } from "@/lib/money";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductCard } from "@/components/shop/product-card";
 import { ProductGallery } from "@/components/shop/product-gallery";
+import { MobileBuyBar } from "@/components/shop/mobile-buy-bar";
+import { IconHeart } from "@/components/shop/icons";
+import { photoFirst } from "@/lib/photos";
 import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
 import { JsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd } from "@/lib/seo";
@@ -57,7 +60,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const pts = Math.floor((p.price * (tier?.cashbackPct ?? 3)) / 100 / 100);
   // «С этим носят»: вещи из тех же образов лукбука, иначе соседи по категории
   const lookMates = p.lookItems.flatMap((li) => li.look.items.map((it) => it.product)).filter((r, i, arr) => r.id !== p.id && r.status === "ACTIVE" && arr.findIndex((x) => x.id === r.id) === i).slice(0, 4);
-  const wornWith = lookMates.length > 0 ? lookMates : related;
+  const wornWith = lookMates.length > 0 ? lookMates : photoFirst(related);
   const rating = p.reviews.length ? p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length : null;
   const specs: [string, string | null | undefined][] = [
     ["Состав", p.composition],
@@ -72,93 +75,108 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const faq = productFaq(p, sizesAll, delivery, pts);
   const ld = productJsonLd(p, delivery, { hasStore: !!seller.showroom });
   return (
-    <div className="mx-auto max-w-[1440px] px-4 md:px-6">
+    <div className="mx-auto max-w-[1600px] md:px-5">
       <JsonLd data={[ld, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
-      <nav className="py-3 text-[0.66rem] uppercase tracking-[0.1em] text-muted [&_a]:inline-block [&_a]:py-1">
-        <Link href="/catalog" className="hover:text-ink">Каталог</Link>
-        {p.category && <> / <Link href={`/catalog?category=${p.category.slug}`} className="hover:text-ink">{p.category.name}</Link></>}
-        {p.isPreloved && <> / <Link href="/preloved" className="hover:text-ink">Pre-loved</Link></>}
-      </nav>
-      <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] lg:grid-cols-[1.4fr_1fr] lg:gap-10">
+      <div className="grid md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] md:gap-10 lg:gap-16">
         <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />
-        <div className="min-w-0 md:sticky md:top-32 md:self-start">
-          <div className="flex items-start justify-between gap-4">
-            <h1 className="min-w-0 text-xl">{p.name}</h1>
-            <div className="shrink-0 text-right text-base">{formatMoney(p.price)}{p.compareAt && <div className="text-xs text-muted line-through">{formatMoney(p.compareAt)}</div>}</div>
+        <div id="buy" className="min-w-0 scroll-mt-20 px-4 pt-6 md:sticky md:top-24 md:self-start md:px-0 md:pt-10 lg:max-w-[460px]">
+          <nav aria-label="Навигация" className="hidden text-[0.66rem] uppercase tracking-[0.12em] text-muted md:block [&_a]:hover:text-ink">
+            <Link href="/catalog">Каталог</Link>
+            {p.category && <> / <Link href={`/catalog?category=${p.category.slug}`}>{p.category.name}</Link></>}
+            {p.isPreloved && <> / <Link href="/preloved">Pre-loved</Link></>}
+          </nav>
+          <h1 className="mt-0 text-[1.15rem] uppercase tracking-[0.08em] md:mt-4 md:text-[1.35rem]">{p.name}</h1>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-[1.05rem]">{formatMoney(p.price)}</span>
+            {p.compareAt && <span className="text-muted line-through">{formatMoney(p.compareAt)}</span>}
+            {rating && <a href="#reviews" className="text-[0.75rem] text-muted underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
           </div>
-          <div className="mt-1 text-[0.68rem] uppercase tracking-[0.08em] text-muted">
-            {p.isPreorder ? "Предзаказ · " : ""}{p.isPreloved ? `Pre-loved · ${p.condition ?? ""} · ` : ""}+{pts.toLocaleString("ru-RU")} баллов Circle{rating ? ` · ★ ${rating.toFixed(1)} (${p.reviews.length})` : ""}
+          <div className="mt-1 text-[0.75rem] text-muted">+{pts.toLocaleString("ru-RU")} баллов Circle{p.isPreloved && p.condition ? ` · состояние: ${p.condition}` : ""}</div>
+          {p.isPreorder && <p className="mt-4 border-l-2 border-ink pl-3 text-[0.8rem]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
+          <div className="mt-6">
+            <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
+              <form action={toggleWishlistAction}>
+                <input type="hidden" name="productId" value={p.id} />
+                <input type="hidden" name="back" value={`/product/${p.slug}`} />
+                <button aria-label={inWishlist ? "Убрать из избранного" : "В избранное"} aria-pressed={!!inWishlist} className="flex h-12 w-12 items-center justify-center border border-line hover:border-ink"><IconHeart filled={!!inWishlist} /></button>
+              </form>
+            </AddToCart>
           </div>
-          <p className="mt-5 text-sm leading-relaxed text-ink/85">{p.description}</p>
-          {p.isPreorder && <p className="mt-3 border border-line bg-ivory px-3 py-2 text-xs text-ink/80">Предзаказ: вещь отшивается под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt)}` : "в течение 4–6 недель"}. Оплата при оформлении, баллы начисляются после получения.</p>}
-          <div className="mt-5"><SizeAdvisor product={p} user={user} /></div>
-          <div className="mt-4">
-            <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))} />
-          </div>
-          <ul className="mt-3 space-y-1 text-[0.78rem] text-ink/80">
-            <li>Курьер по Москве и области завтра, по России 2–7 дней</li>
-            <li>Примерка 15 минут перед покупкой: платите только за то, что подошло</li>
-            <li>Возврат 14 дней; для уровня Privé обратный забор бесплатный</li>
+          <div className="mt-3"><SizeAdvisor product={p} user={user} /></div>
+          <ul className="mt-5 grid grid-cols-3 gap-2 border-y border-line py-4 text-center text-[0.68rem] uppercase leading-snug tracking-[0.06em] text-muted">
+            <li>Примерка<br />курьером</li>
+            <li>Доставка<br />1–2 дня</li>
+            <li>Возврат<br />14 дней</li>
           </ul>
-          <div className="mt-3 flex gap-2">
-            <form action={toggleWishlistAction} className="flex-1">
-              <input type="hidden" name="productId" value={p.id} />
-              <input type="hidden" name="back" value={`/product/${p.slug}`} />
-              <button className="btn-outline w-full">{inWishlist ? "В избранном" : "В избранное"}</button>
-            </form>
-            <Link href="/sizes" className="btn-ghost shrink-0">Размеры</Link>
+          <div className="divide-y divide-line border-b border-line">
+            <details className="group" open>
+              <summary className="acc">Описание<span aria-hidden className="acc-mark">+</span></summary>
+              <p className="pb-5 text-[0.9rem] leading-relaxed text-ink/85">{p.description}</p>
+            </details>
+            <details className="group">
+              <summary className="acc">Состав и уход<span aria-hidden className="acc-mark">+</span></summary>
+              <dl className="space-y-2 pb-5 text-[0.85rem]">
+                {specs.filter(([, v]) => v).map(([k, v]) => <div key={k} className="grid grid-cols-[110px_1fr] gap-3"><dt className="text-muted">{k}</dt><dd>{v}</dd></div>)}
+              </dl>
+            </details>
+            <details className="group">
+              <summary className="acc">Доставка и возврат<span aria-hidden className="acc-mark">+</span></summary>
+              <div className="space-y-2 pb-5 text-[0.85rem] text-ink/85">
+                <p>Курьер с примеркой по Москве и Петербургу за 1–2 дня: 15 минут на примерку, платите только за то, что подошло. СДЭК по России — 2–7 дней.</p>
+                <p>Возврат 14 дней с момента получения. Для уровня Privé обратный забор бесплатный. <Link href="/delivery" className="underline underline-offset-4">Подробнее</Link></p>
+              </div>
+            </details>
+            {p.articles.length > 0 && (
+              <details className="group">
+                <summary className="acc">Читать в журнале<span aria-hidden className="acc-mark">+</span></summary>
+                <ul className="space-y-2 pb-5 text-[0.85rem]">
+                  {p.articles.map((a) => <li key={a.slug}><Link href={`/journal/${a.slug}`} className="underline underline-offset-4 hover:opacity-70">{a.title}</Link></li>)}
+                </ul>
+              </details>
+            )}
+            <details className="group">
+              <summary className="acc">Вопросы о вещи<span aria-hidden className="acc-mark">+</span></summary>
+              <dl className="space-y-4 pb-5 text-[0.85rem]">
+                {faq.map((f) => (
+                  <div key={f.q}>
+                    <dt className="font-medium">{f.q}</dt>
+                    <dd className="mt-1 text-ink/80">{f.a}{f.href && <> <Link href={f.href} className="underline underline-offset-4">Подробнее</Link></>}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
           </div>
-          <dl className="mt-6 divide-y divide-line border-y border-line text-[0.78rem]">
-            {specs.filter(([, v]) => v).map(([k, v]) => (
-              <div key={k} className="grid grid-cols-[90px_1fr] gap-3 py-2.5 sm:grid-cols-[110px_1fr]"><dt className="text-muted">{k}</dt><dd>{v}</dd></div>
-            ))}
-            <div className="grid grid-cols-[90px_1fr] gap-3 py-2.5 sm:grid-cols-[110px_1fr]"><dt className="text-muted">Доставка</dt><dd>Курьер с примеркой по Москве и Петербургу за 1–2 дня, СДЭК по России 2–7 дней. <Link href="/delivery" className="underline">Подробнее</Link></dd></div>
-            <div className="grid grid-cols-[90px_1fr] gap-3 py-2.5 sm:grid-cols-[110px_1fr]"><dt className="text-muted">Возврат</dt><dd>14 дней с момента получения. Для Privé — бесплатный обратный забор.</dd></div>
-          </dl>
-          {(p.lookItems.length > 0 || p.articles.length > 0) && (
-            <div className="mt-5 text-[0.72rem] text-muted">
-              {p.lookItems.map((li) => <div key={li.id}>В образе: <Link href={`/lookbook/${li.look.slug}`} className="text-ink underline">{li.look.title}</Link></div>)}
-              {p.articles.map((a) => <div key={a.slug}>В журнале: <Link href={`/journal/${a.slug}`} className="text-ink underline">{a.title}</Link></div>)}
+          {p.lookItems.length > 0 && (
+            <div className="mt-5 text-[0.78rem] text-muted">
+              {p.lookItems.map((li) => <div key={li.id}>В образе: <Link href={`/lookbook/${li.look.slug}`} className="text-ink underline underline-offset-4">{li.look.title}</Link></div>)}
             </div>
           )}
         </div>
       </div>
 
-      <section className="mt-16 border-t border-line pt-6">
-        <h2>Вопросы о вещи</h2>
-        <dl className="mt-4 grid gap-5 md:grid-cols-2">
-          {faq.map((f) => (
-            <div key={f.q}>
-              <dt className="font-medium">{f.q}</dt>
-              <dd className="mt-1 text-sm text-ink/85">
-                {f.a}
-                {f.href && <> <Link href={f.href} className="underline underline-offset-4">Подробнее</Link></>}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+      {wornWith.length > 0 && (
+        <section className="mt-20 px-1 md:px-0">
+          <h2 className="section-title mb-5 px-3 md:px-1">{lookMates.length > 0 ? "Собрать образ" : "Вам может понравиться"}</h2>
+          <div className="grid grid-cols-2 gap-x-1 md:grid-cols-4">{wornWith.map((r) => <ProductCard key={r.id} p={r} />)}</div>
+        </section>
+      )}
 
       {p.reviews.length > 0 && (
-        <section className="mt-16 border-t border-line pt-6">
-          <h2>Отзывы · {p.reviews.length}</h2>
-          <div className="mt-4 grid gap-1 sm:grid-cols-2 md:grid-cols-3">
+        <section id="reviews" className="mt-16 scroll-mt-20 px-4 md:px-1">
+          <h2 className="section-title">Отзывы · {p.reviews.length}</h2>
+          <div className="mt-5 grid gap-6 sm:grid-cols-2 md:grid-cols-3">
             {p.reviews.map((r) => (
-              <div key={r.id} className="border border-line p-4 text-sm">
-                <div className="text-[0.68rem] tracking-[0.1em] text-muted">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)} · {r.user.firstName}{r.user.height ? ` · рост ${r.user.height}` : ""}{r.user.preferredSize ? ` · размер ${r.user.preferredSize}` : ""}</div>
+              <div key={r.id} className="border-t border-line pt-4 text-[0.88rem]">
+                <div className="text-[0.72rem] text-muted">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)} · {r.user.firstName}{r.user.height ? ` · рост ${r.user.height}` : ""}{r.user.preferredSize ? ` · размер ${r.user.preferredSize}` : ""}</div>
                 <p className="mt-2">{r.text}</p>
-                <div className="mt-2 text-[0.68rem] text-muted">{formatDate(r.createdAt)}</div>
+                <div className="mt-2 text-[0.72rem] text-muted">{formatDate(r.createdAt)}</div>
               </div>
             ))}
           </div>
         </section>
       )}
-      {wornWith.length > 0 && (
-        <section className="mt-16 border-t border-line pt-6">
-          <h2 className="mb-3">С этим носят</h2>
-          <div className="grid grid-cols-2 gap-1 md:grid-cols-4">{wornWith.map((r) => <ProductCard key={r.id} p={r} />)}</div>
-        </section>
-      )}
+
+      <MobileBuyBar name={p.name} price={formatMoney(p.price)} label={p.isPreorder ? "Предзаказ" : "Выбрать размер"} />
     </div>
   );
 }

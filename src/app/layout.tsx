@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, Manrope } from "next/font/google";
+import { Golos_Text, Manrope } from "next/font/google";
 import "./globals.css";
 import { activeIntegration } from "@/lib/integrations/store";
 
-const grotesk = Hanken_Grotesk({ variable: "--font-grotesk", subsets: ["latin", "latin-ext"], weight: ["300", "400", "500"] });
+// Витрина: Golos Text — гротеск с полной кириллицей (прежний Hanken Grotesk кириллицы не имел, и русский текст шёл системным Arial)
+const golos = Golos_Text({ variable: "--font-golos", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600"] });
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"] });
 
 // CSP с nonce на каждый запрос: ни одна страница не может быть статической, иначе её скрипты останутся без nonce
@@ -37,7 +38,7 @@ const baseMetadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" data-scroll-behavior="smooth" className={`${grotesk.variable} ${manrope.variable} h-full antialiased`}>
+    <html lang="ru" data-scroll-behavior="smooth" className={`${golos.variable} ${manrope.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
