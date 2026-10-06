@@ -14,10 +14,17 @@ import { purgeGuestCarts } from "@/lib/guest-cart";
 export async function completeDeliveredOrders(now = new Date()) {
   const border = new Date(now.getTime() - RETURN_WINDOW_DAYS * 86_400_000);
   const due = await db.order.findMany({ where: { status: "DELIVERED", deliveredAt: { lte: border } }, select: { id: true } });
+  let done = 0;
   for (const o of due) {
-    await setOrderStatus(o.id, "COMPLETED", { note: `Срок возврата ${RETURN_WINDOW_DAYS} дней истёк, баллы начислены` });
+    // один проблемный заказ не должен останавливать завершение остальных и дневные задачи
+    try {
+      await setOrderStatus(o.id, "COMPLETED", { note: `Срок возврата ${RETURN_WINDOW_DAYS} дней истёк, баллы начислены` });
+      done++;
+    } catch (e) {
+      console.error("completeDeliveredOrders", o.id, e);
+    }
   }
-  return due.length;
+  return done;
 }
 
 /** Подарочные баллы ко дню рождения (раз в год, по уровню). */
@@ -116,23 +123,36 @@ export async function runHourlyJobs() {
 }
 
 export async function runDailyJobs(actorId: string | null = null) {
-  const completed = await completeDeliveredOrders();
-  const birthdays = await grantBirthdayBonuses();
-  const expired = await db.$transaction((tx) => expirePoints(tx), { timeout: 60_000 });
-  const tiers = await recalcAllTiers();
-  const campaigns = await runDueCampaigns(process.env.APP_URL ?? "https://tr-rodionova.ru");
-  const expiringNotified = await notifyExpiringPoints(7);
-  const cartReminders = await notifyAbandonedCarts();
-  const reviewRequests = await notifyReviewRequests();
-  const purged = await purgeRateLimits();
-  const guestCarts = await purgeGuestCarts();
-  const shipments = await syncAllCdekShipments();
+  // каждая задача изолирована: сбой одной (например, начисления по заказу) не отменяет остальные, ошибки попадают в итог
+  const errors: Record<string, string> = {};
+  const step = async <T,>(name: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await fn();
+    } catch (e) {
+      errors[name] = e instanceof Error ? e.message : String(e);
+      console.error("jobs.daily", name, e);
+      return fallback;
+    }
+  };
+  const completed = await step("completed", completeDeliveredOrders, 0);
+  const birthdays = await step("birthdays", grantBirthdayBonuses, 0);
+  const expired = await step("expired", () => db.$transaction((tx) => expirePoints(tx), { timeout: 60_000 }), 0);
+  const tiers = await step("tiers", recalcAllTiers, 0);
+  const campaigns = await step("campaigns", () => runDueCampaigns(process.env.APP_URL ?? "https://tr-rodionova.ru"), 0);
+  const expiringNotified = await step("expiringNotified", () => notifyExpiringPoints(7), 0);
+  const cartReminders = await step("cartReminders", notifyAbandonedCarts, 0);
+  const reviewRequests = await step("reviewRequests", notifyReviewRequests, 0);
+  const purged = await step("purged", purgeRateLimits, 0);
+  const guestCarts = await step("guestCarts", purgeGuestCarts, 0);
+  const shipments = await step("shipments", syncAllCdekShipments, { checked: 0, changed: 0 });
   // веб-аналитика старше 24 месяцев удаляется: срок хранения по политике ПДн
   const analyticsBorder = new Date(Date.now() - 730 * 86_400_000);
-  await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: analyticsBorder } } });
-  const oldSessions = await db.visitorSession.deleteMany({ where: { startedAt: { lt: analyticsBorder } } });
-  const hourly = await runHourlyJobs();
-  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, reviewRequests, ...hourly, purged, guestCarts, shipments, oldSessions: oldSessions.count };
+  const oldSessions = await step("oldSessions", async () => {
+    await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: analyticsBorder } } });
+    return (await db.visitorSession.deleteMany({ where: { startedAt: { lt: analyticsBorder } } })).count;
+  }, 0);
+  const hourly = await step("hourly", runHourlyJobs, {} as Awaited<ReturnType<typeof runHourlyJobs>>);
+  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, reviewRequests, ...hourly, purged, guestCarts, shipments, oldSessions, ...(Object.keys(errors).length ? { errors } : {}) };
   await audit(actorId, "jobs.daily", "System", null, result);
   return result;
 }

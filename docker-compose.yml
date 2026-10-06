@@ -11,6 +11,8 @@ services:
     env_file: .env
     environment:
       - PORT=3000
+      # границы дня и месяца (ДДС, P&L, дни рождения, отчёты) считаются по Москве
+      - TZ=Europe/Moscow
     volumes:
       - uploads:/app/public/uploads
       - backups:/app/backups:ro

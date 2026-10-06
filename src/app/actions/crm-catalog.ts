@@ -93,7 +93,7 @@ export async function addVariantAction(_: ActionState, formData: FormData): Prom
   const color = String(formData.get("color") ?? "").trim() || null;
   if (!size) return { error: "Укажите размер" };
   const product = await db.product.findUniqueOrThrow({ where: { id: productId }, include: { _count: { select: { variants: true } } } });
-  const qty = Number(formData.get("stock") ?? 0) || 0;
+  const qty = Math.max(0, Math.trunc(Number(formData.get("stock") ?? 0)) || 0);
   try {
     const v = await db.productVariant.create({
       data: {

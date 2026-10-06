@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { markOrderPaid } from "@/lib/orders";
 import { activateGiftCard } from "@/lib/gift-payment";
@@ -65,6 +65,8 @@ export async function createOrderPayment(orderId: string, returnUrl: string) {
     return (payment.payload as { confirmation_url: string }).confirmation_url;
   }
   const amount = (order.total / 100).toFixed(2);
+  // ключ идемпотентности — на попытку: после отменённого платежа ЮKassa иначе вернула бы тот же (мёртвый) платёж в течение суток
+  const attempt = (((payment.payload as { attempt?: number } | null)?.attempt ?? 0) + 1);
   const created = await api<YPayment>(
     "/payments",
     {
@@ -82,11 +84,11 @@ export async function createOrderPayment(orderId: string, returnUrl: string) {
         ],
       },
     },
-    createHash("sha256").update(`${payment.id}:${order.total}`).digest("hex").slice(0, 36) || randomUUID(),
+    createHash("sha256").update(`${payment.id}:${order.total}:${attempt}`).digest("hex").slice(0, 36),
   );
   const url = created.confirmation?.confirmation_url;
   if (!url) throw new Error("ЮKassa не вернула ссылку на оплату");
-  await db.payment.update({ where: { id: payment.id }, data: { externalId: created.id, payload: { confirmation_url: url, status: created.status } } });
+  await db.payment.update({ where: { id: payment.id }, data: { externalId: created.id, payload: { confirmation_url: url, status: created.status, attempt } } });
   await db.order.update({ where: { id: orderId }, data: { paymentUrl: url } });
   return url;
 }
@@ -143,7 +145,8 @@ export async function handleYookassaEvent(body: { event?: string; object?: { id?
     return { ok: true, status: "paid" };
   }
   if (fresh.status === "canceled") {
-    await db.payment.update({ where: { id: payment.id }, data: { payload: { status: "canceled" } } });
+    const attempt = (payment.payload as { attempt?: number } | null)?.attempt ?? 1;
+    await db.payment.update({ where: { id: payment.id }, data: { payload: { status: "canceled", attempt } } });
     return { ok: true, status: "canceled" };
   }
   return { ok: true, status: fresh.status };

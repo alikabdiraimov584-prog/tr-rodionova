@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { LedgerType } from "@/generated/prisma/enums";
-import type { PnlCostMethod } from "@/lib/settings";
+import { getSettingOrDefault, type PnlCostMethod } from "@/lib/settings";
 
 export type PnlRow = {
   key: string;
@@ -134,17 +134,18 @@ export async function paymentMix(from: Date) {
 }
 
 export async function balanceSheetLite() {
-  const [inv, points, receivables] = await Promise.all([
+  const [inv, points, receivables, loyalty] = await Promise.all([
     db.$queryRaw<{ cost: bigint; retail: bigint }[]>`
       SELECT coalesce(sum(v.stock * coalesce(p."costPrice", 0)), 0)::bigint AS cost, coalesce(sum(v.stock * coalesce(v.price, p.price)), 0)::bigint AS retail
       FROM "ProductVariant" v JOIN "Product" p ON p.id = v."productId"`,
     db.user.aggregate({ where: { role: "CUSTOMER" }, _sum: { pointsBalance: true } }),
     db.order.aggregate({ where: { status: "NEW" }, _sum: { total: true }, _count: true }),
+    getSettingOrDefault("loyalty"),
   ]);
   return {
     inventoryCost: Number(inv[0]?.cost ?? 0),
     inventoryRetail: Number(inv[0]?.retail ?? 0),
-    pointsLiability: (points._sum.pointsBalance ?? 0) * 100,
+    pointsLiability: (points._sum.pointsBalance ?? 0) * loyalty.pointValueKopecks,
     unpaidOrders: receivables._sum.total ?? 0,
     unpaidCount: receivables._count,
   };

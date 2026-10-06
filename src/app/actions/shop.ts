@@ -257,6 +257,7 @@ export async function quoteAction(input: { promoCode?: string; pointsToUse?: num
   const { quoteCart, quoteGuestCart } = await import("@/lib/orders");
   const q = user ? await quoteCart(user.id, input) : await quoteGuestCart(await getGuestToken(), input);
   const pct = user?.loyaltyTier?.cashbackPct ?? 3;
+  const pointValue = (await getSetting("loyalty")).pointValueKopecks;
   return {
     lines: q.lines.map((l) => ({ variantId: l.variantId, productName: l.productName, size: l.size, color: l.color, quantity: l.quantity, price: l.price, isPreorder: l.isPreorder })),
     subtotal: q.subtotal,
@@ -268,7 +269,7 @@ export async function quoteAction(input: { promoCode?: string; pointsToUse?: num
     pointsValue: q.pointsValue,
     delivery: q.delivery,
     total: q.total,
-    earn: Math.floor((Math.max(0, q.total - q.delivery) * pct) / 100 / 100),
+    earn: Math.floor((Math.max(0, q.total - q.delivery) * pct) / 100 / pointValue),
     giftCode: q.giftCode ?? null,
     giftApplied: q.giftApplied,
     giftError: q.giftError,

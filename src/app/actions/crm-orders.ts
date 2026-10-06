@@ -50,7 +50,7 @@ export async function partialReturnAction(_: ActionState, formData: FormData): P
   const lines: { orderItemId: string; qty: number }[] = [];
   for (const [k, v] of formData.entries()) {
     if (k.startsWith("ret_")) {
-      const qty = Number(v);
+      const qty = Math.trunc(Number(v));
       if (qty > 0) lines.push({ orderItemId: k.slice(4), qty });
     }
   }
@@ -81,7 +81,7 @@ export async function createManualOrderAction(_: ActionState, formData: FormData
     const variantId = String(formData.get(`variant_${i}`) ?? "");
     if (!variantId) continue;
     const priceRaw = String(formData.get(`price_${i}`) ?? "").trim();
-    lines.push({ variantId, quantity: Number(formData.get(`qty_${i}`) ?? 1) || 1, price: priceRaw ? toKopecks(priceRaw) : null });
+    lines.push({ variantId, quantity: Math.max(1, Math.trunc(Number(formData.get(`qty_${i}`) ?? 1)) || 1), price: priceRaw ? toKopecks(priceRaw) : null });
   }
   let id: string;
   try {

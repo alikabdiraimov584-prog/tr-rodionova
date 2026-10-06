@@ -341,9 +341,15 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
 
 // ───────────── Оплата и статусы ─────────────
 
+/** Блокировка строки заказа на время смены статуса: параллельные переходы (вебхук оплаты и отмена, оплата и возврат на страницу) идут по очереди и видят актуальный статус. */
+async function lockOrder(tx: Tx, orderId: string) {
+  await tx.$executeRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
+  return tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+}
+
 export async function markOrderPaid(orderId: string, opts: { createdBy?: string | null; externalId?: string | null } = {}) {
   await db.$transaction(async (tx) => {
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+    const order = await lockOrder(tx, orderId);
     if (order.status !== "NEW") throw new Error("Заказ уже оплачен или отменён");
     await tx.order.update({ where: { id: orderId }, data: { status: "PAID", paidAt: new Date() } });
     const pending = await tx.payment.findFirst({ where: { orderId, status: "PENDING" } });
@@ -374,25 +380,37 @@ async function reverseCogs(tx: Tx, order: { id: string; number: number }, lines:
   if (amount > 0) await tx.ledgerEntry.create({ data: { type: "COGS_REVERSAL", amount, orderId: order.id, comment, createdBy } });
 }
 
-/** Возвращает на сертификат всё, что было списано по заказу (при отмене). */
-async function restoreGiftForOrder(tx: Tx, orderId: string, createdBy?: string | null) {
-  const redemptions = await tx.giftRedemption.findMany({ where: { orderId, amount: { gt: 0 } }, include: { giftCard: true } });
+/**
+ * Возвращает на сертификат списанное по заказу: целиком (отмена, полный возврат) или долю `share` (0–1) при частичном
+ * возврате. Уже возвращённое учитывается (записи с отрицательной суммой), повторный вызов ничего не добавляет.
+ */
+async function restoreGiftForOrder(tx: Tx, orderId: string, createdBy?: string | null, share = 1) {
+  const redemptions = await tx.giftRedemption.findMany({ where: { orderId }, include: { giftCard: true } });
+  const byCard = new Map<string, { card: (typeof redemptions)[number]["giftCard"]; used: number; restored: number }>();
   for (const r of redemptions) {
-    const card = r.giftCard;
+    const e = byCard.get(r.giftCardId) ?? { card: r.giftCard, used: 0, restored: 0 };
+    if (r.amount > 0) e.used += r.amount;
+    else e.restored += -r.amount;
+    byCard.set(r.giftCardId, e);
+  }
+  for (const { card, used, restored } of byCard.values()) {
+    const target = Math.min(used, Math.round(used * Math.min(1, Math.max(0, share))));
+    const amount = target - restored;
+    if (amount <= 0) continue;
     const reactivate = card.status === "USED" && card.expiresAt > new Date();
     await tx.giftCard.update({
       where: { id: card.id },
-      data: { balance: { increment: r.amount }, ...(reactivate ? { status: "ACTIVE" } : {}) },
+      data: { balance: { increment: amount }, ...(reactivate ? { status: "ACTIVE" } : {}) },
     });
     // помечаем возврат отдельной записью с отрицательной суммой, чтобы история списаний сохранилась
-    await tx.giftRedemption.create({ data: { giftCardId: card.id, orderId, amount: -r.amount } });
-    await audit(createdBy ?? null, "giftcard.restore", "GiftCard", card.id, { orderId, amount: r.amount }, tx);
+    await tx.giftRedemption.create({ data: { giftCardId: card.id, orderId, amount: -amount } });
+    await audit(createdBy ?? null, "giftcard.restore", "GiftCard", card.id, { orderId, amount }, tx);
   }
 }
 
 export async function cancelOrder(orderId: string, opts: { reason?: string; createdBy?: string | null } = {}) {
   await db.$transaction(async (tx) => {
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+    const order = await lockOrder(tx, orderId);
     if (!canTransition(order.status, "CANCELLED")) throw new Error("Заказ нельзя отменить на этом этапе");
     if (order.status === "NEW") {
       for (const it of order.items) if (!it.isPreorder) await releaseStock(tx, it.variantId, it.quantity, orderId, opts.createdBy);
@@ -425,7 +443,7 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
   if (status === "CANCELLED") return cancelOrder(orderId, { createdBy: opts.createdBy, reason: opts.note });
   if (status === "PAID") return markOrderPaid(orderId, { createdBy: opts.createdBy });
   await db.$transaction(async (tx) => {
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+    const order = await lockOrder(tx, orderId);
     if (!canTransition(order.status, status)) throw new Error(`Переход ${order.status} → ${status} недопустим`);
     if (status === "RETURNED") {
       const alreadyReturned = order.items.reduce((s, i) => s + i.price * i.returnedQty, 0);
@@ -441,6 +459,8 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
       if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
       await reverseCogs(tx, order, order.items.filter((i) => !i.isPreorder).map((i) => ({ costPrice: i.costPrice, qty: i.quantity - i.returnedQty })), `Сторно себестоимости: возврат по заказу №${order.number}`, opts.createdBy);
       if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
+      // оплаченное сертификатом возвращается на сертификат
+      await restoreGiftForOrder(tx, orderId, opts.createdBy);
     }
     await tx.order.update({
       where: { id: orderId },
@@ -468,7 +488,7 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
 /** Частичный возврат отдельных позиций (из CRM). */
 export async function partialReturn(orderId: string, lines: { orderItemId: string; qty: number }[], opts: { reason?: string; createdBy?: string | null; restock?: boolean }) {
   return db.$transaction(async (tx) => {
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+    const order = await lockOrder(tx, orderId);
     if (!canTransition(order.status, "RETURNED")) throw new Error("Возврат возможен только после доставки");
     const value = await returnOrderItems(tx, orderId, lines, opts);
     if (value > 0) {
@@ -486,6 +506,9 @@ export async function partialReturn(orderId: string, lines: { orderItemId: strin
       }
       const items = await tx.orderItem.findMany({ where: { orderId } });
       const allReturned = items.every((i) => i.returnedQty >= i.quantity);
+      // доля сертификата за возвращённые позиции (по всем возвратам этого заказа) возвращается на сертификат
+      const returnedValue = items.reduce((s, i) => s + i.price * i.returnedQty, 0);
+      await restoreGiftForOrder(tx, orderId, opts.createdBy, allReturned ? 1 : returnedValue / Math.max(1, order.subtotal));
       await tx.payment.updateMany({ where: { orderId, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED"] } }, data: { status: allReturned ? "REFUNDED" : "PARTIALLY_REFUNDED" } });
       if (allReturned) {
         await tx.order.update({ where: { id: orderId }, data: { status: "RETURNED" } });
@@ -500,8 +523,8 @@ export async function partialReturn(orderId: string, lines: { orderItemId: strin
           if (pointsBack > 0) await addPoints(tx, order.userId, "EARN_MANUAL", pointsBack, { orderId, comment: `Возврат баллов за позиции заказа №${order.number}`, createdBy: opts.createdBy });
         }
         if (!allReturned && order.pointsEarned > 0) {
-          const base = Math.max(1, order.total - order.deliveryCost);
-          const revert = Math.min(order.pointsEarned, Math.floor((order.pointsEarned * value) / base));
+          // та же база, что при начислении (earnBase): доля возвращённых позиций от стоимости товаров
+          const revert = Math.min(order.pointsEarned, Math.floor((order.pointsEarned * value) / Math.max(1, order.subtotal)));
           const user = await tx.user.findUniqueOrThrow({ where: { id: order.userId } });
           const amount = -Math.min(revert, user.pointsBalance);
           if (amount) await addPoints(tx, order.userId, "REVERT", amount, { orderId, comment: `Частичный возврат по заказу №${order.number}`, createdBy: opts.createdBy, expiresAt: null });
