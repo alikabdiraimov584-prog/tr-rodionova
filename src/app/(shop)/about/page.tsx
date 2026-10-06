@@ -9,7 +9,7 @@ import { brandHeroImage } from "@/lib/looks";
 
 export const metadata: Metadata = {
   title: "О бренде",
-  description: "T.Rodionova: премиальная женская одежда из натуральных волокон. Основана в 2019 году Татьяной Родионовой; ткани из Бьеллы, Комо и Монголии, пошив в Португалии и Литве, тираж до 60 единиц.",
+  description: "T.Rodionova: премиальная женская одежда из шерсти, кашемира и шёлка. Основана в 2019 году Татьяной Родионовой; ткани из Бьеллы, Комо и Монголии, пошив в Португалии и Литве, тираж до 60 единиц.",
 };
 
 export default async function About() {
@@ -19,13 +19,13 @@ export default async function About() {
     <TextPage
       eyebrow="О бренде"
       title="A woman who chooses more"
-      intro={`${brand.name} — марка женской одежды из натуральных волокон. Мы шьём небольшими партиями в Европе и продаём напрямую: без универмагов, без сезонных распродаж, без вещей «на один раз».`}
+      intro={`${brand.name} — марка женской одежды из шерсти, кашемира и шёлка. Мы шьём небольшими партиями в Европе и продаём напрямую: без универмагов, без сезонных распродаж, без вещей «на один раз».`}
       crumbs={[{ name: "О бренде", path: "/about" }]}
     >
       <JsonLd
         data={[
           { "@context": "https://schema.org", "@type": "AboutPage", "@id": absolute("/about"), name: `О бренде ${brand.name}`, url: absolute("/about"), inLanguage: "ru-RU", isPartOf: { "@id": ids().website }, about: { "@id": ids().organization }, mainEntity: { "@id": ids().organization } },
-          ...(founder ? [{ "@context": "https://schema.org", "@type": "ProfilePage", "@id": absolute("/about#founder"), name: founder.name, url: absolute("/about#founder"), inLanguage: "ru-RU", isPartOf: { "@id": ids().website }, mainEntity: founder }] : []),
+          ...(founder ? [{ "@context": "https://schema.org", "@type": "ProfilePage", "@id": absolute("/about#profile"), name: founder.name, url: absolute("/about#founder"), inLanguage: "ru-RU", isPartOf: { "@id": ids().website }, mainEntity: founder }] : []),
         ]}
       />
       <div className="relative aspect-[16/9] bg-sand">
@@ -42,7 +42,7 @@ export default async function About() {
       </Section>
       <Section id="rules" title="Правила">
         <ul className="list-disc space-y-1.5 pl-5">
-          <li>Только натуральные волокна: шерсть, кашемир, шёлк, хлопок. Синтетика допускается до 2% и только для эластичности.</li>
+          <li>Основа — натуральные волокна: шерсть, кашемир, шёлк, хлопок. Вискоза, эластан, полиамид или полиэстер — только там, где они нужны вещи для посадки, тянучести или формы; точный состав в карточке каждой вещи.</li>
           <li>Две примерки на живой модели до запуска в пошив. Ни одна модель не уходит в производство по эскизу.</li>
           <li>Тираж до 60 единиц на модель. Допошив только под предзаказ.</li>
           <li>Цена не меняется в течение сезона. Распродаж не бывает: вещь стоит столько, сколько стоит.</li>

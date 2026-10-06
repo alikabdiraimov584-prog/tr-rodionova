@@ -39,15 +39,34 @@ export async function guestCartItems(token: string | null) {
   });
 }
 
-/** Добавить одну единицу варианта в корзину гостя с проверкой остатка. */
+/**
+ * Добавить одну единицу варианта в корзину гостя с проверкой остатка (у предзаказа — не больше PREORDER_MAX).
+ * quantity — сколько теперь в корзине; limit — больше добавить нельзя, но вещь уже в корзине (это не ошибка).
+ */
 export async function addToGuestCart(token: string, variantId: string) {
   const variant = await db.productVariant.findUnique({ where: { id: variantId }, include: { product: true } });
   if (!variant || variant.product.status !== "ACTIVE") throw new Error("Товар недоступен");
   const inCart = await db.guestCartItem.findUnique({ where: { token_variantId: { token, variantId } } });
-  const want = (inCart?.quantity ?? 0) + 1;
-  if (!variant.product.isPreorder && variant.stock - variant.reserved < want) throw new Error("Этого размера больше нет в наличии");
-  await db.guestCartItem.upsert({ where: { token_variantId: { token, variantId } }, update: { quantity: want }, create: { token, variantId, quantity: 1 } });
-  return variant;
+  const have = inCart?.quantity ?? 0;
+  if (have + 1 > cartLimit(variant)) {
+    if (have > 0) return { variant, quantity: have, limit: true };
+    throw new Error("Этого размера больше нет в наличии");
+  }
+  await db.guestCartItem.upsert({ where: { token_variantId: { token, variantId } }, update: { quantity: have + 1 }, create: { token, variantId, quantity: 1 } });
+  return { variant, quantity: have + 1, limit: false };
+}
+
+/** Предзаказ отшивается под заказ: одной вещи не больше пяти штук, как в корзине и оформлении. */
+export const PREORDER_MAX = 5;
+/** Сколько штук варианта можно держать в корзине. */
+export function cartLimit(v: { stock: number; reserved: number; product: { isPreorder: boolean } }) {
+  return v.product.isPreorder ? PREORDER_MAX : Math.max(0, v.stock - v.reserved);
+}
+
+/** Ответ покупательнице после «Добавить в корзину»: сколько уже лежит и почему больше нельзя. */
+export function addedMessage(quantity: number, limit: boolean, preorder: boolean) {
+  if (limit) return preorder ? `В корзине уже ${quantity} шт.: больше для предзаказа не добавить` : quantity === 1 ? "Последний экземпляр уже в корзине" : `В корзине все ${quantity} шт., больше нет в наличии`;
+  return quantity === 1 ? "Добавлено в корзину" : `Добавлено. В корзине: ${quantity} шт.`;
 }
 
 export async function setGuestCartQuantity(token: string, variantId: string, qty: number) {
@@ -56,7 +75,7 @@ export async function setGuestCartQuantity(token: string, variantId: string, qty
     return;
   }
   const v = await db.productVariant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
-  const capped = v.product.isPreorder ? Math.min(Math.floor(qty), 5) : Math.min(Math.floor(qty), Math.max(1, v.stock - v.reserved));
+  const capped = Math.min(Math.floor(qty), Math.max(1, cartLimit(v)));
   await db.guestCartItem.updateMany({ where: { token, variantId }, data: { quantity: capped } });
 }
 

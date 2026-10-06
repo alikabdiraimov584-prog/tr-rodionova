@@ -79,13 +79,13 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
         break;
       case "ORDER_SHIPPED":
         subject = `Заказ ${n} передан в доставку`;
-        text = `${hi}\n\nЗаказ ${n} передан в доставку (${DELIVERY_METHOD[order.deliveryMethod].label}).${order.deliverySlot ? `\nИнтервал доставки: ${order.deliverySlot}.` : ""}${order.fittingRequested ? "\nКурьер подождёт 15 минут на примерку." : ""}${order.trackingNumber ? `\nТрек-номер: ${order.trackingNumber}` : ""}\n\nСледить за статусом: ${link}`;
+        text = `${hi}\n\nЗаказ ${n} передан в доставку (${DELIVERY_METHOD[order.deliveryMethod].label}).${order.deliverySlot ? `\nИнтервал доставки: ${order.deliverySlot}.` : ""}${order.fittingRequested ? "\nКурьер подождёт до 20 минут на примерку." : ""}${order.trackingNumber ? `\nТрек-номер: ${order.trackingNumber}` : ""}\n\nСледить за статусом: ${link}`;
         sms = `T.Rodionova: заказ ${n} передан в доставку.${order.deliverySlot ? ` Интервал ${order.deliverySlot}.` : ""}${order.trackingNumber ? ` Трек ${order.trackingNumber}.` : ""}`;
         break;
       case "COURIER_SOON":
         subject = `Курьер с заказом ${n} будет в течение часа`;
-        text = `${hi}\n\nКурьер с заказом ${n} будет у вас в течение часа.${order.fittingRequested ? " На примерку есть 15 минут: оплатите только то, что подошло." : ""}\n\nЕсли планы изменились, ответьте на это письмо или позвоните нам.`;
-        sms = `T.Rodionova: курьер с заказом ${n} будет в течение часа.${order.fittingRequested ? " Примерка 15 минут." : ""}`;
+        text = `${hi}\n\nКурьер с заказом ${n} будет у вас в течение часа.${order.fittingRequested ? " На примерку есть до 20 минут: оплатите только то, что подошло." : ""}\n\nЕсли планы изменились, ответьте на это письмо или позвоните нам.`;
+        sms = `T.Rodionova: курьер с заказом ${n} будет в течение часа.${order.fittingRequested ? " Примерка до 20 минут." : ""}`;
         break;
       case "ORDER_DELIVERED":
         subject = `Заказ ${n} доставлен`;

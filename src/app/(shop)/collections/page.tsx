@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { ProductCard } from "@/components/shop/product-card";
 import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Коллекции" };
+// все коллекции на одной странице: адреса с ?slug= — та же страница, канонический адрес один
+export const metadata: Metadata = { title: "Коллекции", alternates: { canonical: "/collections" } };
 
 export default async function Collections() {
   const collections = await db.collection.findMany({ where: { isActive: true }, orderBy: { slug: "desc" }, include: { products: { where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 8 } } });

@@ -68,7 +68,7 @@ export default async function Home() {
           <Link href="/catalog?new=1" tabIndex={-1} aria-hidden className="absolute inset-0" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
           {/* пока виден баннер cookie, кнопка поднимается над ним (--consent-h ставит баннер) */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-[calc(2.5rem+var(--consent-h,0px))] text-center text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] md:pb-[calc(3.5rem+var(--consent-h,0px))] lg:pb-14">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-[calc(2.5rem+var(--consent-h,0px))] text-center text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] md:pb-[calc(3.5rem+var(--consent-h,0px))]">
             <div className="text-[0.75rem] uppercase tracking-[0.2em]">{season}</div>
             <h2 className="mt-3 text-[1.75rem] font-normal uppercase leading-none tracking-[0.08em] md:text-[3.2rem]">Новая коллекция</h2>
             <Link href="/catalog?new=1" className="pointer-events-auto mt-7 inline-flex min-h-12 items-center bg-white px-10 text-[0.72rem] font-medium uppercase tracking-[0.14em] text-ink [text-shadow:none] transition-opacity hover:opacity-85">

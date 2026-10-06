@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getCurrentCustomer } from "@/lib/auth";
-import { formatMoney } from "@/lib/money";
+import { formatDate, formatMoney } from "@/lib/money";
+import { chartForProduct, recommendSize } from "@/lib/sizes";
 import { Eyebrow } from "@/components/ui";
 import { LookCart } from "@/components/shop/look-cart";
 
@@ -14,7 +15,7 @@ async function load(slug: string) {
     include: {
       items: {
         orderBy: { order: "asc" },
-        include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 }, variants: { orderBy: { sku: "asc" } } } } },
+        include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 }, variants: { orderBy: { sku: "asc" } }, category: { select: { slug: true } } } } },
       },
     },
   });
@@ -54,16 +55,22 @@ export default async function LookPage({ params }: PageProps<"/lookbook/[slug]">
             ) : (
               <LookCart
                 slug={look.slug}
-                loggedIn={!!user}
-                items={items.map((i) => ({
+                items={items.map((i) => {
+                  // размер по меркам — только если сидит «точно», как на карточке вещи; иначе покупательница выбирает сама
+                  const chart = user ? chartForProduct(i.product) : null;
+                  const advice = chart && user ? recommendSize(chart, user) : null;
+                  return {
                   productId: i.productId,
                   slug: i.product.slug,
                   name: i.product.name,
                   price: i.product.price,
                   image: i.product.images[0]?.url ?? null,
                   note: i.note,
+                  preorder: i.product.isPreorder ? (i.product.preorderShipAt ? `предзаказ, отшив к ${formatDate(i.product.preorderShipAt).replace(/\.$/, "")}` : "предзаказ, отшив за 4–6 недель") : null,
+                  advised: advice?.fit === "точно" ? advice.size : null,
                   variants: i.product.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, available: v.stock - v.reserved })),
-                }))}
+                  };
+                })}
               />
             )}
           </div>

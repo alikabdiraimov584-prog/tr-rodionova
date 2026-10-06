@@ -30,7 +30,8 @@ const baseMetadata: Metadata = {
   description: "Женская одежда из шерсти, кашемира и шёлка. Сшито в Европе. Доставка по России, примерка курьером.",
   applicationName: "T.Rodionova",
   keywords: ["женская одежда премиум", "quiet luxury", "кашемир", "шёлк", "T.Rodionova", "жакет", "платье", "боди", "брюки палаццо"],
-  openGraph: { type: "website", siteName: "T.Rodionova", locale: "ru_RU", url: siteUrl, images: [{ url: "/images/brand/looks/look-01.jpg", width: 700, height: 1000, alt: "T.Rodionova — premium womenswear" }] },
+  // без url: иначе все страницы без своего openGraph выдавали бы в og:url адрес главной
+  openGraph: { type: "website", siteName: "T.Rodionova", locale: "ru_RU", images: [{ url: "/images/brand/looks/look-01.jpg", width: 700, height: 1000, alt: "T.Rodionova — premium womenswear" }] },
   twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
   alternates: { types: { "application/rss+xml": `${siteUrl}/journal/feed.xml` } },

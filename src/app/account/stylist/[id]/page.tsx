@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -6,6 +7,8 @@ import { db } from "@/lib/db";
 import { formatDate, formatMoney } from "@/lib/money";
 import { Eyebrow, PageTitle } from "@/components/ui";
 import { AddAllButton, SelectionItemCart, type CartItem } from "@/components/account/selection-cart";
+
+export const metadata: Metadata = { title: "Подборка стилиста" };
 
 export default async function SelectionView({ params }: PageProps<"/account/stylist/[id]">) {
   const { id } = await params;

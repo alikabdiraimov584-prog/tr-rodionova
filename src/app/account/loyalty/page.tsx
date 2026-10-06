@@ -55,7 +55,8 @@ export default async function LoyaltyPage() {
 
       <section>
         <h2 className="mb-4">История баллов</h2>
-        <div className="overflow-x-auto">
+        {/* на телефоне таблица шире экрана: область прокручивается и с клавиатуры */}
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="История баллов">
           <table className="table">
             <thead><tr><th>Дата</th><th>Операция</th><th>Комментарий</th><th>Действуют до</th><th className="text-right">Баллы</th></tr></thead>
             <tbody>

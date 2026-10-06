@@ -99,12 +99,13 @@ export function StockOperationForm({ variants, preset }: { variants: { id: strin
         </select>
       </label>
       <label><span className="label">{op === "adjust" ? "Факт, шт." : "Кол-во"}</span><input aria-label="Количество" name="qty" type="number" min={0} required className="input py-2" /></label>
-      <label><span className="label">{op === "receipt" ? "Себестоимость ед., ₽ / поставщик" : "Причина"}</span>
+      {/* два поля — у каждого своё имя для экранного диктора, общая подпись над ними */}
+      <div><span className="label">{op === "receipt" ? "Себестоимость ед., ₽ / поставщик" : "Причина"}</span>
         <div className="flex gap-2">
-          {op === "receipt" && <input name="unitCost" placeholder="по карточке" className="input w-32 py-2" />}
-          <input name="reason" placeholder={op === "writeoff" ? "Брак, утеря, образец" : op === "receipt" ? "Ателье, партия" : "Пересчёт"} className="input py-2" />
+          {op === "receipt" && <input name="unitCost" aria-label="Себестоимость единицы, ₽" placeholder="по карточке" className="input w-32 py-2" />}
+          <input name="reason" aria-label={op === "receipt" ? "Поставщик" : "Причина"} placeholder={op === "writeoff" ? "Брак, утеря, образец" : op === "receipt" ? "Ателье, партия" : "Пересчёт"} className="input py-2" />
         </div>
-      </label>
+      </div>
       <button className="btn-primary btn-sm" disabled={pending}>Провести</button>
       {op === "receipt" && <label className="flex gap-2 text-xs text-muted md:col-span-5"><input type="checkbox" name="toLedger" className="accent-black" /> Записать затраты на пошив в финансы</label>}
       <div className="md:col-span-5"><Msg s={state} /></div>

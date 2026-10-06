@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getCurrentCustomer } from "@/lib/auth";
 import { ProductCard } from "@/components/shop/product-card";
 import { ActiveTabIntoView } from "@/components/shop/active-tab";
+import { PickList } from "@/components/shop/pick-list";
 import { photoFirst } from "@/lib/photos";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
@@ -22,8 +23,10 @@ export async function generateMetadata({ searchParams }: PageProps<"/catalog">):
   if (!slug) return { title: "Каталог", description: "Женская одежда T.Rodionova: жакеты, платья, боди, брюки, трикотаж из шерсти, кашемира и шёлка. Доставка по России.", alternates: { canonical: "/catalog" } };
   const c = await db.category.findUnique({ where: { slug } });
   if (!c || !c.isActive) return { title: "Каталог" };
+  const title = c.seoTitle ?? `${c.name} — купить в T.Rodionova`;
   return {
-    title: c.seoTitle ?? `${c.name} — купить в T.Rodionova`,
+    // бренд уже в заголовке — без второго «— T.Rodionova» из шаблона
+    title: /T\.?\s?Rodionova/i.test(title) ? { absolute: title } : title,
     description: c.seoDescription ?? `${c.name} T.Rodionova: премиальная женская одежда, сшито в Европе. Доставка по России, примерка курьером.`,
     alternates: { canonical: `/catalog?category=${c.slug}` },
   };
@@ -64,8 +67,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
     ...(earlyOk ? {} : { OR: [{ earlyAccessUntil: null }, { earlyAccessUntil: { lte: new Date() } }] }),
     ...(category ? { category: { slug: category } } : {}),
     ...(onlyNew ? { isNew: true } : {}),
-    ...(sizes.length ? { variants: { some: { size: { in: sizes } } } } : {}),
-    ...(colors.length ? { variants: { some: { color: { in: colors } } } } : {}),
+    ...(sizes.length || colors.length ? { variants: { some: { ...(sizes.length ? { size: { in: sizes } } : {}), ...(colors.length ? { color: { in: colors } } : {}) } } } : {}),
     ...(materials.length ? { material: { in: materials } } : {}),
     ...(price ? { price: { gte: price[1], ...(price[2] ? { lt: price[2] } : {}) } } : {}),
     ...(q ? { AND: [{ OR: [{ name: { contains: q, mode: "insensitive" } }, { composition: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] }] } : {}),
@@ -114,7 +116,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
       </div>
       {/* ряд категорий: по центру, пока помещается, иначе листается от левого края; на телефоне правый край растворяется — видно, что дальше есть пункты */}
       <nav aria-label="Категории" data-category-row className="scroll-row relative mt-5 overflow-x-auto text-[0.72rem] uppercase tracking-[0.12em] max-md:[mask-image:linear-gradient(to_left,transparent,#000_2.5rem)]">
-        <div className="mx-auto flex w-max gap-6 px-3 max-md:pr-10 md:px-0">
+        <div className="mx-auto flex w-max gap-6 px-3 max-md:pr-10 md:w-auto md:max-w-5xl md:flex-wrap md:justify-center md:gap-y-0 md:px-0">
           <Link href="/catalog" className={tab(!category && !onlyNew && !searching)} aria-current={!category && !onlyNew && !searching ? "page" : undefined}>Все</Link>
           <Link href="/catalog?new=1" className={tab(onlyNew && !category)} aria-current={onlyNew && !category ? "page" : undefined}>Новинки</Link>
           {categories.map((c) => <Link key={c.id} href={`/catalog?category=${c.slug}`} className={tab(category === c.slug)} aria-current={category === c.slug ? "page" : undefined}>{c.name}</Link>)}
@@ -123,12 +125,12 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
       <ActiveTabIntoView active={category ?? (onlyNew ? "new" : "")} />
       <div className="mt-2 flex items-center justify-between border-y border-line px-3 py-2 text-[0.72rem] uppercase tracking-[0.1em] md:px-1">
         <span className="text-muted">{models(products.length)}{filtered && <> · <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="underline">сбросить фильтр</Link></>}</span>
-        {/* key: после выбора сортировки список пересоздаётся закрытым */}
-        <details key={sort} className="relative">
+        {/* key: при смене категории, поиска или сортировки список пересоздаётся закрытым; PickList закрывает его и при выборе текущего варианта */}
+        <details key={link({})} className="relative">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5">{SORTS[sort].label}<span aria-hidden className="text-muted">▾</span></summary>
-          <div className="absolute right-0 z-20 mt-1 w-48 border border-line bg-ivory py-1 normal-case tracking-normal shadow-sm">
+          <PickList className="absolute right-0 z-20 mt-1 w-48 border border-line bg-ivory py-1 normal-case tracking-normal shadow-sm">
             {Object.entries(SORTS).map(([k, v]) => <Link key={k} href={link({ sort: k === "new" ? undefined : k })} aria-current={sort === k ? "true" : undefined} className={`block px-4 py-3 text-[0.82rem] hover:bg-sand ${sort === k ? "text-ink" : "text-muted"}`}>{v.label}</Link>)}
-          </div>
+          </PickList>
         </details>
       </div>
       <div className="pt-1">

@@ -24,14 +24,18 @@ export async function generateMetadata({ params }: PageProps<"/journal/[slug]">)
   const a = await load((await params).slug);
   if (!a || !isPublished(a)) return { title: "Журнал" };
   const description = a.metaDescription ?? a.excerpt ?? undefined;
+  const title = a.metaTitle ?? a.title;
   return {
-    title: a.metaTitle ?? a.title,
+    // в SEO-заголовке статьи бренд часто уже есть — тогда шаблон не повторяет его
+    title: /T\.?\s?Rodionova/i.test(title) ? { absolute: title } : title,
     description,
     keywords: a.keywords.length ? a.keywords : undefined,
     alternates: { canonical: `/journal/${a.slug}` },
     openGraph: {
       type: "article",
-      title: a.metaTitle ?? a.title,
+      siteName: "T.Rodionova",
+      locale: "ru_RU",
+      title,
       description,
       url: `/journal/${a.slug}`,
       publishedTime: a.publishedAt?.toISOString(),

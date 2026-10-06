@@ -90,8 +90,8 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   }
 
   const summaryRows = (
-    <div>
-    <dl className={`space-y-2 text-sm ${quoting ? "opacity-60" : ""}`}>
+    <div className={quoting ? "opacity-60" : ""}>
+    <dl className="space-y-2 text-sm">
       <div className="flex justify-between"><dt>Товары</dt><dd>{formatMoney(quote.subtotal)}</dd></div>
       {quote.discount > 0 && <div className="flex justify-between text-success"><dt>Скидка по промокоду</dt><dd>−{formatMoney(quote.discount)}</dd></div>}
       {quote.pointsValue > 0 && <div className="flex justify-between text-success"><dt>Баллами</dt><dd>−{formatMoney(quote.pointsValue)}</dd></div>}
@@ -111,8 +111,8 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           {STEPS.map((s, i) => (
             <li key={s}>
               <button type="button" onClick={() => i < step && setStep(i)} className={`block w-full ${i <= step ? "text-ink" : "text-muted"}`}>
-                <div className={`h-1 ${i <= step ? "bg-ink" : "bg-line"}`} />
-                <div className="mt-2">{i + 1}. {s}</div>
+                <span className={`block h-1 ${i <= step ? "bg-ink" : "bg-line"}`} />
+                <span className="mt-2 block">{i + 1}. {s}</span>
               </button>
             </li>
           ))}
@@ -152,7 +152,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
                 <input type="checkbox" name="fittingRequested" value="on" defaultChecked className="mt-1 h-4 w-4 shrink-0 accent-black" />
                 <span>
                   <span className="block">Примерка перед покупкой</span>
-                  <span className="block text-xs text-muted">Курьер подождёт 15 минут. Оплатите только то, что подошло: за остальное вернём деньги после возврата курьером.</span>
+                  <span className="block text-xs text-muted">Курьер подождёт до 20 минут. Оплатите только то, что подошло: за остальное вернём деньги после возврата курьером.</span>
                 </span>
               </label>
             )}
@@ -242,7 +242,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
             <div>
               <span className="label">Оплатить баллами · баланс {profile.pointsBalance.toLocaleString("ru-RU")}</span>
               <div className="flex items-center gap-3">
-                <input type="range" min={0} max={quote.pointsMax} step={100} value={Math.min(points, quote.pointsMax)} onChange={(e) => setPoints(Number(e.target.value))} className="flex-1 accent-black" disabled={quote.pointsMax === 0} />
+                <input type="range" aria-label="Оплатить баллами" aria-valuetext={`${quote.pointsUsed.toLocaleString("ru-RU")} баллов`} min={0} max={quote.pointsMax} step={100} value={Math.min(points, quote.pointsMax)} onChange={(e) => setPoints(Number(e.target.value))} className="flex-1 accent-black" disabled={quote.pointsMax === 0} />
                 <button type="button" className="min-h-10 px-2 text-[0.65rem] uppercase tracking-[0.15em] text-taupe-dark" onClick={() => setPoints(quote.pointsMax)}>Макс.</button>
               </div>
               <p className="mt-1 text-xs text-muted">До {profile.maxPayPct}% заказа на уровне {profile.tierName}. Списать: {quote.pointsUsed.toLocaleString("ru-RU")} из {quote.pointsMax.toLocaleString("ru-RU")}</p>
@@ -259,7 +259,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           <h2>Проверьте заказ</h2>
           <ul className="space-y-2 text-sm">
             {quote.lines.map((l) => (
-              <li key={l.variantId} className="flex justify-between gap-3"><span className="min-w-0">{l.productName}, {l.size}{l.color ? `, ${l.color}` : ""} × {l.quantity}</span><span className="shrink-0">{formatMoney(l.price * l.quantity)}</span></li>
+              <li key={l.variantId} className="flex justify-between gap-3"><span className="min-w-0">{l.productName}, {l.size}{l.color ? `, ${l.color}` : ""} × {l.quantity}{l.isPreorder ? " · предзаказ" : ""}</span><span className="shrink-0">{formatMoney(l.price * l.quantity)}</span></li>
             ))}
           </ul>
           <div className="border border-line bg-white p-4 text-sm">
@@ -312,7 +312,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
       <input type="hidden" name="promoCode" value={quote.promoApplied ?? ""} />
       <input type="hidden" name="giftCode" value={quote.giftApplied > 0 && quote.giftCode ? quote.giftCode : ""} />
       <input type="hidden" name="pointsToUse" value={quote.pointsUsed} />
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-ivory/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
+      <div style={{ bottom: "var(--consent-h, 0px)" }} className="fixed inset-x-0 z-30 border-t border-line bg-ivory/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-[0.62rem] uppercase tracking-[0.12em] text-muted">Итого</div>

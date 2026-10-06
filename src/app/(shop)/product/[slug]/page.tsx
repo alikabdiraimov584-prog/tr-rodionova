@@ -37,15 +37,20 @@ export async function generateMetadata({ params }: PageProps<"/product/[slug]">)
   if (!p || p.status !== "ACTIVE") return { title: "Товар" };
   const description = p.description ? `${p.description.slice(0, 160)}${p.description.length > 160 ? "…" : ""}` : undefined;
   return {
-    title: `${p.name} — купить в T.Rodionova`,
+    // бренд уже в заголовке — шаблон «… — T.Rodionova» не добавляет его второй раз
+    title: { absolute: `${p.name} — купить в T.Rodionova` },
     description,
     alternates: { canonical: `/product/${p.slug}` },
-    openGraph: { type: "website", title: p.name, description, url: `/product/${p.slug}`, images: p.images.slice(0, 3).map((i) => ({ url: i.url, alt: i.alt ?? p.name })) },
+    openGraph: { type: "website", siteName: "T.Rodionova", locale: "ru_RU", title: p.name, description, url: `/product/${p.slug}`, images: p.images.slice(0, 3).map((i) => ({ url: i.url, alt: i.alt ?? p.name })) },
   };
 }
 
-export default async function ProductPage({ params }: PageProps<"/product/[slug]">) {
+export default async function ProductPage({ params, searchParams }: PageProps<"/product/[slug]">) {
   const { slug } = await params;
+  // ?size= и ?color= из адресов вариантов (разметка товара, Яндекс и Google): этот размер выбран сразу
+  const sp = await searchParams;
+  const wantedSize = typeof sp.size === "string" ? sp.size : null;
+  const wantedColor = typeof sp.color === "string" ? sp.color : null;
   const p = await load(slug);
   if (!p || p.status !== "ACTIVE") notFound();
   // скрытая в CRM категория не показывается и в «хлебных крошках»
@@ -66,10 +71,14 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const pts = Math.floor((p.price * (tier?.cashbackPct ?? 3)) / 100 / 100);
   // «С этим носят»: вещи из тех же образов лукбука, иначе соседи по категории
   // в подборках под карточкой — только вещи со съёмкой, иначе блок из заглушек выглядит незаконченным
-  const lookMates = p.lookItems.flatMap((li) => li.look.items.map((it) => it.product)).filter((r, i, arr) => r.id !== p.id && r.status === "ACTIVE" && isRealPhoto(r.images[0]?.url) && arr.findIndex((x) => x.id === r.id) === i).slice(0, 4);
+  // «Собрать образ» — вещи одного образа, того же, куда ведёт «Весь образ»; остальные образы — ссылками у блока покупки
+  const matesOf = (li: (typeof p.lookItems)[number]) => li.look.items.map((it) => it.product).filter((r) => r.id !== p.id && r.status === "ACTIVE" && isRealPhoto(r.images[0]?.url));
+  const lookWith = p.lookItems.find((li) => matesOf(li).length > 0);
+  const lookMates = lookWith ? matesOf(lookWith).slice(0, 4) : [];
   const relatedReal = photoFirst(related).filter((r) => isRealPhoto(r.images[0]?.url));
   const wornWith = lookMates.length > 0 ? lookMates : relatedReal;
-  const lookSlug = lookMates.length > 0 ? p.lookItems[0]?.look.slug : undefined;
+  const lookSlug = lookWith?.look.slug;
+  const otherLooks = p.lookItems.filter((li) => li !== lookWith);
   // размер по меркам из профиля: если подходит точно, он выбран заранее
   const chart = chartForProduct(p);
   const advice = chart && user ? recommendSize(chart, user) : null;
@@ -106,9 +115,9 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           {installments && !p.isPreloved && <div className="mt-1 text-[0.78rem]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
           <div className="mt-1 text-[0.75rem] text-muted">+{pts.toLocaleString("ru-RU")} баллов Circle{p.isPreloved && p.condition ? ` · состояние: ${p.condition}` : ""}</div>
           {p.isPreorder && <p className="mt-4 border-l-2 border-ink pl-3 text-[0.8rem]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
-          <div className="mt-5"><SizeAdvisor product={p} user={user} /></div>
+          <div className="mt-5"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
           <div className="mt-5">
-            <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} defaultSize={advice?.fit === "точно" ? advice.size : null} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
+            <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} defaultSize={wantedSize ?? (advice?.fit === "точно" ? advice.size : null)} defaultColor={wantedColor} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
               <form action={toggleWishlistAction}>
                 <input type="hidden" name="productId" value={p.id} />
                 <input type="hidden" name="back" value={`/product/${p.slug}`} />
@@ -118,8 +127,8 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           </div>
           <ul className="mt-5 grid grid-cols-3 gap-2 border-y border-line py-4 text-center text-[0.68rem] uppercase leading-snug tracking-[0.06em] text-muted">
             <li>Примерка<br />курьером</li>
-            {/* коротко и в согласии с разметкой Offer: бесплатно от порога из настроек, иначе — срок без привязки к городу */}
-            <li>{p.price >= delivery.freeFrom ? <>Бесплатная<br />доставка</> : <>Доставка<br />от 1 дня</>}</li>
+            {/* коротко и с условием, как в корзине: порог считается от суммы заказа после скидки; в разметке Offer тот же тариф */}
+            <li>{delivery.freeFrom > 0 ? <>Доставка 0 ₽<br />от {formatMoney(delivery.freeFrom)}</> : <>Доставка<br />от 1 дня</>}</li>
             <li>Возврат<br />14 дней</li>
           </ul>
           <div className="divide-y divide-line border-b border-line">
@@ -136,7 +145,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
             <details className="group">
               <summary className="acc">Доставка и возврат<span aria-hidden className="acc-mark">+</span></summary>
               <div className="space-y-2 pb-5 text-[0.85rem] text-ink/85">
-                <p>Курьер с примеркой по Москве и Петербургу за 1–2 дня: 15 минут на примерку, платите только за то, что подошло. СДЭК по России — 2–7 дней.</p>
+                <p>Курьер с примеркой по Москве и Петербургу за 1–2 дня: до 20 минут на примерку, платите только за то, что подошло. СДЭК по России — 2–7 дней.</p>
                 <p>Возврат 14 дней с момента получения. Для уровня Privé обратный забор бесплатный. <Link href="/delivery" className="underline underline-offset-4">Подробнее</Link></p>
               </div>
             </details>
@@ -160,10 +169,10 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
               </dl>
             </details>
           </div>
-          {/* образ, в котором снята вещь: если подборки «Собрать образ» ниже нет, ссылка на страницу образа остаётся здесь */}
-          {lookMates.length === 0 && p.lookItems.length > 0 && (
+          {/* образы, в которых снята вещь, кроме того, что собран ниже в «Собрать образ» */}
+          {otherLooks.length > 0 && (
             <div className="mt-5 text-[0.78rem] text-muted">
-              {p.lookItems.map((li) => <div key={li.id}>В образе: <Link href={`/lookbook/${li.look.slug}`} className="text-ink underline underline-offset-4">{li.look.title}</Link></div>)}
+              {otherLooks.map((li) => <div key={li.id}>{lookWith ? "Ещё в образе" : "В образе"}: <Link href={`/lookbook/${li.look.slug}`} className="text-ink underline underline-offset-4">{li.look.title}</Link></div>)}
             </div>
           )}
         </div>
@@ -194,7 +203,8 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
         </section>
       )}
 
-      <MobileBuyBar name={p.name} price={formatMoney(p.price)} label={p.isPreorder ? "Предзаказ" : "Выбрать размер"} />
+      {/* подпись не зависит от того, выбран ли размер: панель только возвращает к блоку покупки */}
+      <MobileBuyBar name={p.name} price={formatMoney(p.price)} label={p.isPreorder ? "Предзаказ" : p.variants.some((v) => v.stock - v.reserved > 0) ? "Купить" : "Сообщить о поступлении"} />
     </div>
   );
 }

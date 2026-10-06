@@ -28,6 +28,7 @@ export default async function AccountHome({ searchParams }: PageProps<"/account"
   const tp = tierProgress(user.yearSpent, tiers, user.loyaltyTier?.code);
   return (
     <div className="space-y-10">
+      <h1 className="sr-only">Личный кабинет</h1>
       {sp.welcome && <Alert tone="gold">Добро пожаловать в T.Rodionova Circle! На ваш счёт начислено 2 000 приветственных баллов.</Alert>}
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
         <TierCard

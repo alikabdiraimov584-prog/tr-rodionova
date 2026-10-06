@@ -44,7 +44,7 @@ export default async function ResalePage() {
         ].map(([n, t, d]) => (
           <div key={n} className="bg-ivory p-6">
             <div className="eyebrow">{n}</div>
-            <h3 className="mt-2">{t}</h3>
+            <h2 className="mt-2 text-base">{t}</h2>
             <p className="mt-2 text-sm text-muted">{d}</p>
           </div>
         ))}

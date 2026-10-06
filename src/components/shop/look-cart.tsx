@@ -13,14 +13,26 @@ export type LookCartItem = {
   price: number;
   image: string | null;
   note: string | null;
+  /** подпись предзаказа («предзаказ, отшив к 9 ноября») — склад у такой вещи не учитывается */
+  preorder: string | null;
+  /** размер по меркам покупательницы, если сидит «точно» */
+  advised: string | null;
   variants: { id: string; size: string; color: string | null; available: number }[];
 };
 
-export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookCartItem[]; loggedIn: boolean }) {
+/**
+ * Размер заранее выбирается, только если выбирать не из чего (один вариант) или он подсказан по меркам —
+ * как на карточке вещи: иначе в корзину молча уходил бы самый маленький размер в наличии.
+ */
+function initialVariant(it: LookCartItem) {
+  const can = it.variants.filter((v) => it.preorder || v.available > 0);
+  if (can.length === 1) return can[0].id;
+  return (it.advised && can.find((v) => v.size === it.advised)?.id) || "";
+}
+
+export function LookCart({ slug, items }: { slug: string; items: LookCartItem[] }) {
   const [state, action, pending] = useActionState(addLookToCartAction, undefined);
-  const [chosen, setChosen] = useState<Record<string, string>>(() =>
-    Object.fromEntries(items.map((i) => [i.productId, i.variants.find((v) => v.available > 0)?.id ?? ""])),
-  );
+  const [chosen, setChosen] = useState<Record<string, string>>(() => Object.fromEntries(items.map((i) => [i.productId, initialVariant(i)])));
   const total = items.reduce((s, i) => s + (chosen[i.productId] ? i.price : 0), 0);
   const count = items.filter((i) => chosen[i.productId]).length;
 
@@ -29,7 +41,7 @@ export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookC
       <input type="hidden" name="slug" value={slug} />
       <ul className="divide-y divide-line border-y border-line">
         {items.map((it) => {
-          const inStock = it.variants.some((v) => v.available > 0);
+          const inStock = !!it.preorder || it.variants.some((v) => v.available > 0);
           return (
             <li key={it.productId} className="flex gap-4 py-4">
               <Link href={`/product/${it.slug}`} className="relative block h-24 w-20 shrink-0 overflow-hidden bg-sand">
@@ -41,6 +53,7 @@ export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookC
                   <span className="whitespace-nowrap text-sm">{formatMoney(it.price)}</span>
                 </div>
                 {it.note && <p className="mt-1 text-xs text-muted">{it.note}</p>}
+                {it.preorder && <p className="mt-1 text-xs">{it.preorder[0].toUpperCase() + it.preorder.slice(1)}</p>}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="label mb-0">Размер</span>
                   <select
@@ -51,12 +64,12 @@ export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookC
                     className="input w-auto min-w-0 max-w-full py-1.5 text-xs"
                     disabled={!inStock}
                   >
-                    <option value="">{inStock ? "Не добавлять" : "Нет в наличии"}</option>
+                    <option value="">{inStock ? "Выберите размер" : "Нет в наличии"}</option>
                     {it.variants.map((v) => (
-                      <option key={v.id} value={v.id} disabled={v.available <= 0}>
+                      <option key={v.id} value={v.id} disabled={!it.preorder && v.available <= 0}>
                         {v.size}
                         {v.color ? ` · ${v.color}` : ""}
-                        {v.available <= 0 ? " — нет" : v.available <= 2 ? ` — осталось ${v.available}` : ""}
+                        {it.preorder ? "" : v.available <= 0 ? " — нет" : v.available <= 2 ? ` — осталось ${v.available}` : ""}
                       </option>
                     ))}
                   </select>
@@ -67,11 +80,11 @@ export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookC
         })}
       </ul>
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted">{count ? `${count} из ${items.length} вещей` : "Выберите размеры"}</span>
+        <span className="text-muted">{count ? `${count} из ${items.length} вещей` : "Выберите размеры, вещь без размера не добавится"}</span>
         <span>{formatMoney(total)}</span>
       </div>
       <button className="btn-primary w-full" disabled={pending || count === 0}>
-        {pending ? "Добавляем…" : loggedIn ? "Добавить весь образ в корзину" : "Войти и добавить образ в корзину"}
+        {pending ? "Добавляем…" : count === 0 ? "Выберите размеры" : count < items.length ? `Добавить в корзину: ${count} из ${items.length}` : "Добавить весь образ в корзину"}
       </button>
       {state?.message && (
         <p className="text-xs text-success">

@@ -32,7 +32,7 @@ export default async function AccountSupport({ searchParams }: PageProps<"/accou
     <div className="max-w-3xl">
       <AutoRefresh seconds={10} />
       <PageTitle title="Служба заботы">Ответим в течение 15 минут в рабочее время, ежедневно 10:00–21:00 по Москве. Можно также написать в Telegram, WhatsApp или на care@tr-rodionova.ru — вся переписка попадает к одному менеджеру.</PageTitle>
-      <div className="card mb-4 max-h-[55vh] space-y-3 overflow-y-auto p-5">
+      <div role="log" aria-label="Переписка" tabIndex={0} className="card mb-4 max-h-[55vh] space-y-3 overflow-y-auto p-5">
         {messages.length === 0 && <p className="text-center text-sm text-muted">Здесь появится ваша переписка с командой T.Rodionova.</p>}
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.direction === "IN" ? "justify-end" : "justify-start"}`}>

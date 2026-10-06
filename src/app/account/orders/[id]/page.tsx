@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -15,6 +16,8 @@ import { getSettingOrDefault } from "@/lib/settings";
 import { trackingUrl } from "@/lib/delivery";
 
 const STEPS = ["NEW", "PAID", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
+
+export const metadata: Metadata = { title: "Заказ" };
 
 export default async function OrderPage({ params, searchParams }: PageProps<"/account/orders/[id]">) {
   const { id } = await params;
@@ -116,7 +119,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             {order.address && <div>{[order.address.city, order.address.street, order.address.building, order.address.apartment && `кв. ${order.address.apartment}`].filter(Boolean).join(", ")}</div>}
             {order.addressText && <div>{order.addressText}</div>}
             {order.deliverySlot && <div>Интервал: {order.deliverySlot}</div>}
-            {order.fittingRequested && <div>Примерка 15 минут</div>}
+            {order.fittingRequested && <div>Примерка до 20 минут</div>}
             {order.trackingNumber && (
               <div className="mt-1 text-ink">
                 Трек-номер: {trackingUrl(order.deliveryMethod, order.trackingNumber) ? <a href={trackingUrl(order.deliveryMethod, order.trackingNumber)!} target="_blank" rel="noopener" className="underline">{order.trackingNumber} ↗</a> : order.trackingNumber}

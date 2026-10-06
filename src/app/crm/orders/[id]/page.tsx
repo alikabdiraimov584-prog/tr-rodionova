@@ -92,7 +92,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
                 </Link>
               )}
               {order.channel && <div className="mt-2 text-xs text-muted">Источник заказа: {TRAFFIC_CHANNEL[order.channel]}{order.source ? ` · ${order.source}` : ""}{order.campaign ? ` · ${order.campaign}` : ""}</div>}
-              {order.fittingRequested && <p className="mt-3 border-t border-line pt-3 font-medium">👗 Примерка курьером: клиентка оплачивает только подошедшее, курьер ждёт 15 минут</p>}
+              {order.fittingRequested && <p className="mt-3 border-t border-line pt-3 font-medium">👗 Примерка курьером: клиентка оплачивает только подошедшее, курьер ждёт до 20 минут</p>}
               {order.comment && <p className="mt-3 border-t border-line pt-3">💬 {order.comment}</p>}
             </div>
             <div className="card p-5 text-sm">

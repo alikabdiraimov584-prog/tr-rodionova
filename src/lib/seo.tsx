@@ -211,13 +211,17 @@ export function storeJsonLd(brand: BrandLike, seller: SellerLike) {
   };
 }
 
-/** Условия доставки и возврата для Offer: поисковики показывают их в карточке, ИИ-ответы цитируют. */
-export function offerPoliciesJsonLd(delivery: DeliveryLike, hasStore = false) {
-  const rub = (k: number) => (k / 100).toFixed(2);
+/**
+ * Условия доставки и возврата для Offer: поисковики показывают их в карточке, ИИ-ответы цитируют.
+ * price — цена предложения в копейках: от порога бесплатной доставки тариф 0, как в корзине и на карточке.
+ */
+export function offerPoliciesJsonLd(delivery: DeliveryLike, hasStore = false, price?: number) {
+  const free = price !== undefined && delivery.freeFrom > 0 && price >= delivery.freeFrom;
+  const rub = (k: number) => (free ? 0 : k / 100).toFixed(2);
   const time = (min: number, max: number) => ({ "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: min, maxValue: max, unitCode: "DAY" } });
   return {
     shippingDetails: [
-      { "@type": "OfferShippingDetails", shippingDestination: { "@type": "DefinedRegion", addressCountry: "RU" }, shippingRate: { "@type": "MonetaryAmount", value: rub(delivery.cdek), currency: "RUB" }, deliveryTime: time(1, 7) },
+      { "@type": "OfferShippingDetails", shippingDestination: { "@type": "DefinedRegion", addressCountry: "RU" }, shippingRate: { "@type": "MonetaryAmount", value: rub(delivery.cdek), currency: "RUB" }, deliveryTime: time(2, 7) },
       { "@type": "OfferShippingDetails", shippingDestination: { "@type": "DefinedRegion", addressCountry: "RU", addressRegion: ["Москва", "Санкт-Петербург"] }, shippingRate: { "@type": "MonetaryAmount", value: rub(delivery.courier), currency: "RUB" }, deliveryTime: time(1, 2) },
     ],
     hasMerchantReturnPolicy: returnPolicyJsonLd(hasStore),
@@ -253,7 +257,6 @@ export function productJsonLd(p: ProductLike, delivery: DeliveryLike, opts: { ha
   const sizes = [...new Set(p.variants.map((v) => v.size))];
   const condition = p.isPreloved ? `${SCHEMA}UsedCondition` : `${SCHEMA}NewCondition`;
   const priceValidUntil = `${new Date().getFullYear()}-12-31`;
-  const policies = p.isPreloved ? {} : offerPoliciesJsonLd(delivery, opts.hasStore);
   const availability = (free: number) => (p.isPreorder ? `${SCHEMA}PreOrder` : free > 0 ? `${SCHEMA}InStock` : `${SCHEMA}OutOfStock`);
   const offer = (price: number, free: number, offerUrl: string) => ({
     "@type": "Offer",
@@ -265,7 +268,7 @@ export function productJsonLd(p: ProductLike, delivery: DeliveryLike, opts: { ha
     ...(p.isPreorder ? {} : { inventoryLevel: { "@type": "QuantitativeValue", value: Math.max(0, free) } }),
     itemCondition: condition,
     seller: { "@id": ids().organization },
-    ...policies,
+    ...(p.isPreloved ? {} : offerPoliciesJsonLd(delivery, opts.hasStore, price)),
   });
   const common = {
     brand: { "@id": ids().brand },
@@ -312,7 +315,8 @@ export function productJsonLd(p: ProductLike, delivery: DeliveryLike, opts: { ha
     variesBy: [`${SCHEMA}size`, ...(colors.length > 1 ? [`${SCHEMA}color`] : [])],
     hasVariant: p.variants.map((v) => {
       const free = v.stock - v.reserved;
-      const variantUrl = `${url}?size=${encodeURIComponent(v.size)}`;
+      // адрес варианта открывает карточку с выбранным размером (и цветом, если цветов несколько)
+      const variantUrl = `${url}?size=${encodeURIComponent(v.size)}${colors.length > 1 && v.color ? `&color=${encodeURIComponent(v.color)}` : ""}`;
       return {
         "@type": "Product",
         "@id": `${url}#${encodeURIComponent(v.sku)}`,

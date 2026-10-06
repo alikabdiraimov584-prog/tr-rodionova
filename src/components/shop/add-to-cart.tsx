@@ -12,9 +12,9 @@ type V = { id: string; size: string; color: string | null; colorHex: string | nu
  * Размер заранее не выбирается (кроме единственного или подсказанного по меркам): покупательница выбирает его сама,
  * иначе в корзину молча уходит первый размер в наличии и растут возвраты.
  */
-export function AddToCart({ slug, variants, preorder = false, defaultSize, children }: { slug: string; variants: V[]; loggedIn?: boolean; preorder?: boolean; defaultSize?: string | null; children?: React.ReactNode }) {
+export function AddToCart({ slug, variants, preorder = false, defaultSize, defaultColor, children }: { slug: string; variants: V[]; loggedIn?: boolean; preorder?: boolean; defaultSize?: string | null; defaultColor?: string | null; children?: React.ReactNode }) {
   const colors = [...new Map(variants.map((v) => [v.color ?? "", v])).values()];
-  const [color, setColor] = useState(colors[0]?.color ?? "");
+  const [color, setColor] = useState((colors.find((c) => defaultColor && c.color === defaultColor) ?? colors[0])?.color ?? "");
   const sizes = variants.filter((v) => (v.color ?? "") === color);
   const can = (v: V) => preorder || v.available > 0;
   const initial = sizes.find((s) => defaultSize && s.size === defaultSize && can(s)) ?? (sizes.length === 1 && can(sizes[0]) ? sizes[0] : undefined);
@@ -22,6 +22,9 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, child
   const [state, action, pending] = useActionState(addToCartAction, undefined);
   const [wait, waitAction, waitPending] = useActionState(subscribeStockAction, undefined);
   const selected = variants.find((v) => v.id === variantId);
+  // ответ сервера относится к конкретному размеру и цвету: при выборе другого он не показывается
+  const [answerFor, atMax] = (state?.code ?? "").split("|");
+  const mine = !!variantId && answerFor === variantId;
   return (
     <div className="space-y-5">
       {colors.length > 0 && colors[0].color && (
@@ -89,19 +92,19 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, child
             <form action={action} className="flex-1">
               <input type="hidden" name="variantId" value={variantId} />
               <input type="hidden" name="slug" value={slug} />
-              <button className="btn-primary w-full" disabled={pending || !variantId}>
-                {pending ? "Добавляем…" : !variantId ? "Выберите размер" : preorder ? "Оформить предзаказ" : "Добавить в корзину"}
+              <button className="btn-primary w-full" disabled={pending || !variantId || (mine && atMax === "max")}>
+                {pending ? "Добавляем…" : !variantId ? "Выберите размер" : mine && atMax === "max" ? "Уже в корзине" : mine && state?.ok ? "Добавить ещё" : preorder ? "Оформить предзаказ" : "Добавить в корзину"}
               </button>
             </form>
             {children}
           </div>
-          {state?.message && (
+          {mine && state?.ok && (
             <div className="space-y-2" role="status">
               <p className="text-xs text-success">✓ {state.message}</p>
               <Link href="/cart" className="btn-outline w-full">Перейти в корзину</Link>
             </div>
           )}
-          {state?.error && <p className="text-xs text-danger" role="alert">{state.error}</p>}
+          {mine && state?.error && <p className="text-xs text-danger" role="alert">{state.error}</p>}
         </div>
       )}
     </div>

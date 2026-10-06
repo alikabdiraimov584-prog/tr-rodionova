@@ -12,7 +12,7 @@ import { createOrderFromCart, cancelOrder } from "@/lib/orders";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 import { trackEvent } from "@/lib/web-analytics";
-import { addToGuestCart, ensureGuestToken, getGuestToken, setGuestCartQuantity } from "@/lib/guest-cart";
+import { addedMessage, addToGuestCart, cartLimit, ensureGuestToken, getGuestToken, setGuestCartQuantity } from "@/lib/guest-cart";
 import { hashPassword, loginAs } from "@/lib/auth";
 import { addPoints, recalcTier } from "@/lib/loyalty";
 import { getSetting } from "@/lib/settings";
@@ -23,6 +23,10 @@ import { activeIntegration } from "@/lib/integrations/store";
 import { ingestWebsite } from "@/lib/support/inbox";
 import { randomBytes } from "node:crypto";
 
+/**
+ * Одна штука выбранного варианта в корзину. code — id варианта (с «|max», если больше добавить нельзя):
+ * карточка показывает ответ только пока выбран тот же размер и цвет.
+ */
 export async function addToCartAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
   const variantId = String(formData.get("variantId") ?? "");
@@ -31,27 +35,29 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
     // корзина без входа: регистрация понадобится только при оформлении
     try {
       const token = await ensureGuestToken();
-      const variant = await addToGuestCart(token, variantId);
-      await trackEvent("ADD_TO_CART", { productId: variant.productId });
+      const r = await addToGuestCart(token, variantId);
+      if (!r.limit) await trackEvent("ADD_TO_CART", { productId: r.variant.productId });
+      revalidatePath("/", "layout");
+      return { ok: true, code: r.limit ? `${variantId}|max` : variantId, message: addedMessage(r.quantity, r.limit, r.variant.product.isPreorder) };
     } catch (e) {
-      return { error: errorMessage(e) };
+      return { error: errorMessage(e), code: variantId };
     }
-    revalidatePath("/", "layout");
-    return { ok: true, message: "Добавлено в корзину" };
   }
   const variant = await db.productVariant.findUnique({ where: { id: variantId }, include: { product: true } });
-  if (!variant || variant.product.status !== "ACTIVE") return { error: "Товар недоступен" };
+  if (!variant || variant.product.status !== "ACTIVE") return { error: "Товар недоступен", code: variantId };
   const inCart = await db.cartItem.findUnique({ where: { userId_variantId: { userId: user.id, variantId } } });
-  const want = (inCart?.quantity ?? 0) + 1;
-  if (!variant.product.isPreorder && variant.stock - variant.reserved < want) return { error: "Этого размера больше нет в наличии" };
+  const have = inCart?.quantity ?? 0;
+  if (have + 1 > cartLimit(variant)) {
+    return have > 0 ? { ok: true, code: `${variantId}|max`, message: addedMessage(have, true, variant.product.isPreorder) } : { error: "Этого размера больше нет в наличии", code: variantId };
+  }
   await db.cartItem.upsert({
     where: { userId_variantId: { userId: user.id, variantId } },
-    update: { quantity: want },
+    update: { quantity: have + 1 },
     create: { userId: user.id, variantId, quantity: 1 },
   });
   await trackEvent("ADD_TO_CART", { productId: variant.productId, userId: user.id });
   revalidatePath("/", "layout");
-  return { ok: true, message: "Добавлено в корзину" };
+  return { ok: true, code: variantId, message: addedMessage(have + 1, false, variant.product.isPreorder) };
 }
 
 export async function updateCartAction(formData: FormData) {
@@ -68,7 +74,7 @@ export async function updateCartAction(formData: FormData) {
     await db.cartItem.deleteMany({ where: { userId: user.id, variantId } });
   } else {
     const v = await db.productVariant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
-    const capped = v.product.isPreorder ? Math.min(Math.floor(qty), 5) : Math.min(Math.floor(qty), Math.max(1, v.stock - v.reserved));
+    const capped = Math.min(Math.floor(qty), Math.max(1, cartLimit(v)));
     await db.cartItem.updateMany({ where: { userId: user.id, variantId }, data: { quantity: capped } });
   }
   revalidatePath("/", "layout");
@@ -230,7 +236,7 @@ export async function leaveReviewAction(_: ActionState, formData: FormData): Pro
 }
 
 export type QuoteView = {
-  lines: { variantId: string; productName: string; size: string; color: string | null; quantity: number; price: number }[];
+  lines: { variantId: string; productName: string; size: string; color: string | null; quantity: number; price: number; isPreorder: boolean }[];
   subtotal: number;
   discount: number;
   promoError: string | null;
@@ -252,7 +258,7 @@ export async function quoteAction(input: { promoCode?: string; pointsToUse?: num
   const q = user ? await quoteCart(user.id, input) : await quoteGuestCart(await getGuestToken(), input);
   const pct = user?.loyaltyTier?.cashbackPct ?? 3;
   return {
-    lines: q.lines.map((l) => ({ variantId: l.variantId, productName: l.productName, size: l.size, color: l.color, quantity: l.quantity, price: l.price })),
+    lines: q.lines.map((l) => ({ variantId: l.variantId, productName: l.productName, size: l.size, color: l.color, quantity: l.quantity, price: l.price, isPreorder: l.isPreorder })),
     subtotal: q.subtotal,
     discount: q.discount,
     promoError: q.promo && !q.promo.ok ? q.promo.error : null,

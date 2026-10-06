@@ -7,11 +7,12 @@ import { getCurrentUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { trackEvent } from "@/lib/web-analytics";
 import type { ActionState } from "@/lib/action-result";
-import { addToGuestCart, ensureGuestToken } from "@/lib/guest-cart";
+import { addToGuestCart, cartLimit, ensureGuestToken } from "@/lib/guest-cart";
 
 /**
  * «Добавить весь образ в корзину»: в форме приходят поля variant_<productId> с выбранным размером.
- * Проверка остатка — как в addToCartAction: позиция добавляется только если свободный остаток покрывает количество в корзине + 1.
+ * Проверка остатка — как в addToCartAction: позиция добавляется, если свободный остаток покрывает количество в корзине + 1
+ * (у предзаказа — не больше пяти штук); вещь, уже лежащая в корзине в предельном количестве, считается добавленной.
  */
 export async function addLookToCartAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
@@ -37,9 +38,10 @@ export async function addLookToCartAction(_: ActionState, formData: FormData): P
     const skipped: string[] = [];
     for (const id of variantIds) {
       try {
-        const v = await addToGuestCart(token, id);
-        await trackEvent("ADD_TO_CART", { productId: v.productId });
-        added.push(v.product.name);
+        const r = await addToGuestCart(token, id);
+        // вещь уже лежит в корзине в предельном количестве — образ всё равно собран
+        if (!r.limit) await trackEvent("ADD_TO_CART", { productId: r.variant.productId });
+        added.push(r.variant.product.name);
       } catch {
         skipped.push(id);
       }
@@ -59,8 +61,14 @@ export async function addLookToCartAction(_: ActionState, formData: FormData): P
       skipped.push(v.product.name);
       continue;
     }
-    const want = (cartQty.get(v.id) ?? 0) + 1;
-    if (v.stock - v.reserved < want) {
+    const have = cartQty.get(v.id) ?? 0;
+    const want = have + 1;
+    // у предзаказа склада нет: ограничение только на количество, как в корзине
+    if (want > cartLimit(v)) {
+      if (have > 0) {
+        added.push(v.product.name);
+        continue;
+      }
       skipped.push(`${v.product.name} (${v.size})`);
       continue;
     }

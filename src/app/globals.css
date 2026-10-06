@@ -18,7 +18,7 @@
   --accent: #111111; /* кнопки и активные элементы */
   --accent-fg: #ffffff;
   --champagne: #cdb58f; /* только для Circle */
-  --champagne-ink: #7a6440; /* шампань для текста: контраст ≥ 4.5:1 на светлом фоне */
+  --champagne-ink: #705b39; /* шампань для текста: контраст ≥ 4.5:1 на светлом фоне и на бейдже в CRM */
   --success: #276b44; /* контраст ≥ 4.5:1 на светлом фоне для мелкого текста */;
   --danger: #b3261e;
   --warning: #8a5a00;
@@ -116,12 +116,13 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
 /* CRM: заголовки фиксированного размера поверх утилит — как было до переноса базовых правил в слой */
 .crm h1, .crm h2, .crm h3 { font-family: var(--font-ui); letter-spacing: -0.01em; line-height: 1.15; }
 .crm h1 { font-weight: 700; font-size: 1.35rem; }
-.crm h2 { font-weight: 700; font-size: 1.2rem; }
+.crm h2 { font-weight: 700; font-size: 1.25rem; }
 .crm h3 { font-weight: 600; font-size: 1rem; }
 .crm .serif { font-weight: 700; letter-spacing: -0.02em; }
 
 
-.monogram { font-family: "Times New Roman", Times, serif; letter-spacing: -0.06em; color: var(--taupe-dark); }
+/* цвет монограмме не задаётся: она наследует цвет текста, а водяной знак на карточке Circle красят утилиты */
+.monogram { font-family: "Times New Roman", Times, serif; letter-spacing: -0.06em; }
 
 /* Размеры кнопок как до редизайна витрины: на них свёрстаны панели CRM. Витрина укрупняет кнопки ниже, в слое components. */
 @utility btn {
