@@ -22,8 +22,7 @@ export default async function Showroom() {
           <p className="mt-2">{b.phone}<br />{b.email}<br /><a href={b.telegram} className="underline">Telegram</a></p>
           <div className="eyebrow mt-5">Служба заботы</div>
           <p className="mt-2">{seller.hours}, ответ в течение 15 минут. <Link href="/account/support" className="underline">Написать в кабинете</Link></p>
-          <div className="eyebrow mt-5">Продавец</div>
-          <p className="mt-2 text-xs text-muted">{seller.name}{seller.inn && `, ИНН ${seller.inn}`}{seller.ogrn && `, ОГРНИП ${seller.ogrn}`}<br />{seller.address}</p>
+          <p className="mt-5 text-xs text-muted"><Link href="/seller" className="underline">Информация о продавце</Link></p>
         </div>
       }
     >

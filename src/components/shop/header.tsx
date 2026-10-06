@@ -1,3 +1,4 @@
+import { publicPhone } from "@/lib/seo";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { cabinetLink } from "@/lib/role-links";
@@ -52,7 +53,7 @@ function shopCategories() {
 /**
  * Подвал: короткие списки ссылок, на телефоне — раскрывающиеся. Ссылки на категории здесь обычные серверные,
  * поэтому поисковики находят каталог с любой страницы (панель меню рисуется только после нажатия).
- * Реквизиты продавца обязательны по закону.
+ * Реквизиты продавца целиком показаны на странице «Информация о продавце» (ссылка в колонке «Документы»).
  */
 export async function ShopFooter() {
   const [brand, seller, categories] = await Promise.all([getSettingOrDefault("brand"), getSettingOrDefault("seller"), shopCategories()]);
@@ -61,7 +62,7 @@ export async function ShopFooter() {
     ["Покупателям", [["/delivery", "Доставка и возврат"], ["/sizes", "Размеры"], ["/care", "Уход"], ["/faq", "Вопросы и ответы"], ["/gift", "Подарочные сертификаты"]]],
     ["Бренд", [["/about", "О бренде"], ["/collections", "Коллекции"], ["/lookbook", "Лукбук"], ["/journal", "Журнал"], ["/showroom", "Шоурум"], ["/press", "Для прессы"]]],
     ["Circle", [["/circle", "Программа лояльности"], ["/account", "Личный кабинет"], ["/account/stylist", "Персональный стилист"]]],
-    ["Документы", [["/offer", "Оферта"], ["/privacy", "Политика конфиденциальности"], ["/privacy#consent", "Согласие на обработку данных"]]],
+    ["Документы", [["/offer", "Оферта"], ["/privacy", "Политика конфиденциальности"], ["/privacy#consent", "Согласие на обработку данных"], ["/seller", "Информация о продавце"]]],
   ];
   const head = "text-[0.72rem] uppercase tracking-[0.12em]";
   const list = (links: [string, string][]) => (
@@ -92,7 +93,7 @@ export async function ShopFooter() {
           <div className={`pb-3 ${head}`}>Связь</div>
           <p className="text-muted">
             <a href={`mailto:${brand.email}`} className="break-words hover:text-ink">{brand.email}</a><br />
-            <span className="whitespace-nowrap">{brand.phone}</span><br />
+            {publicPhone(brand.phone) && <><span className="whitespace-nowrap">{publicPhone(brand.phone)}</span><br /></>}
             {seller.hours}
           </p>
           {seller.showroom && <p className="mt-3 text-muted">{seller.showroom}</p>}
@@ -100,7 +101,6 @@ export async function ShopFooter() {
       </div>
       <div className="border-t border-line px-4 py-5 text-center text-[0.68rem] text-muted md:px-5">
         © {new Date().getFullYear()} {brand.name}
-        {seller.name && <span className="mt-1 block">Продавец: {seller.name}{seller.inn && `, ИНН ${seller.inn}`}{seller.ogrn && `, ОГРНИП/ОГРН ${seller.ogrn}`}{seller.address && `, ${seller.address}`}</span>}
       </div>
     </footer>
   );
