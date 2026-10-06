@@ -45,3 +45,6 @@ src/generated
 # рабочие копии фоновых агентов
 .claude/worktrees/
 audit-shots/
+
+# временные скрипты проверок на стенде (лежат в scripts/, чтобы видеть node_modules проекта)
+scripts/.tmp-*
