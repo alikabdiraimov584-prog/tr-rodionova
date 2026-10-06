@@ -25,7 +25,7 @@ const form = p.locator('form:has(select[name="type"])');
 await form.locator('select[name="type"]').selectOption("EXPENSE_RENT");
 await form.locator('input[name="amount"]').fill("50000");
 // дата как в форме по умолчанию (по Москве): запись встаёт первой в списке, даже если сегодня уже много проводок
-const today = await form.locator('input[name="date"]').inputValue();
+await form.locator('input[name="date"]').inputValue(); // дата по умолчанию уже стоит
 await form.locator('input[name="category"]').fill("Аренда шоурума (тест)");
 await form.locator('input[name="counterparty"]').fill("ООО Тест-Арендодатель");
 await form.locator('input[name="comment"]').fill("тестовая проводка");
