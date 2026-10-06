@@ -15,6 +15,7 @@ services:
       - TZ=Europe/Moscow
     volumes:
       - uploads:/app/public/uploads
+      - image_cache:/app/.next/cache/images
       - backups:/app/backups:ro
     expose:
       - "3000"
@@ -125,6 +126,7 @@ services:
 volumes:
   pgdata:
   uploads:
+  image_cache:
   backups:
   caddy_data:
   caddy_config:

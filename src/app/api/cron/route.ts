@@ -6,6 +6,7 @@ import { runDailyJobs, runHourlyJobs } from "@/lib/jobs";
  *   ежечасно    GET /api/cron?job=hourly — напоминания об оплате, снятие резерва через 24 ч
  *   ежедневно   GET /api/cron?job=backup — загрузка ночного дампа базы в S3 (ключи в CRM → Интеграции)
  *   каждые 5 мин GET /api/cron?job=mail   — новые письма ящика поддержки (IMAP) в единый inbox
+ *   после обновления GET /api/cron?job=warm — прогрев кэша картинок (все кадры вещей в ширинах каталога и карточки)
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
     let result: Record<string, unknown>;
     if (job === "hourly") result = await runHourlyJobs();
     else if (job === "mail") result = await (await import("@/lib/support/mail-imap")).pollMailbox();
+    else if (job === "warm") result = await (await import("@/lib/warm-images")).warmImages();
     else if (job === "backup") {
       const backups = await import("@/lib/backups");
       result = { ...(await backups.uploadLatestBackup()), ...(await backups.checkBackupHealth()) };

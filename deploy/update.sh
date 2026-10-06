@@ -62,6 +62,8 @@ main() {
   fi
 
   docker image prune -f >/dev/null
+  # прогрев кэша картинок в фоне: новые кадры собираются в AVIF/WebP до первой покупательницы
+  (docker compose exec -T web node -e "fetch('http://127.0.0.1:3000/api/cron?job=warm',{headers:{authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(j=>console.log('warm',JSON.stringify(j))).catch(e=>console.log('warm failed',e.message))" >> /home/deploy/warm.log 2>&1 &)
   echo "Обновлено: $(git log --oneline -1)"
 }
 

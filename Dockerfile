@@ -24,7 +24,8 @@ RUN npm run build
 FROM base AS runner
 RUN groupadd -r app && useradd -r -g app -d /app app
 COPY --from=build --chown=app:app /app ./
-RUN mkdir -p /app/public/uploads && chown -R app:app /app/public/uploads
+# кэш оптимизатора картинок живёт на томе image_cache: после обновления готовые AVIF/WebP не пересчитываются заново
+RUN mkdir -p /app/public/uploads /app/.next/cache/images && chown -R app:app /app/public/uploads /app/.next/cache
 ARG GIT_SHA=unknown
 ARG BUILD_AT=
 ENV GIT_SHA=$GIT_SHA BUILD_AT=$BUILD_AT
