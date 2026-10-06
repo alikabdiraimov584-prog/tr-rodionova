@@ -335,11 +335,14 @@ async function guestJourney(viewport, label) {
   });
   await step("корзина: удалить товар", async () => {
     await page.goto(base + "/cart", { waitUntil: "domcontentloaded" });
-    const before = await page.locator("select[name='quantity']").count();
-    await page.locator("button:has-text('Удалить')").first().click();
+    // позиция корзины = её кнопка «Удалить» (количество меняется кнопками «−/+», списка количества больше нет)
+    const lines = () => page.locator("button:has-text('Удалить')");
+    const before = await lines().count();
+    if (before === 0) throw new Error("в корзине нет позиций");
+    await lines().first().click();
     // ждём, пока серверное действие перерисует корзину
-    await page.waitForFunction((n) => document.querySelectorAll("select[name='quantity']").length < n, before, { timeout: 15000 }).catch(() => null);
-    if ((await page.locator("select[name='quantity']").count()) !== before - 1) throw new Error("товар не удалился");
+    await page.waitForFunction((n) => [...document.querySelectorAll("button")].filter((b) => b.textContent?.trim() === "Удалить").length < n, before, { timeout: 15000 }).catch(() => null);
+    if ((await lines().count()) !== before - 1) throw new Error("товар не удалился");
   });
   await step("вход: неверный пароль показывает ошибку", async () => {
     await page.goto(base + "/login");
