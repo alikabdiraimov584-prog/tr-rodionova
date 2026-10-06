@@ -115,6 +115,8 @@ model Category {
   seoText        String? // Markdown
   faq            Json? // [{ q, a }]
   order    Int        @default(0)
+  // false — категория скрыта из CRM: её нет в меню и каталоге, вещи сняты с витрины (Product.hiddenWithCategory)
+  isActive Boolean    @default(true)
   parentId String?
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children Category[] @relation("CategoryTree")
@@ -166,6 +168,8 @@ model Product {
   selectionItems SelectionItem[]
   categoryId   String?
   category     Category?     @relation(fields: [categoryId], references: [id])
+  // снята с витрины вместе со скрытой категорией (статус DRAFT): при включении категории снова в продаже
+  hiddenWithCategory Boolean @default(false)
   collectionId String?
   collection   Collection?   @relation(fields: [collectionId], references: [id])
   images       ProductImage[]

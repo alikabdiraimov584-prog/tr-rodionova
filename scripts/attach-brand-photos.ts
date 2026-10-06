@@ -1,7 +1,7 @@
 // Привязывает фото из public/images/brand/<sku>/ к товарам (файлы по алфавиту = порядок галереи).
 // Использование: положите фото в public/images/brand/TR-SK-101/01.jpg, 02.jpg … и выполните `npx tsx scripts/attach-brand-photos.ts`.
 // Запускается при каждом старте контейнера. Фото, загруженные через CRM (/uploads/…), не трогает: добавляет только
-// недостающие файлы из папки и убирает ссылки на файлы, которых в папке больше нет.
+// недостающие файлы из папки (пока фото вещи не правили в CRM) и убирает ссылки на файлы, которых в папке больше нет.
 import "dotenv/config";
 import { readdirSync, existsSync } from "node:fs";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -50,8 +50,10 @@ async function main() {
     const stale = product.images.filter((i) => i.url.startsWith(prefix) && !wanted.includes(i.url));
     if (stale.length) await db.productImage.deleteMany({ where: { id: { in: stale.map((i) => i.id) } } });
     const have = new Set(product.images.map((i) => i.url));
-    // владелица уже загрузила свои фото через CRM: папка больше ничего не добавляет (удалённое в CRM не возвращается), только убирает исчезнувшие файлы
-    const curated = product.images.some((i) => i.url.startsWith("/uploads/"));
+    // владелица уже ведёт фото в CRM (загружала свои или удаляла кадры): папка больше ничего не добавляет —
+    // удалённое в CRM не возвращается, — только убирает ссылки на исчезнувшие файлы
+    const removedInCrm = await db.auditLog.count({ where: { action: "product.imageRemove", entityId: product.id } });
+    const curated = removedInCrm > 0 || product.images.some((i) => i.url.startsWith("/uploads/"));
     const missing = curated ? [] : wanted.filter((u) => !have.has(u));
     let order = product.images.filter((i) => !stale.includes(i)).reduce((m, i) => Math.max(m, i.order + 1), 0);
     if (missing.length) await db.productImage.createMany({ data: missing.map((url) => ({ productId: product.id, url, alt: product.name, order: order++ })) });

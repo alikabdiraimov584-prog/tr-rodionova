@@ -12,12 +12,12 @@ function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
 type P = {
   id?: string; name?: string; sku?: string; slug?: string; price?: number; compareAt?: number | null; costPrice?: number | null;
   categoryId?: string | null; collectionId?: string | null; status?: string; description?: string | null; composition?: string | null;
-  care?: string | null; madeIn?: string | null; isNew?: boolean; isFeatured?: boolean; images?: string[];
+  care?: string | null; madeIn?: string | null; isNew?: boolean; isFeatured?: boolean; images?: string[]; hiddenWithCategory?: boolean;
 };
 
 const rub = (k?: number | null) => (k ? String(k / 100) : "");
 
-export function ProductForm({ p, categories, collections }: { p?: P; categories: { id: string; name: string }[]; collections: { id: string; name: string }[] }) {
+export function ProductForm({ p, categories, collections }: { p?: P; categories: { id: string; name: string; isActive?: boolean }[]; collections: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(saveProductAction, undefined);
   return (
     <form action={action} className="grid gap-4 md:grid-cols-2">
@@ -34,13 +34,14 @@ export function ProductForm({ p, categories, collections }: { p?: P; categories:
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <label><span className="label">Категория</span>
-          <select aria-label="Категория" name="categoryId" defaultValue={p?.categoryId ?? ""} className="input"><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select aria-label="Категория" name="categoryId" defaultValue={p?.categoryId ?? ""} className="input"><option value="">—</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}{c.isActive === false ? " (скрыта)" : ""}</option>)}</select>
         </label>
         <label><span className="label">Коллекция</span>
           <select aria-label="Коллекция" name="collectionId" defaultValue={p?.collectionId ?? ""} className="input"><option value="">—</option>{collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         </label>
         <label><span className="label">Статус</span>
-          <select aria-label="Статус" name="status" defaultValue={p?.status ?? "DRAFT"} className="input"><option value="DRAFT">Черновик</option><option value="ACTIVE">В продаже</option><option value="ARCHIVED">Архив</option></select>
+          <select aria-label="Статус" name="status" defaultValue={p?.hiddenWithCategory ? "ACTIVE" : (p?.status ?? "DRAFT")} className="input"><option value="DRAFT">Черновик</option><option value="ACTIVE">В продаже</option><option value="ARCHIVED">Архив</option></select>
+          {p?.hiddenWithCategory && <span className="mt-1 block text-xs text-warning">Сейчас не на сайте: категория скрыта. Вернётся в продажу, когда вы покажете категорию</span>}
         </label>
       </div>
       <label className="md:col-span-2"><span className="label">Описание</span><textarea name="description" defaultValue={p?.description ?? ""} rows={3} className="input" /></label>

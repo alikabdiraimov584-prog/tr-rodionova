@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { saveCategoryAction } from "@/app/actions/crm-catalog";
+import { createCategoryAction, saveCategoryAction } from "@/app/actions/crm-catalog";
 
 type Cat = { id: string; slug: string; name: string; order: number; seoTitle: string | null; seoDescription: string | null; seoText: string | null; faq: { q: string; a: string }[] };
 
@@ -25,6 +25,19 @@ export function CategoryForm({ c }: { c: Cat }) {
         {state?.error && <span className="text-sm text-danger">{state.error}</span>}
         {state?.ok && <span className="text-sm text-success">{state.message}</span>}
       </div>
+    </form>
+  );
+}
+
+/** Новая категория — одно поле: адрес латиницей и место в меню подставляются сами. */
+export function NewCategoryForm() {
+  const [state, action, pending] = useActionState(createCategoryAction, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-3">
+      <label className="w-full sm:w-72"><span className="label">Название</span><input name="name" required maxLength={60} placeholder="Например, Пальто" className="input py-2" /></label>
+      <button className="btn-primary btn-sm" disabled={pending}>{pending ? "Добавляем…" : "Добавить категорию"}</button>
+      {state?.error && <span className="w-full text-sm text-danger" role="alert">{state.error}</span>}
+      {state?.ok && <span className="w-full text-sm text-success" role="status">{state.message}</span>}
     </form>
   );
 }

@@ -27,7 +27,7 @@ export default async function Home() {
     getCurrentCustomer(),
     getSetting("loyalty"),
     db.category.findMany({
-      where: { products: { some: { status: "ACTIVE", isPreloved: false, images: { some: {} } } } },
+      where: { isActive: true, products: { some: { status: "ACTIVE", isPreloved: false, images: { some: {} } } } },
       orderBy: { order: "asc" },
       select: { slug: true, name: true, products: { where: { status: "ACTIVE", isPreloved: false, images: { some: { url: { not: { startsWith: "/images/placeholder/" } } } } }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }], take: 1, select: { images: { where: { url: { not: { startsWith: "/images/placeholder/" } } }, orderBy: { order: "asc" }, take: 4, select: { url: true } } } } },
     }),

@@ -1,3 +1,6 @@
+import { access } from "node:fs/promises";
+import { constants } from "node:fs";
+import path from "node:path";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { backupStatus } from "@/lib/backups";
@@ -17,6 +20,20 @@ async function mailStatus() {
   return { enabled: !!ch?.enabled, transport: cfg.smtpHost ? "smtp" : cfg.postmarkToken ? "postmark" : null, lastError: ch?.lastError ?? null, lastInboundAt: ch?.lastEventAt ?? null, sent24h: sent, failed24h: failed, skipped24h: skipped };
 }
 
+/** Папка фото из CRM (том uploads на сервере): может ли приложение записать новые кадры. Без неё «Загрузить фото» не работает. */
+async function uploadsStatus() {
+  const root = path.join(process.cwd(), "public", "uploads");
+  try {
+    await access(root, constants.W_OK);
+    await access(path.join(root, "products"), constants.W_OK).catch((e: NodeJS.ErrnoException) => {
+      if (e.code !== "ENOENT") throw e;
+    });
+    return { writable: true, error: null };
+  } catch (e) {
+    return { writable: false, error: (e as NodeJS.ErrnoException).code ?? "unknown" };
+  }
+}
+
 /** Проверка живости: версия сборки (коммит) и доступность базы. Используется мониторингом и аудитом. */
 export async function GET() {
   let dbOk = true;
@@ -25,10 +42,11 @@ export async function GET() {
   } catch {
     dbOk = false;
   }
+  const uploads = await uploadsStatus();
   const backup = dbOk ? await backupStatus().catch(() => null) : null;
   const mail = dbOk ? await mailStatus().catch(() => null) : null;
   return NextResponse.json(
-    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), backup, mail },
+    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), uploads, backup, mail },
     { status: dbOk ? 200 : 503, headers: { "cache-control": "no-store" } },
   );
 }

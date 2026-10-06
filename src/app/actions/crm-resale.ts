@@ -86,6 +86,9 @@ export async function listResaleAction(_: ActionState, formData: FormData): Prom
       const sku = `${source.sku}-PL-${suffix}`;
       let slug = `${source.slug}-preloved-${suffix.toLowerCase()}`;
       if (await tx.product.findUnique({ where: { slug }, select: { id: true } })) slug = `${slug}-${Date.now().toString(36)}`;
+      // категория исходной вещи скрыта в CRM: pre-loved вещь ждёт её включения вместе с остальными
+      const category = source.categoryId ? await tx.category.findUnique({ where: { id: source.categoryId }, select: { isActive: true } }) : null;
+      const waits = !!category && !category.isActive;
       const p = await tx.product.create({
         data: {
           slug,
@@ -97,7 +100,8 @@ export async function listResaleAction(_: ActionState, formData: FormData): Prom
           madeIn: source.madeIn,
           price,
           compareAt: source.price > price ? source.price : null,
-          status: "ACTIVE",
+          status: waits ? "DRAFT" : "ACTIVE",
+          hiddenWithCategory: waits,
           isPreloved: true,
           condition,
           material: source.material,

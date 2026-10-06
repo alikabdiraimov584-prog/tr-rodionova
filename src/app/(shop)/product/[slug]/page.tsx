@@ -48,6 +48,8 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const { slug } = await params;
   const p = await load(slug);
   if (!p || p.status !== "ACTIVE") notFound();
+  // скрытая в CRM категория не показывается и в «хлебных крошках»
+  const category = p.category?.isActive ? p.category : null;
   const user = await getCurrentCustomer();
   if (p.earlyAccessUntil && p.earlyAccessUntil > new Date() && !user?.loyaltyTier?.earlyAccess) {
     redirect(`/circle?early=${p.slug}`);
@@ -86,13 +88,13 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const ld = productJsonLd(p, delivery, { hasStore: !!seller.showroom });
   return (
     <div className="mx-auto max-w-[1600px] md:px-5">
-      <JsonLd data={[ld, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(p.category ? [{ name: p.category.name, path: `/catalog?category=${p.category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
+      <JsonLd data={[ld, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(category ? [{ name: category.name, path: `/catalog?category=${category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
       <div className="grid md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] md:gap-10 lg:gap-16">
         <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />
         <div id="buy" className="min-w-0 scroll-mt-20 px-4 pt-6 md:sticky md:top-24 md:self-start md:px-0 md:pt-10 lg:max-w-[460px]">
           <nav aria-label="Навигация" className="hidden text-[0.66rem] uppercase tracking-[0.12em] text-muted md:block [&_a]:hover:text-ink">
             <Link href="/catalog">Каталог</Link>
-            {p.category && <> / <Link href={`/catalog?category=${p.category.slug}`}>{p.category.name}</Link></>}
+            {category && <> / <Link href={`/catalog?category=${category.slug}`}>{category.name}</Link></>}
             {p.isPreloved && <> / <Link href="/preloved">Pre-loved</Link></>}
           </nav>
           <h1 className="mt-0 text-[1.15rem] uppercase tracking-[0.08em] md:mt-4 md:text-[1.35rem]">{p.name}</h1>

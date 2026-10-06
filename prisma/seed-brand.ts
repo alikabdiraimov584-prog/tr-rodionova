@@ -5,12 +5,15 @@ const RUB = 100;
 /**
  * Вещи бренда из присланных эскизов. Фото подставляются из public/images/brand/<sku>/*.jpg,
  * если файлы есть (см. scripts/attach-brand-photos.ts), иначе остаются заглушки.
+ * Запускается при каждом старте, но только добавляет недостающее: вещи, образы и категории, которые уже есть,
+ * ведутся в CRM — правки названий, цен, описаний, скрытие и удаление категорий обновление сайта не откатывает.
  */
 export async function seedBrand(db: PrismaClient) {
   const cat = async (slug: string) => (await db.category.findUnique({ where: { slug } }))?.id ?? null;
   const collection = await db.collection.findUnique({ where: { slug: "aw26" } });
-  // боди — отдельная категория бренда
-  await db.category.upsert({ where: { slug: "bodysuits" }, update: { name: "Боди" }, create: { slug: "bodysuits", name: "Боди", order: 3 } });
+  // боди — отдельная категория бренда; создаётся один раз вместе с первой загрузкой вещей (удалённая в CRM не возвращается)
+  if (!(await db.product.findUnique({ where: { slug: "bodi-tr-01" }, select: { id: true } })) && !(await db.category.findUnique({ where: { slug: "bodysuits" }, select: { id: true } })))
+    await db.category.create({ data: { slug: "bodysuits", name: "Боди", order: 3 } });
   const items = [
     {
       slug: "bodi-tr-01",
@@ -102,11 +105,16 @@ export async function seedBrand(db: PrismaClient) {
       preorder: true,
     },
   ];
+  const shipAt = () => new Date(Date.now() + 35 * 86_400_000);
   for (const it of items) {
-    const product = await db.product.upsert({
-      where: { slug: it.slug },
-      update: { name: it.name, price: it.price * RUB, costPrice: it.cost * RUB, description: it.description, composition: it.composition, material: it.material, sizeChart: it.sizeChart, care: it.care, isPreorder: !!it.preorder, preorderShipAt: it.preorder ? new Date(Date.now() + 35 * 86_400_000) : null },
-      create: {
+    const existing = await db.product.findUnique({ where: { slug: it.slug }, select: { id: true, isPreorder: true, preorderShipAt: true } });
+    if (existing) {
+      // у предзаказа дата отшива всегда впереди; остальное в карточке ведёт CRM
+      if (existing.isPreorder && (!existing.preorderShipAt || existing.preorderShipAt < new Date())) await db.product.update({ where: { id: existing.id }, data: { preorderShipAt: shipAt() } });
+      continue;
+    }
+    const product = await db.product.create({
+      data: {
         slug: it.slug,
         sku: it.sku,
         name: it.name,
@@ -120,7 +128,7 @@ export async function seedBrand(db: PrismaClient) {
         isNew: true,
         isFeatured: it.featured ?? false,
         isPreorder: !!it.preorder,
-        preorderShipAt: it.preorder ? new Date(Date.now() + 35 * 86_400_000) : null,
+        preorderShipAt: it.preorder ? shipAt() : null,
         categoryId: await cat(it.category),
         collectionId: collection?.id ?? null,
         images: { create: [{ url: `/images/placeholder/${it.image}.svg`, alt: it.name, order: 0 }, { url: `/images/placeholder/${it.image}-2.svg`, alt: `${it.name} — деталь`, order: 1 }] },
@@ -165,24 +173,18 @@ export async function seedBrand(db: PrismaClient) {
       items: [["zhaket-tr-noir", "Пряжка TR по талии"], ["yubka-tr-01", "Запах с разрезом"], ["bodi-tr-01", "Под жакет"]],
     },
   ];
-  // демо-образы уходят ниже образов бренда
-  await db.look.updateMany({ where: { slug: { notIn: looks.map((l) => l.slug) }, order: { lt: 10 } }, data: { order: { increment: 10 } } });
-  for (const l of looks) {
-    const look = await db.look.upsert({
-      where: { slug: l.slug },
-      // обложку, выбранную в CRM, сид не трогает, если сам её не задаёт
-      update: { title: l.title, description: l.description, ...(l.cover ? { coverUrl: l.cover } : {}), order: l.order, season: "AW26", isPublished: true },
-      create: { slug: l.slug, title: l.title, description: l.description, coverUrl: l.cover, order: l.order, season: "AW26", isPublished: true },
-    });
+  // образы бренда создаются один раз; дальше обложку, порядок, публикацию и состав ведёт CRM
+  const fresh = [];
+  for (const l of looks) if (!(await db.look.findUnique({ where: { slug: l.slug }, select: { id: true } }))) fresh.push(l);
+  // демо-образы уходят ниже образов бренда — только когда образы бренда появляются впервые
+  if (fresh.length > 0) await db.look.updateMany({ where: { slug: { notIn: looks.map((l) => l.slug) }, order: { lt: 10 } }, data: { order: { increment: 10 } } });
+  for (const l of fresh) {
+    const look = await db.look.create({ data: { slug: l.slug, title: l.title, description: l.description, coverUrl: l.cover, order: l.order, season: "AW26", isPublished: true } });
     let order = 0;
     for (const [slug, note] of l.items) {
       const product = await db.product.findUnique({ where: { slug } });
       if (!product) continue;
-      await db.lookItem.upsert({
-        where: { lookId_productId: { lookId: look.id, productId: product.id } },
-        update: { order, note },
-        create: { lookId: look.id, productId: product.id, order, note },
-      });
+      await db.lookItem.create({ data: { lookId: look.id, productId: product.id, order, note } });
       order++;
     }
   }

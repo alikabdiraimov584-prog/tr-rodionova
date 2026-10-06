@@ -42,6 +42,9 @@ export async function saveProductAction(_: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: `Заполните поле «${parsed.error.issues[0].message}»` };
   const d = parsed.data;
   const id = String(formData.get("id") ?? "");
+  // вещь «в продаже» из скрытой категории ждёт включения категории: на витрину не выходит
+  const category = d.categoryId ? await db.category.findUnique({ where: { id: d.categoryId }, select: { name: true, isActive: true } }) : null;
+  const waits = !!category && !category.isActive && d.status === "ACTIVE";
   const data = {
     name: d.name,
     sku: d.sku.toUpperCase(),
@@ -51,7 +54,8 @@ export async function saveProductAction(_: ActionState, formData: FormData): Pro
     costPrice: d.costPrice ? toKopecks(d.costPrice) : null,
     categoryId: d.categoryId || null,
     collectionId: d.collectionId || null,
-    status: d.status,
+    status: waits ? ("DRAFT" as const) : d.status,
+    hiddenWithCategory: waits,
     description: d.description || null,
     composition: d.composition || null,
     care: d.care || null,
@@ -79,7 +83,7 @@ export async function saveProductAction(_: ActionState, formData: FormData): Pro
   // карточка вещи и каталог — поисковикам сразу (IndexNow), если интеграция включена; архив и черновик тоже: адрес пропал
   await pingIndexNow([`/product/${data.slug}`, "/catalog", "/yml.xml"]);
   if (!id) redirect(`/crm/products/${productId}`);
-  return { ok: true, message: "Сохранено" };
+  return { ok: true, message: waits ? `Сохранено. Категория «${category!.name}» скрыта: вещь появится на сайте, когда вы её включите` : "Сохранено" };
 }
 
 export async function addVariantAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -196,4 +200,84 @@ export async function saveCategoryAction(_: ActionState, formData: FormData): Pr
   revalidatePath("/crm/products/categories");
   revalidatePath("/", "layout");
   return { ok: true, message: "Сохранено" };
+}
+
+/** Новая категория: адрес латиницей из названия, место — в конце меню. На сайте видна с первой вещью в продаже. */
+export async function createCategoryAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireSection("products");
+  const name = String(formData.get("name") ?? "").trim().replace(/\s+/g, " ");
+  if (!name) return { error: "Введите название категории" };
+  if (name.length > 60) return { error: "Название длиннее 60 символов" };
+  if (await db.category.findFirst({ where: { name: { equals: name, mode: "insensitive" } }, select: { id: true } })) return { error: `Категория «${name}» уже есть` };
+  const base = slugify(name) || "category";
+  let slug = base;
+  for (let i = 2; await db.category.findUnique({ where: { slug }, select: { id: true } }); i++) slug = `${base}-${i}`;
+  const last = await db.category.aggregate({ _max: { order: true } });
+  const c = await db.category.create({ data: { name, slug, order: (last._max.order ?? -1) + 1 } });
+  await audit(me.id, "category.create", "Category", c.id, { name, slug });
+  revalidatePath("/crm/products", "layout");
+  return { ok: true, message: `Категория «${name}» добавлена. На сайте она появится, когда в ней будет вещь в продаже: выберите категорию в карточке товара` };
+}
+
+/**
+ * Скрыть категорию с сайта вместе с её вещами или вернуть. Вещи «в продаже» становятся черновиками с пометкой
+ * hiddenWithCategory и при включении возвращаются в продажу; черновики и архив не трогаются.
+ */
+export async function toggleCategoryAction(formData: FormData) {
+  const me = await requireSection("products");
+  const id = String(formData.get("id"));
+  const show = formData.get("show") === "1";
+  // повторное нажатие в устаревшей вкладке (категорию уже удалили или переключили) ничего не ломает
+  const current = await db.category.findUnique({ where: { id }, select: { isActive: true } });
+  if (!current || current.isActive === show) return revalidatePath("/crm/products/categories");
+  const products = await db.$transaction(async (tx) => {
+    await tx.category.update({ where: { id }, data: { isActive: show } });
+    const r = show
+      ? await tx.product.updateMany({ where: { categoryId: id, hiddenWithCategory: true }, data: { status: "ACTIVE", hiddenWithCategory: false } })
+      : await tx.product.updateMany({ where: { categoryId: id, status: "ACTIVE" }, data: { status: "DRAFT", hiddenWithCategory: true } });
+    return r.count;
+  });
+  await audit(me.id, show ? "category.show" : "category.hide", "Category", id, { products });
+  revalidatePath("/", "layout");
+  await pingIndexNow(["/catalog", "/yml.xml"]);
+}
+
+/** Порядок в меню: категория меняется местами с соседней, номера переписываются подряд. */
+export async function moveCategoryAction(formData: FormData) {
+  await requireSection("products");
+  const id = String(formData.get("id"));
+  const step = String(formData.get("dir")) === "up" ? -1 : 1;
+  const all = await db.category.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true } });
+  const i = all.findIndex((c) => c.id === id);
+  const j = i + step;
+  if (i < 0 || j < 0 || j >= all.length) return;
+  [all[i], all[j]] = [all[j], all[i]];
+  await db.$transaction(all.map((c, n) => db.category.update({ where: { id: c.id }, data: { order: n } })));
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Удаление категории. Её вещи переходят в выбранную категорию или остаются без категории (видны в «Все»).
+ * Удаление ничего не выставляет на сайт: вещи, скрытые вместе с категорией, остаются черновиками; в скрытую
+ * категорию вещи переходят скрытыми.
+ */
+export async function deleteCategoryAction(formData: FormData) {
+  const me = await requireSection("products");
+  const id = String(formData.get("id"));
+  const moveTo = String(formData.get("moveTo") ?? "");
+  const c = await db.category.findUnique({ where: { id }, include: { _count: { select: { products: true } } } });
+  if (!c) redirect("/crm/products/categories");
+  const target = moveTo && moveTo !== id ? await db.category.findUnique({ where: { id: moveTo }, select: { id: true, name: true, isActive: true } }) : null;
+  await db.$transaction(async (tx) => {
+    if (target && !target.isActive) await tx.product.updateMany({ where: { categoryId: id, status: "ACTIVE" }, data: { status: "DRAFT", hiddenWithCategory: true } });
+    else await tx.product.updateMany({ where: { categoryId: id, hiddenWithCategory: true }, data: { hiddenWithCategory: false } });
+    await tx.product.updateMany({ where: { categoryId: id }, data: { categoryId: target?.id ?? null } });
+    await tx.category.updateMany({ where: { parentId: id }, data: { parentId: null } });
+    await tx.category.delete({ where: { id } });
+  });
+  await audit(me.id, "category.delete", "Category", id, { name: c.name, products: c._count.products, movedTo: target?.name ?? null });
+  revalidatePath("/", "layout");
+  await pingIndexNow([`/catalog?category=${c.slug}`, "/catalog", "/yml.xml"]);
+  const q = new URLSearchParams({ deleted: c.name, n: String(c._count.products), ...(target ? { to: target.name } : {}) });
+  redirect(`/crm/products/categories?${q}`);
 }

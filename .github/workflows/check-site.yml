@@ -47,6 +47,11 @@ jobs:
           echo "Главная: HTTP $code"; [ "$code" = "200" ] || fail="$fail главная HTTP $code;"
           health=$(curl -sS -m 30 "https://$DOMAIN/api/health" 2>/dev/null || echo '{}')
           echo "$health" | grep -q '"ok":true' || fail="$fail база или приложение не отвечают;"
+          # фото из CRM пишутся на том uploads: без права записи кнопка «Загрузить фото» не работает
+          if echo "$health" | grep -q '"uploads":{"writable":false'; then
+            code=$(echo "$health" | sed -n 's/.*"uploads":{"writable":false,"error":"\([^"]*\)".*/\1/p')
+            fail="$fail папка загрузок фото недоступна для записи (${code:-нет данных});"
+          fi
           # robots.txt и llms.txt должны ссылаться на боевой домен, а не на адрес сборки
           robots=$(curl -sS -m 30 "https://$DOMAIN/robots.txt" 2>/dev/null || true)
           echo "$robots" | grep -q "Sitemap: https://$DOMAIN/sitemap.xml" || fail="$fail robots.txt без ссылки на карту сайта боевого домена;"

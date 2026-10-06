@@ -8,10 +8,10 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import type { ActionState } from "@/lib/action-result";
+export type UploadResult = { ok?: boolean; error?: string; added?: number };
 
 type ImageMime = "image/jpeg" | "image/png" | "image/webp" | "image/avif";
-const MAX = 12 * 1024 * 1024;
+const MAX = 30 * 1024 * 1024;
 /** Длинная сторона после загрузки: для карточки на любом экране хватает, а витрина отдаёт уменьшенные копии сама. */
 const MAX_SIDE = 3000;
 
@@ -41,8 +41,11 @@ function sniffImage(buf: Buffer): ImageMime | null {
   return null;
 }
 
-/** Загрузка фото товара в public/uploads/products/<productId>/. В продакшене папка должна быть на постоянном диске или заменена на S3. */
-export async function uploadProductImagesAction(_: ActionState, formData: FormData): Promise<ActionState> {
+/**
+ * Загрузка фото товара в public/uploads/products/<productId>/ (на сервере это постоянный том uploads).
+ * Браузер присылает подборку частями до 60 МБ; added — сколько кадров из этой части сохранено.
+ */
+export async function uploadProductImagesAction(formData: FormData): Promise<UploadResult> {
   const me = await requireSection("products");
   const productId = String(formData.get("productId"));
   const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
@@ -50,32 +53,54 @@ export async function uploadProductImagesAction(_: ActionState, formData: FormDa
   const product = await db.product.findUnique({ where: { id: productId }, include: { images: true } });
   if (!product) return { error: "Товар не найден" };
   const dir = path.join(process.cwd(), "public", "uploads", "products", productId);
-  await mkdir(dir, { recursive: true });
-  let order = product.images.length;
+  // в конец галереи: после удалений номера идут с пропусками, поэтому от самого большого, а не от количества
+  let order = product.images.reduce((m, i) => Math.max(m, i.order + 1), 0);
   const added: string[] = [];
-  const sizes: string[] = [];
+  // первая ошибка останавливает загрузку, но уже сохранённые кадры остаются и сразу видны в карточке
+  let failure: string | null = null;
+  // папка на томе сервера: если запись запрещена или диск полон, говорим об этом словами, а не страницей ошибки
+  const disk = (e: unknown) => `Сервер не смог сохранить фото (${(e as NodeJS.ErrnoException).code ?? "ошибка диска"}): папка загрузок недоступна или закончилось место на диске`;
+  try {
+    await mkdir(dir, { recursive: true });
+  } catch (e) {
+    return { error: disk(e) };
+  }
   for (const f of files) {
-    if (f.size > MAX) return { error: `${f.name}: больше 12 МБ` };
+    if (f.size > MAX) {
+      failure = `${f.name}: больше 30 МБ`;
+      break;
+    }
     const buf = Buffer.from(await f.arrayBuffer());
     const mime = sniffImage(buf);
-    if (!mime) return { error: `${f.name}: это не изображение JPG, PNG, WEBP или AVIF` };
+    if (!mime) {
+      failure = `${f.name}: это не изображение JPG, PNG, WEBP или AVIF`;
+      break;
+    }
     let out: Awaited<ReturnType<typeof normalizeImage>>;
     try {
       out = await normalizeImage(buf, mime);
     } catch {
-      return { error: `${f.name}: файл не удалось прочитать как изображение` };
+      failure = `${f.name}: файл не удалось прочитать как изображение`;
+      break;
     }
     const name = `${Date.now().toString(36)}-${randomBytes(3).toString("hex")}.${out.ext}`;
-    await writeFile(path.join(dir, name), out.data);
+    try {
+      await writeFile(path.join(dir, name), out.data);
+    } catch (e) {
+      failure = disk(e);
+      break;
+    }
     const url = `/uploads/products/${productId}/${name}`;
     await db.productImage.create({ data: { productId, url, alt: product.name, order: order++ } });
     added.push(url);
-    sizes.push(`${out.width}×${out.height}`);
   }
-  await audit(me.id, "product.images", "Product", productId, { added });
-  revalidatePath(`/crm/products/${productId}`);
-  revalidatePath("/", "layout");
-  return { ok: true, message: `Загружено: ${added.length} (${sizes.join(", ")}), без данных камеры` };
+  if (added.length > 0) {
+    await audit(me.id, "product.images", "Product", productId, { added });
+    revalidatePath(`/crm/products/${productId}`);
+    revalidatePath("/", "layout");
+  }
+  if (failure) return { error: failure, added: added.length };
+  return { ok: true, added: added.length };
 }
 
 export async function removeProductImageAction(formData: FormData) {

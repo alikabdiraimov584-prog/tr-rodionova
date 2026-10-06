@@ -180,14 +180,15 @@ export const TIER_TONE: Record<string, Tone> = {
 
 import type { Channel, ConversationStatus } from "@/generated/prisma/enums";
 
+// цвета каналов затемнены до контраста 4.5:1 с белыми буквами значка (WCAG AA)
 export const CHANNEL: Record<Channel, { label: string; short: string; color: string }> = {
-  TELEGRAM: { label: "Telegram", short: "TG", color: "#2AABEE" },
-  WHATSAPP: { label: "WhatsApp", short: "WA", color: "#25D366" },
+  TELEGRAM: { label: "Telegram", short: "TG", color: "#1672A8" },
+  WHATSAPP: { label: "WhatsApp", short: "WA", color: "#13824A" },
   INSTAGRAM: { label: "Instagram", short: "IG", color: "#C13584" },
-  VK: { label: "ВКонтакте", short: "VK", color: "#0077FF" },
+  VK: { label: "ВКонтакте", short: "VK", color: "#0062D6" },
   EMAIL: { label: "Email", short: "@", color: "#6F675E" },
-  SMS: { label: "SMS", short: "SMS", color: "#8B7F71" },
-  WEBSITE: { label: "Сайт", short: "TR", color: "#A89B8C" },
+  SMS: { label: "SMS", short: "SMS", color: "#6E6356" },
+  WEBSITE: { label: "Сайт", short: "TR", color: "#6B5E50" },
 };
 
 export const CONVERSATION_STATUS: Record<ConversationStatus, { label: string; tone: Tone }> = {

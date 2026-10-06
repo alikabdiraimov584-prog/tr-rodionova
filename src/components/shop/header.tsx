@@ -46,7 +46,7 @@ export async function ShopHeader() {
 
 /** Категории, в которых есть вещи в продаже: для меню и колонки «Каталог» в подвале. */
 function shopCategories() {
-  return db.category.findMany({ orderBy: { order: "asc" }, where: { products: { some: { status: "ACTIVE" } } }, select: { slug: true, name: true } });
+  return db.category.findMany({ orderBy: { order: "asc" }, where: { isActive: true, products: { some: { status: "ACTIVE" } } }, select: { slug: true, name: true } });
 }
 
 /**

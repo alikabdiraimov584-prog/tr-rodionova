@@ -26,7 +26,7 @@ export default async function Products({ searchParams }: PageProps<"/crm/product
   const soldBy = new Map(sold.map((s) => [s.productId, Number(s.qty)]));
   return (
     <div>
-      <PageTitle title="Товары" actions={<><Link href="/crm/products/categories" className="btn-outline btn-sm">Категории и SEO</Link><Link href="/crm/products/new" className="btn-primary btn-sm">Новый товар</Link></>}>{products.length} моделей</PageTitle>
+      <PageTitle title="Товары" actions={<><Link href="/crm/products/categories" className="btn-outline btn-sm">Категории</Link><Link href="/crm/products/new" className="btn-primary btn-sm">Новый товар</Link></>}>{products.length} моделей</PageTitle>
       <form className="mb-4"><input name="q" defaultValue={q} placeholder="Название или артикул" className="input w-full py-2 sm:w-72" /></form>
       <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
@@ -39,8 +39,8 @@ export default async function Products({ searchParams }: PageProps<"/crm/product
                 <tr key={p.id}>
                   <td><Link href={`/crm/products/${p.id}`} className="underline underline-offset-4">{p.name}</Link>{p.isNew && <span className="ml-2 text-[0.6rem] uppercase text-taupe-dark">new</span>}</td>
                   <td className="text-muted">{p.sku}</td>
-                  <td className="text-muted">{p.category?.name ?? "—"}</td>
-                  <td><Badge tone={PRODUCT_STATUS[p.status].tone}>{PRODUCT_STATUS[p.status].label}</Badge></td>
+                  <td className="text-muted">{p.category ? `${p.category.name}${p.category.isActive ? "" : " (скрыта)"}` : "—"}</td>
+                  <td>{p.hiddenWithCategory ? <Badge tone="warning">скрыта с категорией</Badge> : <Badge tone={PRODUCT_STATUS[p.status].tone}>{PRODUCT_STATUS[p.status].label}</Badge>}</td>
                   <td className="whitespace-nowrap text-right">{formatMoney(p.price)}</td>
                   <td className="text-right text-muted">{margin !== null ? `${margin}%` : "—"}</td>
                   <td className={`text-right ${stock <= 2 ? "text-warning" : ""}`}>{stock} <span className="text-xs text-muted">/ {p.variants.length} вар.</span></td>

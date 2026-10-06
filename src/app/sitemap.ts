@@ -13,7 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     db.article.findMany({ where: { publishedAt: { not: null, lte: now } }, select: { slug: true, updatedAt: true } }),
     db.look.findMany({ where: { isPublished: true }, select: { slug: true, createdAt: true } }),
     db.collection.findMany({ where: { isActive: true }, select: { slug: true } }),
-    db.category.findMany({ select: { slug: true } }),
+    // только категории, которые видны в меню: показанные и с вещами в продаже
+    db.category.findMany({ where: { isActive: true, products: { some: { status: "ACTIVE" } } }, select: { slug: true } }),
   ]);
   const page = (path: string, priority: number, changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"], lastModified?: Date): MetadataRoute.Sitemap[number] => ({
     url: `${base}${path}`,

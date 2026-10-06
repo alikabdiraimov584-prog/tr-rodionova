@@ -11,6 +11,7 @@ export async function seedA(db: PrismaClient) {
   const cover = (slug: string, fallback: string) => bySlug.get(slug)?.images[0]?.url ?? fallback;
 
   // ── Лукбук ──
+  // демо-образы стенда стоят ниже образов бренда (у тех порядок 0–2)
   const looks: { slug: string; title: string; season: string; description: string; cover: string; order: number; items: [string, string | null][] }[] = [
     {
       slug: "gorodskaya-klassika",
@@ -18,7 +19,7 @@ export async function seedA(db: PrismaClient) {
       season: "AW26",
       description: "Жакет с мягким плечом, прямые брюки и рубашка из поплина — база, которая работает и в офисе, и на ужине. Шарф добавляет цвет и тепло.",
       cover: cover("zhaket-aurora", "/images/placeholder/jacket.svg"),
-      order: 0,
+      order: 10,
       items: [["zhaket-aurora", "Носите расстёгнутым, рукав подверните один раз"], ["rubashka-blanche", null], ["bryuki-noa", "Длина — до середины каблука"], ["sharf-nova", "Один свободный оборот"]],
     },
     {
@@ -27,7 +28,7 @@ export async function seedA(db: PrismaClient) {
       season: "AW26",
       description: "Пальто из шерсти Бьеллы поверх джемпера и юбки — многослойность без объёма. Фактуры мягкие, силуэт собранный.",
       cover: cover("palto-claire", "/images/placeholder/coat.svg"),
-      order: 1,
+      order: 11,
       items: [["palto-claire", "Пояс завяжите сзади"], ["dzhemper-elsa", "Заправьте спереди"], ["yubka-iris", null]],
     },
     {
@@ -36,7 +37,7 @@ export async function seedA(db: PrismaClient) {
       season: "AW26",
       description: "Платье прямого кроя и длинный кардиган: вертикальные линии вытягивают силуэт, шарф в тон смягчает контраст.",
       cover: cover("plate-ines", "/images/placeholder/dress.svg"),
-      order: 2,
+      order: 12,
       items: [["plate-ines", null], ["kardigan-vera", "Носите нараспашку"], ["sharf-nova", null]],
     },
   ];

@@ -32,7 +32,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
       </div>
       <div className="card p-5">
         <Eyebrow>Фотографии</Eyebrow>
-        <p className="mt-1 text-xs text-muted">Первая — главная в каталоге, вторая показывается при наведении. Грузите исходники как есть (JPG, PNG, WebP, AVIF до 12 МБ): фото само поворачивается, приводится к 3000 px по длинной стороне и очищается от данных камеры и геометок.</p>
+        <p className="mt-1 text-xs text-muted">Первая — главная в каталоге, вторая показывается при наведении; порядок меняется стрелками. Фото можно просто перетащить на эту страницу из папки «Загрузки». Грузите исходники как есть (JPG, PNG, WebP, AVIF до 30 МБ): фото само поворачивается, приводится к 3000 px по длинной стороне и очищается от данных камеры и геометок.</p>
         <div className="mt-3 flex flex-wrap gap-3">
           {p.images.map((img, i) => (
             <div key={img.id} className="w-28">
@@ -45,7 +45,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
             </div>
           ))}
         </div>
-        <div className="mt-4"><ImageUpload productId={p.id} /></div>
+        <div className="mt-4"><ImageUpload productId={p.id} productName={p.name} /></div>
       </div>
       <div className="card overflow-x-auto" tabIndex={0}>
         <div className="p-5 pb-2"><Eyebrow>Варианты (размер × цвет)</Eyebrow></div>

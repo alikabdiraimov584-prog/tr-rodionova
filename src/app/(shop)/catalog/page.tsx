@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentCustomer } from "@/lib/auth";
 import { ProductCard } from "@/components/shop/product-card";
@@ -20,7 +21,7 @@ export async function generateMetadata({ searchParams }: PageProps<"/catalog">):
   }
   if (!slug) return { title: "Каталог", description: "Женская одежда T.Rodionova: жакеты, платья, боди, брюки, трикотаж из шерсти, кашемира и шёлка. Доставка по России.", alternates: { canonical: "/catalog" } };
   const c = await db.category.findUnique({ where: { slug } });
-  if (!c) return { title: "Каталог" };
+  if (!c || !c.isActive) return { title: "Каталог" };
   return {
     title: c.seoTitle ?? `${c.name} — купить в T.Rodionova`,
     description: c.seoDescription ?? `${c.name} T.Rodionova: премиальная женская одежда, сшито в Европе. Доставка по России, примерка курьером.`,
@@ -54,6 +55,8 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   const materials = arr(sp.material);
   const price = typeof sp.price === "string" ? PRICES.find((p) => p[0] === sp.price) : undefined;
   const earlyOk = !!user?.loyaltyTier?.earlyAccess;
+  // удалённая или скрытая в CRM категория: старые ссылки ведут в общий каталог, а не на пустую страницу
+  if (category && !(await db.category.findFirst({ where: { slug: category, isActive: true }, select: { id: true } }))) redirect("/catalog");
 
   const where: Prisma.ProductWhereInput = {
     status: "ACTIVE",
@@ -68,7 +71,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
     ...(q ? { AND: [{ OR: [{ name: { contains: q, mode: "insensitive" } }, { composition: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] }] } : {}),
   };
   const [categories, found] = await Promise.all([
-    db.category.findMany({ orderBy: { order: "asc" }, where: { products: { some: { status: "ACTIVE", isPreloved: false } } } }),
+    db.category.findMany({ orderBy: { order: "asc" }, where: { isActive: true, products: { some: { status: "ACTIVE", isPreloved: false } } } }),
     db.product.findMany({ where, include: { images: { orderBy: { order: "asc" } }, variants: true }, orderBy: SORTS[sort].orderBy }),
   ]);
   // по умолчанию («сначала новые») вещи со съёмкой идут первыми; при сортировке по цене порядок строгий
