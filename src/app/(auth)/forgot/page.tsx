@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Восстановление пар�
 export default function ForgotPage() {
   return (
     <>
-      <h1 className="text-xl">Восстановление пароля</h1>
+      <h1>Восстановление пароля</h1>
       <p className="mb-8 mt-2 text-sm text-muted">Пришлём на email ссылку, по которой можно задать новый пароль.</p>
       <ForgotForm />
     </>

@@ -11,12 +11,14 @@ type AdvisorUser = { height: number | null; bust: number | null; waist: number |
 export function SizeAdvisor({ product, user }: { product: AdvisorProduct; user: AdvisorUser }) {
   const chart = chartForProduct(product);
   if (!chart) return null;
-  const advice = user ? recommendSize(chart, user) : null;
+  // гостье подсказка «войдите и укажите мерки» в момент выбора размера только мешает: рядом есть «Таблица размеров»
+  if (!user) return null;
+  const advice = recommendSize(chart, user);
   if (!advice) {
     return (
       <p className="text-[0.78rem] text-muted">
         Не знаете размер?{" "}
-        <Link href={user ? "/account/profile" : `/login?next=/product/${product.slug}`} className="text-ink underline underline-offset-4 hover:opacity-70">
+        <Link href="/account/profile" className="text-ink underline underline-offset-4 hover:opacity-70">
           Укажите мерки — подскажем
         </Link>
       </p>

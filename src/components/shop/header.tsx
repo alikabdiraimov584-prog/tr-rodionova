@@ -9,7 +9,7 @@ import { SiteMenu } from "@/components/shop/mobile-menu";
 import { IconBag, IconHeart, IconSearch, IconUser } from "@/components/shop/icons";
 
 /**
- * Шапка витрины по образцу ACTE: слева «Меню» (всё навигационное — в выезжающей панели) и «Новое»,
+ * Шапка витрины по образцу ACTE: слева «Меню» (всё навигационное — в выезжающей панели) и «Новинки»,
  * по центру логотип, справа поиск, избранное, аккаунт и корзина. Никаких лент категорий и объявлений.
  */
 export async function ShopHeader() {
@@ -17,7 +17,7 @@ export async function ShopHeader() {
   const cabinet = cabinetLink(user);
   const [cartCount, categories] = await Promise.all([
     user ? db.cartItem.aggregate({ where: { userId: user.id }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount),
-    db.category.findMany({ orderBy: { order: "asc" }, where: { products: { some: { status: "ACTIVE" } } }, select: { slug: true, name: true } }),
+    shopCategories(),
   ]);
   const count = cartCount || 0;
   const icon = "flex h-11 w-11 items-center justify-center hover:opacity-60 transition-opacity";
@@ -26,7 +26,7 @@ export async function ShopHeader() {
       <div className="mx-auto grid h-14 max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center px-2 md:h-16 md:px-5">
         <div className="flex items-center gap-1 md:gap-6">
           <SiteMenu categories={categories.map((c) => [`/catalog?category=${c.slug}`, c.name] as const)} account={cabinet} cartCount={count} />
-          <Link href="/catalog?new=1" className="nav-link hidden md:inline">Новое</Link>
+          <Link href="/catalog?new=1" className="nav-link hidden md:inline">Новинки</Link>
           <Link href="/catalog" className="nav-link hidden lg:inline">Каталог</Link>
         </div>
         <Logo className="px-2 py-3" />
@@ -44,31 +44,57 @@ export async function ShopHeader() {
   );
 }
 
-/** Подвал: четыре коротких списка, на телефоне — раскрывающиеся; реквизиты продавца обязательны по закону. */
+/** Категории, в которых есть вещи в продаже: для меню и колонки «Каталог» в подвале. */
+function shopCategories() {
+  return db.category.findMany({ orderBy: { order: "asc" }, where: { products: { some: { status: "ACTIVE" } } }, select: { slug: true, name: true } });
+}
+
+/**
+ * Подвал: короткие списки ссылок, на телефоне — раскрывающиеся. Ссылки на категории здесь обычные серверные,
+ * поэтому поисковики находят каталог с любой страницы (панель меню рисуется только после нажатия).
+ * Реквизиты продавца обязательны по закону.
+ */
 export async function ShopFooter() {
-  const [brand, seller] = await Promise.all([getSettingOrDefault("brand"), getSettingOrDefault("seller")]);
+  const [brand, seller, categories] = await Promise.all([getSettingOrDefault("brand"), getSettingOrDefault("seller"), shopCategories()]);
   const cols: [string, [string, string][]][] = [
-    ["Покупателям", [["/delivery", "Доставка и возврат"], ["/sizes", "Размеры"], ["/care", "Уход"], ["/faq", "Вопросы и ответы"], ["/gift", "Подарочные сертификаты"], ["/preloved", "Pre-loved"]]],
-    ["Бренд", [["/about", "О бренде"], ["/lookbook", "Лукбук"], ["/journal", "Журнал"], ["/showroom", "Шоурум"], ["/press", "Для прессы"]]],
+    ["Каталог", [["/catalog?new=1", "Новинки"], ...categories.map((c) => [`/catalog?category=${c.slug}`, c.name] as [string, string]), ["/preloved", "Pre-loved"]]],
+    ["Покупателям", [["/delivery", "Доставка и возврат"], ["/sizes", "Размеры"], ["/care", "Уход"], ["/faq", "Вопросы и ответы"], ["/gift", "Подарочные сертификаты"]]],
+    ["Бренд", [["/about", "О бренде"], ["/collections", "Коллекции"], ["/lookbook", "Лукбук"], ["/journal", "Журнал"], ["/showroom", "Шоурум"], ["/press", "Для прессы"]]],
     ["Circle", [["/circle", "Программа лояльности"], ["/account", "Личный кабинет"], ["/account/stylist", "Персональный стилист"]]],
     ["Документы", [["/offer", "Оферта"], ["/privacy", "Политика конфиденциальности"], ["/privacy#consent", "Согласие на обработку данных"]]],
   ];
+  const head = "text-[0.72rem] uppercase tracking-[0.12em]";
+  const list = (links: [string, string][]) => (
+    <ul className="space-y-0.5 pb-4 text-[0.82rem] md:pb-0">
+      {links.map(([href, label]) => <li key={href}><Link href={href} className="inline-block py-1.5 text-muted hover:text-ink">{label}</Link></li>)}
+    </ul>
+  );
   return (
     <footer className="mt-24 border-t border-line">
-      <div className="mx-auto grid max-w-[1600px] gap-x-8 px-4 py-6 md:grid-cols-5 md:py-12 md:px-5">
+      <div className="mx-auto grid max-w-[1600px] gap-x-8 px-4 py-6 md:grid-cols-3 md:gap-y-10 md:px-5 md:py-12 xl:grid-cols-6">
         {cols.map(([title, links]) => (
-          <details key={title} className="group border-b border-line md:border-0" open={undefined}>
-            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between text-[0.72rem] uppercase tracking-[0.12em] md:pointer-events-none md:min-h-0 md:pb-4">
-              {title}<span className="text-muted transition-transform group-open:rotate-45 md:hidden" aria-hidden>+</span>
-            </summary>
-            <ul className="space-y-1 pb-4 text-[0.82rem] md:pb-0">
-              {links.map(([href, label]) => <li key={href}><Link href={href} className="inline-block py-1 text-muted hover:text-ink">{label}</Link></li>)}
-            </ul>
-          </details>
+          <div key={title} className="border-b border-line md:border-0">
+            {/* компьютер и планшет: списки открыты всегда */}
+            <div className="hidden md:block">
+              <div className={`pb-3 ${head}`}>{title}</div>
+              {list(links)}
+            </div>
+            {/* телефон: раскрываются по нажатию */}
+            <details className="group md:hidden">
+              <summary className={`flex min-h-12 cursor-pointer list-none items-center justify-between ${head}`}>
+                {title}<span className="text-muted transition-transform group-open:rotate-45" aria-hidden>+</span>
+              </summary>
+              {list(links)}
+            </details>
+          </div>
         ))}
         <div className="pt-6 text-[0.82rem] md:pt-0">
-          <div className="pb-4 text-[0.72rem] uppercase tracking-[0.12em]">Связь</div>
-          <p className="text-muted"><a href={`mailto:${brand.email}`} className="hover:text-ink">{brand.email}</a><br />{brand.phone}<br />{seller.hours}</p>
+          <div className={`pb-3 ${head}`}>Связь</div>
+          <p className="text-muted">
+            <a href={`mailto:${brand.email}`} className="break-words hover:text-ink">{brand.email}</a><br />
+            <span className="whitespace-nowrap">{brand.phone}</span><br />
+            {seller.hours}
+          </p>
           {seller.showroom && <p className="mt-3 text-muted">{seller.showroom}</p>}
         </div>
       </div>

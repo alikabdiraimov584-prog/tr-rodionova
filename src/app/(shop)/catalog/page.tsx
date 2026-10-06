@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getCurrentCustomer } from "@/lib/auth";
 import { ProductCard } from "@/components/shop/product-card";
+import { ActiveTabIntoView } from "@/components/shop/active-tab";
 import { photoFirst } from "@/lib/photos";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
@@ -12,7 +13,12 @@ import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
 export async function generateMetadata({ searchParams }: PageProps<"/catalog">): Promise<Metadata> {
   const sp = await searchParams;
   const slug = typeof sp.category === "string" ? sp.category : undefined;
-  if (!slug) return { title: "Каталог", description: "Женская одежда T.Rodionova: жакеты, платья, боди, брюки, трикотаж из шерсти, кашемира и шёлка. Доставка по России." };
+  // выдача поиска — не самостоятельная страница: не индексируется, ссылки по ней поисковик проходит
+  if (typeof sp.q === "string") return { title: "Поиск", robots: { index: false, follow: true } };
+  if (!slug && sp.new === "1") {
+    return { title: "Новинки", description: "Новые вещи T.Rodionova: жакеты, платья, трикотаж и брюки из шерсти, кашемира и шёлка. Доставка по России, примерка курьером.", alternates: { canonical: "/catalog?new=1" } };
+  }
+  if (!slug) return { title: "Каталог", description: "Женская одежда T.Rodionova: жакеты, платья, боди, брюки, трикотаж из шерсти, кашемира и шёлка. Доставка по России.", alternates: { canonical: "/catalog" } };
   const c = await db.category.findUnique({ where: { slug } });
   if (!c) return { title: "Каталог" };
   return {
@@ -70,39 +76,55 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   const current = categories.find((c) => c.slug === category);
   const faq = Array.isArray(current?.faq) ? (current!.faq as { q: string; a: string }[]) : [];
   const filtered = sizes.length + colors.length + materials.length + (price ? 1 : 0) > 0;
+  // ссылки сортировки и сброса сохраняют запрос поиска и фильтры из старых ссылок (рассылки, закладки)
   const link = (patch: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    for (const [k, v] of Object.entries({ category, new: onlyNew ? "1" : undefined, sort: sort === "new" ? undefined : sort, ...patch })) if (v) p.set(k, v);
+    const base = {
+      category,
+      new: onlyNew ? "1" : undefined,
+      sort: sort === "new" ? undefined : sort,
+      q: q || undefined,
+      size: sizes.join(",") || undefined,
+      color: colors.join(",") || undefined,
+      material: materials.join(",") || undefined,
+      price: price?.[0],
+    };
+    for (const [k, v] of Object.entries({ ...base, ...patch })) if (v) p.set(k, v);
     const s = p.toString();
     return `/catalog${s ? `?${s}` : ""}`;
   };
-  const listName = q ? `Поиск: «${q}»` : searching ? "Поиск" : onlyNew ? "Новая коллекция" : current?.name ?? "Каталог";
+  const listName = q ? `Поиск: «${q}»` : searching ? "Поиск" : onlyNew ? "Новинки" : current?.name ?? "Каталог";
   // структура ассортимента для краулеров: список вещей и путь к категории; при поиске и фильтрах — без разметки, это не самостоятельные страницы
-  const plain = !q && !filtered;
-  const tab = (on: boolean) => `shrink-0 whitespace-nowrap py-3 ${on ? "text-ink underline underline-offset-[6px]" : "text-muted hover:text-ink"}`;
+  const plain = !searching && !filtered;
+  const tab = (on: boolean) => `shrink-0 whitespace-nowrap py-3.5 ${on ? "text-ink underline underline-offset-[6px]" : "text-muted hover:text-ink"}`;
   return (
     <div className="mx-auto max-w-[1600px] px-1 md:px-5">
       {plain && products.length > 0 && <JsonLd data={[itemListJsonLd(`${listName} — T.Rodionova`, products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(current ? [{ name: current.name, path: `/catalog?category=${current.slug}` }] : [])])]} />}
       <div className="px-3 pt-8 text-center md:px-0 md:pt-12">
         <h1 className="text-[1.05rem] uppercase tracking-[0.14em] md:text-[1.25rem]">{listName}</h1>
         {searching && (
-          <form action="/catalog" role="search" className="mx-auto mt-5 flex max-w-md items-center border-b border-ink">
+          <form action="/catalog" role="search" className="mx-auto mt-5 flex max-w-md items-center border-b border-ink focus-within:shadow-[0_1px_0_0_var(--ink)]">
             <input name="q" defaultValue={q} placeholder="Что вы ищете?" aria-label="Поиск по каталогу" autoFocus={!q} className="min-w-0 flex-1 bg-transparent py-3 text-[0.95rem] outline-none" />
-            <button className="nav-link py-3 pl-3">Найти</button>
+            <button className="nav-link min-h-11 pl-3">Найти</button>
           </form>
         )}
       </div>
-      <nav aria-label="Категории" className="scroll-row mt-5 flex justify-start gap-6 overflow-x-auto px-3 text-[0.72rem] uppercase tracking-[0.12em] md:justify-center md:px-0">
-        <Link href="/catalog" className={tab(!category && !onlyNew && !searching)} aria-current={!category && !onlyNew && !searching ? "page" : undefined}>Все</Link>
-        <Link href="/catalog?new=1" className={tab(onlyNew && !category)} aria-current={onlyNew && !category ? "page" : undefined}>Новое</Link>
-        {categories.map((c) => <Link key={c.id} href={`/catalog?category=${c.slug}`} className={tab(category === c.slug)} aria-current={category === c.slug ? "page" : undefined}>{c.name}</Link>)}
+      {/* ряд категорий: по центру, пока помещается, иначе листается от левого края; на телефоне правый край растворяется — видно, что дальше есть пункты */}
+      <nav aria-label="Категории" data-category-row className="scroll-row relative mt-5 overflow-x-auto text-[0.72rem] uppercase tracking-[0.12em] max-md:[mask-image:linear-gradient(to_left,transparent,#000_2.5rem)]">
+        <div className="mx-auto flex w-max gap-6 px-3 max-md:pr-10 md:px-0">
+          <Link href="/catalog" className={tab(!category && !onlyNew && !searching)} aria-current={!category && !onlyNew && !searching ? "page" : undefined}>Все</Link>
+          <Link href="/catalog?new=1" className={tab(onlyNew && !category)} aria-current={onlyNew && !category ? "page" : undefined}>Новинки</Link>
+          {categories.map((c) => <Link key={c.id} href={`/catalog?category=${c.slug}`} className={tab(category === c.slug)} aria-current={category === c.slug ? "page" : undefined}>{c.name}</Link>)}
+        </div>
       </nav>
+      <ActiveTabIntoView active={category ?? (onlyNew ? "new" : "")} />
       <div className="mt-2 flex items-center justify-between border-y border-line px-3 py-2 text-[0.72rem] uppercase tracking-[0.1em] md:px-1">
-        <span className="text-muted">{models(products.length)}{filtered && <> · <Link href={link({})} className="underline">сбросить фильтр</Link></>}</span>
-        <details className="relative">
-          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5">{SORTS[sort].label}<span aria-hidden className="text-muted">▾</span></summary>
+        <span className="text-muted">{models(products.length)}{filtered && <> · <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="underline">сбросить фильтр</Link></>}</span>
+        {/* key: после выбора сортировки список пересоздаётся закрытым */}
+        <details key={sort} className="relative">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5">{SORTS[sort].label}<span aria-hidden className="text-muted">▾</span></summary>
           <div className="absolute right-0 z-20 mt-1 w-48 border border-line bg-ivory py-1 normal-case tracking-normal shadow-sm">
-            {Object.entries(SORTS).map(([k, v]) => <Link key={k} href={link({ sort: k === "new" ? undefined : k })} className={`block px-4 py-2.5 text-[0.82rem] hover:bg-sand ${sort === k ? "text-ink" : "text-muted"}`}>{v.label}</Link>)}
+            {Object.entries(SORTS).map(([k, v]) => <Link key={k} href={link({ sort: k === "new" ? undefined : k })} aria-current={sort === k ? "true" : undefined} className={`block px-4 py-3 text-[0.82rem] hover:bg-sand ${sort === k ? "text-ink" : "text-muted"}`}>{v.label}</Link>)}
           </div>
         </details>
       </div>

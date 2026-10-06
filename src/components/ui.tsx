@@ -57,7 +57,7 @@ export function Empty({ title, children, action }: { title: string; children?: R
   return (
     <div className="card flex flex-col items-center px-6 py-16 text-center">
       <Monogram className="text-5xl opacity-60" />
-      <h2 className="mt-4 text-base">{title}</h2>
+      <h2 className="mt-4">{title}</h2>
       {children && <p className="mt-2 max-w-md text-sm text-muted">{children}</p>}
       {action && <div className="mt-6">{action}</div>}
     </div>

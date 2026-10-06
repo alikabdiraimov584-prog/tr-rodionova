@@ -6,9 +6,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type Img = { id: string; url: string; alt: string | null };
 
 /**
- * Галерея карточки вещи: один кадр на экран, листается свайпом на телефоне и стрелками или точками на компьютере,
- * без сторонних библиотек (прокрутка с привязкой к кадру). Картинки отдаёт next/image: под ширину колонки,
- * в AVIF/WebP, первый кадр — с высоким приоритетом, остальные — лениво.
+ * Галерея карточки вещи, как у ACTE: один кадр на экран, листается свайпом на телефоне и стрелками или точками
+ * на компьютере, без сторонних библиотек (прокрутка с привязкой к кадру). На компьютере кадр не выше окна, чтобы
+ * фото и переключатель кадров были видны целиком. Картинки отдаёт next/image: под ширину колонки, в AVIF/WebP,
+ * первый кадр — с высоким приоритетом, остальные — лениво.
  */
 export function ProductGallery({ images, name }: { images: Img[]; name: string }) {
   const track = useRef<HTMLDivElement>(null);
@@ -36,23 +37,27 @@ export function ProductGallery({ images, name }: { images: Img[]; name: string }
   }, [count]);
 
   if (count === 0) return <div className="aspect-[4/5] bg-sand" aria-hidden />;
+  // подпись из базы часто совпадает с названием — тогда кадры различаются номером
+  const alt = (img: Img, i: number) => (img.alt && (i === 0 || img.alt !== name) ? img.alt : i === 0 ? name : `${name}, фото ${i + 1}`);
 
   return (
-    <section aria-roledescription="карусель" aria-label={`Фото: ${name}`} className="group relative">
+    <section aria-label={`Фото: ${name}`} className="group relative mx-auto w-full self-start md:max-w-[calc((100svh-5rem)*0.8)]">
       <div
         ref={track}
         className="scroll-row flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
         onKeyDown={(e) => { if (e.key === "ArrowRight") { e.preventDefault(); go(index + 1); } if (e.key === "ArrowLeft") { e.preventDefault(); go(index - 1); } }}
-        tabIndex={count > 1 ? 0 : -1}
+        tabIndex={count > 1 ? 0 : undefined}
+        aria-label={count > 1 ? "Листайте фото стрелками" : undefined}
+        role={count > 1 ? "group" : undefined}
       >
         {images.map((img, i) => (
-          <div key={img.id} role="group" aria-roledescription="кадр" aria-label={`${i + 1} из ${count}`} className="relative aspect-[4/5] w-full shrink-0 snap-start bg-sand">
+          <div key={img.id} className="relative aspect-[4/5] w-full shrink-0 snap-start bg-sand">
             <Image
               src={img.url}
-              alt={img.alt ?? `${name}, фото ${i + 1}`}
+              alt={alt(img, i)}
               fill
               quality={85}
-              priority={i === 0}
+              loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : "low"}
               sizes="(min-width: 1024px) 58vw, (min-width: 768px) 55vw, 100vw"
               className="object-cover"
@@ -63,24 +68,17 @@ export function ProductGallery({ images, name }: { images: Img[]; name: string }
       </div>
       {count > 1 && (
         <>
-          <button type="button" onClick={() => go(index - 1)} aria-label="Предыдущее фото" className="absolute left-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ivory/85 text-ink opacity-0 transition hover:bg-ivory focus-visible:opacity-100 group-hover:opacity-100 md:flex">
+          <button type="button" onClick={() => go(index - 1)} aria-label="Предыдущее фото" className="absolute left-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ivory/80 text-ink opacity-70 transition hover:bg-ivory hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 md:flex">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M15 5l-7 7 7 7" /></svg>
           </button>
-          <button type="button" onClick={() => go(index + 1)} aria-label="Следующее фото" className="absolute right-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ivory/85 text-ink opacity-0 transition hover:bg-ivory focus-visible:opacity-100 group-hover:opacity-100 md:flex">
+          <button type="button" onClick={() => go(index + 1)} aria-label="Следующее фото" className="absolute right-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ivory/80 text-ink opacity-70 transition hover:bg-ivory hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 md:flex">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M9 5l7 7-7 7" /></svg>
           </button>
-          <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5" role="tablist" aria-label="Выбор фото">
+          {/* переключатель кадров: белые черты с тенью видны и на светлом, и на тёмном фото; с клавиатуры кадры листают стрелки */}
+          <div className="absolute inset-x-0 bottom-2 flex justify-center">
             {images.map((img, i) => (
-              <button
-                key={img.id}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`Фото ${i + 1}`}
-                onClick={() => go(i)}
-                className="flex h-6 w-6 items-center justify-center"
-              >
-                <span className={`block h-1.5 w-1.5 rounded-full transition ${i === index ? "scale-125 bg-ink" : "bg-ink/35"}`} />
+              <button key={img.id} type="button" tabIndex={-1} aria-label={`Показать фото ${i + 1}`} aria-current={i === index ? "true" : undefined} onClick={() => go(i)} className="flex h-6 w-6 items-center justify-center">
+                <span className={`block h-[2px] w-4 shadow-[0_0_2px_rgba(0,0,0,0.4)] transition-colors ${i === index ? "bg-white" : "bg-white/45"}`} />
               </button>
             ))}
           </div>

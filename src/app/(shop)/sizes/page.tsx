@@ -46,7 +46,7 @@ export default async function SizesPage() {
           const chart = SIZE_CHARTS[k];
           return (
             <section key={k}>
-              <h2 className="text-2xl">{chart.title}</h2>
+              <h2>{chart.title}</h2>
               <p className="mt-1 text-sm text-muted">{chart.hint}</p>
               <div className="card mt-4 overflow-x-auto">
                 <table className="table">
@@ -76,13 +76,13 @@ export default async function SizesPage() {
       </div>
 
       <section className="mt-16 border-t border-line pt-10">
-        <h2 className="text-2xl">Как снять мерки</h2>
+        <h2>Как снять мерки</h2>
         <p className="mt-1 text-sm text-muted">Понадобится сантиметровая лента. Измеряйте в тонком белье, стоя ровно, лента прилегает, но не давит.</p>
         <div className="mt-6 grid gap-6 text-sm md:grid-cols-2">
           {MEASURE_GUIDE.map((g, i) => (
             <div key={g.key} className="border-t border-line pt-4">
               <div className="eyebrow">{String(i + 1).padStart(2, "0")}</div>
-              <h3 className="mt-1 text-lg">{g.label}</h3>
+              <h3 className="mt-1">{g.label}</h3>
               <p className="mt-1 text-muted">{g.how}</p>
             </div>
           ))}

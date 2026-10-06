@@ -15,7 +15,7 @@ export default async function ProfilePage() {
     <div className="space-y-12">
       <PageTitle title="Профиль и мерки" />
       <section>
-        <h2 className="mb-4 text-xl">Личные данные</h2>
+        <h2 className="mb-4">Личные данные</h2>
         <ProfileForm
           user={{
             firstName: user.firstName,
@@ -33,7 +33,7 @@ export default async function ProfilePage() {
         />
       </section>
       <section>
-        <h2 className="mb-4 text-xl">Адреса доставки</h2>
+        <h2 className="mb-4">Адреса доставки</h2>
         {addresses.length > 0 && (
           <div className="mb-6 divide-y divide-line border-y border-line">
             {addresses.map((a) => (
@@ -56,11 +56,11 @@ export default async function ProfilePage() {
         <AddressForm />
       </section>
       <section>
-        <h2 className="mb-4 text-xl">Пароль</h2>
+        <h2 className="mb-4">Пароль</h2>
         <PasswordForm />
       </section>
       <section className="border-t border-line pt-8">
-        <h2 className="mb-2 text-xl">Ваши данные</h2>
+        <h2 className="mb-2">Ваши данные</h2>
         <p className="mb-4 max-w-xl text-sm text-muted">
           По закону о персональных данных вы можете получить копию всего, что мы храним, или попросить удалить аккаунт. Заказы и чеки сохраняются
           в обезличенном виде, как того требует бухгалтерский учёт.

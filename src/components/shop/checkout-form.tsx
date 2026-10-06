@@ -90,6 +90,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   }
 
   const summaryRows = (
+    <div>
     <dl className={`space-y-2 text-sm ${quoting ? "opacity-60" : ""}`}>
       <div className="flex justify-between"><dt>Товары</dt><dd>{formatMoney(quote.subtotal)}</dd></div>
       {quote.discount > 0 && <div className="flex justify-between text-success"><dt>Скидка по промокоду</dt><dd>−{formatMoney(quote.discount)}</dd></div>}
@@ -97,8 +98,10 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
       <div className="flex justify-between"><dt>Доставка</dt><dd>{quote.delivery ? formatMoney(quote.delivery) : "бесплатно"}</dd></div>
       {quote.giftApplied > 0 && <div className="flex justify-between text-success"><dt>Сертификатом</dt><dd>−{formatMoney(quote.giftApplied)}</dd></div>}
       <div className="flex justify-between border-t border-line pt-3 text-lg"><dt className="serif">Итого</dt><dd>{formatMoney(quote.total)}</dd></div>
-      <div className="text-xs text-taupe-dark">+{quote.earn.toLocaleString("ru-RU")} баллов Circle через 14 дней после получения</div>
     </dl>
+    {/* строка о баллах — вне списка: внутри dl допустимы только пары dt/dd */}
+    <p className="mt-2 text-xs text-taupe-dark">+{quote.earn.toLocaleString("ru-RU")} баллов Circle через 14 дней после получения</p>
+    </div>
   );
 
   return (
@@ -118,7 +121,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
         {/* Шаг 1: контакты и доставка */}
         <section data-step="0" hidden={step !== 0} className="space-y-6">
           <div>
-            <h2 className="mb-4 text-xl md:text-2xl">{guest ? "Кому доставить" : "Контакты"}</h2>
+            <h2 className="mb-4">{guest ? "Кому доставить" : "Контакты"}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <label><span className="label">Имя</span><input name="firstName" defaultValue={profile?.firstName ?? ""} required autoComplete="given-name" className="input" /></label>
               <label><span className="label">Фамилия</span><input name="lastName" defaultValue={profile?.lastName ?? ""} autoComplete="family-name" className="input" /></label>
@@ -129,7 +132,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           </div>
 
           <div>
-            <h2 className="mb-4 text-xl md:text-2xl">Доставка</h2>
+            <h2 className="mb-4">Доставка</h2>
             <div className="grid gap-2">
               {visibleDelivery.map((m) => (
                 <label key={m} className={`flex cursor-pointer items-start gap-3 border p-4 ${delivery === m ? "border-ink bg-white" : "border-line"}`}>
@@ -202,7 +205,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
         {/* Шаг 2: оплата, промокод, сертификат, баллы */}
         <section data-step="1" hidden={step !== 1} className="space-y-6">
           <div>
-            <h2 className="mb-4 text-xl md:text-2xl">Оплата</h2>
+            <h2 className="mb-4">Оплата</h2>
             <div className="grid gap-2 sm:grid-cols-2">
               {(Object.keys(PAYMENT_METHOD) as PaymentMethod[]).map((m) => (
                 <label key={m} className={`flex cursor-pointer items-center gap-3 border p-4 text-sm ${payment === m ? "border-ink bg-white" : "border-line"}`}>
@@ -253,7 +256,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
 
         {/* Шаг 3: проверка и подтверждение */}
         <section data-step="2" hidden={step !== 2} className="space-y-5">
-          <h2 className="text-xl md:text-2xl">Проверьте заказ</h2>
+          <h2>Проверьте заказ</h2>
           <ul className="space-y-2 text-sm">
             {quote.lines.map((l) => (
               <li key={l.variantId} className="flex justify-between gap-3"><span className="min-w-0">{l.productName}, {l.size}{l.color ? `, ${l.color}` : ""} × {l.quantity}</span><span className="shrink-0">{formatMoney(l.price * l.quantity)}</span></li>
@@ -298,7 +301,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
 
       {/* Итог: справа на десктопе, закреплённая панель внизу на телефоне */}
       <aside className="hidden h-fit min-w-0 space-y-5 md:sticky md:top-32 md:block md:p-6 card">
-        <h2 className="text-xl md:text-2xl">Ваш заказ</h2>
+        <h2>Ваш заказ</h2>
         {summaryRows}
         {step < 2 ? (
           <button key="next" type="button" onClick={next} className="btn-primary w-full">Далее</button>

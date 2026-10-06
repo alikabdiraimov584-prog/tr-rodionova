@@ -46,7 +46,7 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
                 {a.category && <span>{a.category}</span>}
                 <span>{formatDate(a.publishedAt)}</span>
               </div>
-              <h2 className="mt-2 text-xl">{a.title}</h2>
+              <h2 className="mt-2">{a.title}</h2>
               {a.excerpt && <p className="mt-2 text-sm leading-relaxed text-ink/75">{a.excerpt}</p>}
             </Link>
           ))}

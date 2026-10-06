@@ -48,7 +48,7 @@ export function LookCart({ slug, items, loggedIn }: { slug: string; items: LookC
                     aria-label={`Размер: ${it.name}`}
                     value={chosen[it.productId] ?? ""}
                     onChange={(e) => setChosen((c) => ({ ...c, [it.productId]: e.target.value }))}
-                    className="input w-auto py-1.5 text-xs"
+                    className="input w-auto min-w-0 max-w-full py-1.5 text-xs"
                     disabled={!inStock}
                   >
                     <option value="">{inStock ? "Не добавлять" : "Нет в наличии"}</option>

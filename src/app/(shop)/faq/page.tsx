@@ -17,7 +17,7 @@ export default async function FaqPage() {
       <JsonLd data={faqJsonLd(all.map(({ q, a }) => ({ q, a })))} />
       {groups.map((g) => (
         <section key={g.group} className="border-t border-line pt-5">
-          <h2 className="text-base">{g.group}</h2>
+          <h2>{g.group}</h2>
           <dl className="mt-4 space-y-5">
             {g.items.map((f) => (
               <div key={f.q}>

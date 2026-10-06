@@ -297,12 +297,19 @@ async function guestJourney(viewport, label) {
   if (!added) note("journey", `${label} добавление в корзину`, "ни у одного из первых 10 товаров нет кнопки «Добавить в корзину» или она не сработала");
   await step("корзина открывается с товаром", async () => {
     await page.goto(base + "/cart", { waitUntil: "domcontentloaded" });
-    if ((await page.locator("select[name='quantity']").count()) === 0) throw new Error("корзина пуста после добавления");
+    if ((await page.locator("button[aria-label='Больше']").count()) === 0) throw new Error("корзина пуста после добавления");
   });
   await step("корзина: изменить количество", async () => {
-    await page.locator("select[name='quantity']").first().selectOption("1");
-    await page.locator("button:has-text('Обновить')").first().click();
-    await page.waitForTimeout(1500);
+    // «+» и «−» сохраняют сразу; если вещь в одном экземпляре, «+» заблокирован — тогда проверяем только «−»
+    const qty = page.locator("[role='group'][aria-label^='Количество'] span").first();
+    const before = (await qty.textContent())?.trim();
+    const plus = page.locator("button[aria-label='Больше']").first();
+    if (await plus.isEnabled()) {
+      await plus.click();
+      await page.waitForFunction((b) => document.querySelector("[role='group'][aria-label^='Количество'] span")?.textContent?.trim() !== b, before, { timeout: 10000 });
+      await page.locator("button[aria-label='Меньше']").first().click();
+      await page.waitForFunction((b) => document.querySelector("[role='group'][aria-label^='Количество'] span")?.textContent?.trim() === b, before, { timeout: 10000 });
+    }
     await page.waitForLoadState("networkidle");
   });
   await step("оформление: шаг 1", async () => {

@@ -65,7 +65,7 @@ export default async function AccountHome({ searchParams }: PageProps<"/account"
 
       <section>
         <div className="mb-4 flex items-end justify-between gap-3">
-          <h2 className="text-xl md:text-2xl">Последние заказы</h2>
+          <h2>Последние заказы</h2>
           <Link href="/account/orders" className="shrink-0 py-1 text-[0.68rem] uppercase tracking-[0.18em] text-muted hover:text-ink">Все заказы</Link>
         </div>
         {orders.length === 0 ? (

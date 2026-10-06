@@ -59,7 +59,7 @@ export default async function GiftCardPage({ params, searchParams }: PageProps<"
           )}
           {card.redemptions.length > 0 && (
             <section>
-              <h2 className="mb-3 text-xl">Списания</h2>
+              <h2 className="mb-3">Списания</h2>
               <ul className="divide-y divide-line border-y border-line text-sm">
                 {card.redemptions.map((r) => (
                   <li key={r.id} className="flex justify-between py-3">

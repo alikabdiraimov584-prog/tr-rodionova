@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const codeLogin = !!(await db.channelIntegration.findUnique({ where: { channel: "EMAIL" }, select: { enabled: true } }).catch(() => null))?.enabled;
   return (
     <>
-      <h1 className="text-xl">Вход</h1>
+      <h1>Вход</h1>
       <p className="mb-8 mt-2 text-sm text-muted">Личный кабинет и программа T.Rodionova Circle</p>
       {codeLogin && (
         <details className="mb-6 border border-line bg-white p-4" open={!!email}>

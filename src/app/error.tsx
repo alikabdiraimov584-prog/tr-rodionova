@@ -16,7 +16,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
         <Logo />
-        <h1 className="mt-10 text-2xl">Сайт обновился</h1>
+        <h1 className="mt-10">Сайт обновился</h1>
         <p className="mt-2 max-w-md text-sm text-muted">Эта страница была открыта до обновления. Она перезагружается; если не перезагрузилась сама, нажмите кнопку.</p>
         <div className="mt-6"><button type="button" onClick={() => window.location.reload()} className="btn-primary">Перезагрузить</button></div>
       </div>
@@ -25,7 +25,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
       <Logo />
-      <h1 className="mt-10 text-2xl">Что-то пошло не так</h1>
+      <h1 className="mt-10">Что-то пошло не так</h1>
       <p className="mt-2 max-w-md text-sm text-muted">
         Страница не открылась из-за ошибки на нашей стороне. Попробуйте ещё раз через минуту; если не поможет, напишите нам: care@tr-rodionova.ru
         {error.digest && <span className="mt-2 block text-xs opacity-70">Код ошибки: {error.digest}</span>}

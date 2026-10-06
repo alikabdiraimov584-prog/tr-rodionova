@@ -54,7 +54,7 @@ export default async function LoyaltyPage() {
       </div>
 
       <section>
-        <h2 className="mb-4 text-2xl">История баллов</h2>
+        <h2 className="mb-4">История баллов</h2>
         <div className="overflow-x-auto">
           <table className="table">
             <thead><tr><th>Дата</th><th>Операция</th><th>Комментарий</th><th>Действуют до</th><th className="text-right">Баллы</th></tr></thead>

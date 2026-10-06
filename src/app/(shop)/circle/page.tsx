@@ -22,7 +22,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
         {early && <p className="mx-auto mb-6 max-w-lg border border-champagne bg-champagne/20 px-4 py-3 text-sm">Эта вещь пока доступна только участницам уровней Maison и Privé в рамках раннего доступа. Вступите в Circle: уровень растёт с покупками.</p>}
         <Monogram className="text-6xl" />
         <Eyebrow className="mt-6">Программа лояльности</Eyebrow>
-        <h1 className="mt-3 text-3xl">T.Rodionova Circle</h1>
+        <h1 className="mt-3">T.Rodionova Circle</h1>
         <p className="mx-auto mt-5 max-w-xl px-4 text-sm text-muted">
           Баллы с каждой покупки, подарки ко дню рождения и привилегии, которые растут вместе с вами. 1 балл = 1 ₽.
         </p>
@@ -36,7 +36,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
               <div className={`eyebrow ${t.code === "PRIVE" ? "text-champagne" : ""}`}>
                 {t.threshold ? `от ${formatMoney(t.threshold)} за 12 месяцев` : "с первой покупки"}
               </div>
-              <h2 className="mt-4 text-2xl">{t.name}</h2>
+              <h2 className="mt-4">{t.name}</h2>
               <div className={`mt-6 text-5xl ${t.code === "PRIVE" ? "text-champagne" : "text-taupe-dark"}`}>{t.cashbackPct}%</div>
               <div className="text-xs opacity-70">возвращается баллами</div>
               <ul className="mt-8 space-y-3 text-sm">
@@ -50,7 +50,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
       </section>
 
       <section className="mx-auto max-w-4xl px-4 md:px-8">
-        <h2 className="text-center text-3xl">Как это работает</h2>
+        <h2 className="text-center">Как это работает</h2>
         <div className="mt-10 grid gap-8 text-sm md:grid-cols-2">
           {[
             ["Начисление", "Баллы начисляются через 14 дней после получения заказа — когда закончится срок возврата. Считаются от суммы, оплаченной деньгами, без доставки."],
@@ -61,7 +61,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
             ["Отзывы", `${s.reviewPoints} баллов за отзыв о купленной вещи после модерации.`],
           ].map(([t, d]) => (
             <div key={t} className="border-t border-line pt-5">
-              <h3 className="text-xl">{t}</h3>
+              <h3>{t}</h3>
               <p className="mt-2 text-muted">{d}</p>
             </div>
           ))}

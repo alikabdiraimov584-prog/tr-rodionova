@@ -75,18 +75,29 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-/* CRM остаётся плотнее: в таблицах и формах больше данных */
+/* CRM остаётся плотнее: в таблицах и формах больше данных. Основной текст CRM наследует шрифт body (Golos Text,
+   по ширине близок к прежнему системному шрифту — таблицы не раздвигаются); заголовки CRM — Manrope через --font-ui. */
 .crm { font-size: 13px; }
 
-h1, h2, h3, .serif {
+/* Базовые заголовки — в слое base: классы размера и разрядки (text-*, tracking-*) на конкретном заголовке
+   их перекрывают. Вне слоя эти правила побеждали любые утилиты, и заданные в разметке размеры не работали. */
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-ui);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; }
+  h3 { font-size: 1rem; }
+}
+.serif {
   font-family: var(--font-ui);
   font-weight: 400;
   letter-spacing: -0.01em;
   line-height: 1.15;
 }
-h1 { font-size: 1.5rem; }
-h2 { font-size: 1.2rem; }
-h3 { font-size: 1rem; }
 
 /* Пункты шапки витрины: мелкие заглавные с разрядкой */
 .nav-link { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; }
@@ -102,20 +113,21 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
 .drawer-in { animation: drawer-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @media (prefers-reduced-motion: reduce) { .drawer-in { animation: none; } }
+/* CRM: заголовки фиксированного размера поверх утилит — как было до переноса базовых правил в слой */
+.crm h1, .crm h2, .crm h3 { font-family: var(--font-ui); letter-spacing: -0.01em; line-height: 1.15; }
 .crm h1 { font-weight: 700; font-size: 1.35rem; }
-.crm h2 { font-weight: 700; }
-.crm h3 { font-weight: 600; }
+.crm h2 { font-weight: 700; font-size: 1.2rem; }
+.crm h3 { font-weight: 600; font-size: 1rem; }
 .crm .serif { font-weight: 700; letter-spacing: -0.02em; }
 
 
 .monogram { font-family: "Times New Roman", Times, serif; letter-spacing: -0.06em; color: var(--taupe-dark); }
 
+/* Размеры кнопок как до редизайна витрины: на них свёрстаны панели CRM. Витрина укрупняет кнопки ниже, в слое components. */
 @utility btn {
-  @apply inline-flex cursor-pointer items-center justify-center gap-2 px-6 py-3 text-[0.72rem] font-medium uppercase tracking-[0.12em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
-  min-height: 48px;
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 px-5 py-2.5 text-[0.7rem] uppercase tracking-[0.12em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   border-radius: var(--radius);
 }
-.crm .btn { min-height: 0; }
 .crm .btn { text-transform: none; letter-spacing: 0; font-size: 0.8rem; font-weight: 600; border-radius: 8px; }
 
 @layer components {
@@ -134,8 +146,11 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
   .crm .btn-outline { border-color: var(--line); box-shadow: var(--shadow); }
   .btn-ghost { @apply btn; color: var(--ink); }
   .btn-ghost:hover { background: var(--sand); }
-  .btn-sm { @apply px-3.5 py-1.5 text-[0.65rem]; min-height: 36px; }
-  .crm .btn-sm { min-height: 0; }
+  .btn-sm { @apply px-3.5 py-1.5 text-[0.65rem]; }
+  /* Витрина и кабинет (всё вне CRM): кнопки по образцу ACTE — высота 48 px, шире и плотнее начертание.
+     Правило в слое components, поэтому утилиты на конкретной кнопке (w-full, !px-5) его перекрывают. */
+  :is(.btn-primary, .btn-outline, .btn-ghost):not(.crm *):not(.btn-sm) { min-height: 48px; padding: 0.75rem 1.5rem; font-size: 0.72rem; font-weight: 500; }
+  .btn-sm:not(.crm *) { min-height: 36px; font-weight: 500; }
 
   .input {
     @apply w-full border px-3 py-2.5 text-sm outline-none;
@@ -167,8 +182,8 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
 
 /* Касание: цели нажатия не меньше 44px, поля без автозума в iOS (шрифт ≥ 16px) */
 @media (pointer: coarse) {
-  .btn, .crm .btn { min-height: 44px; }
-  .btn-sm, .crm .btn-sm { min-height: 40px; }
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
   .input, select.input { min-height: 44px; font-size: 16px; }
   .table td a { display: inline-block; padding-block: 6px; }
 }
@@ -193,6 +208,16 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
   .text-\[0\.62rem\], .text-\[0\.65rem\] { font-size: 0.72rem; }
   .text-\[0\.68rem\], .text-\[0\.7rem\], .text-\[0\.72rem\] { font-size: 0.78rem; }
   .\!text-\[0\.68rem\] { font-size: 0.78rem !important; }
+  .text-\[0\.66rem\], .label { font-size: 0.75rem; }
+  .nav-link { font-size: 0.78rem; }
   .eyebrow { font-size: 0.72rem; }
-  .btn { font-size: 0.78rem; }
+  .btn, :is(.btn-primary, .btn-outline, .btn-ghost):not(.crm *) { font-size: 0.78rem; }
+}
+
+/* Пока на экране баннер cookie, низ страницы получает отступ на его высоту (переменную ставит сам баннер),
+   чтобы баннер не закрывал реквизиты продавца в подвале. */
+body { padding-bottom: var(--consent-h, 0px); }
+/* Телефон: закреплённая панель покупки на карточке вещи — отступ под неё, пока она видна */
+@media (max-width: 767px) {
+  body:has([data-buy-bar]) { padding-bottom: calc(var(--consent-h, 0px) + 4.5rem + env(safe-area-inset-bottom)); }
 }

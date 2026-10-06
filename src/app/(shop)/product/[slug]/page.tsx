@@ -10,7 +10,9 @@ import { ProductCard } from "@/components/shop/product-card";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { MobileBuyBar } from "@/components/shop/mobile-buy-bar";
 import { IconHeart } from "@/components/shop/icons";
-import { photoFirst } from "@/lib/photos";
+import { isRealPhoto, photoFirst } from "@/lib/photos";
+import { chartForProduct, recommendSize } from "@/lib/sizes";
+import { dolyameAvailableFor } from "@/lib/payments/dolyame";
 import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
 import { JsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd } from "@/lib/seo";
@@ -25,7 +27,7 @@ async function load(slug: string) {
       category: true,
       reviews: { where: { isPublic: true }, include: { user: { select: { firstName: true, height: true, preferredSize: true } } }, orderBy: { createdAt: "desc" } },
       articles: { where: { publishedAt: { lte: new Date() } }, select: { slug: true, title: true } },
-      lookItems: { include: { look: { include: { items: { include: { product: { include: { images: { orderBy: { order: "asc" } }, variants: true } } }, orderBy: { order: "asc" } } } } }, take: 2 },
+      lookItems: { where: { look: { isPublished: true } }, include: { look: { include: { items: { include: { product: { include: { images: { orderBy: { order: "asc" } }, variants: true } } }, orderBy: { order: "asc" } } } } }, take: 2 },
     },
   });
 }
@@ -50,17 +52,25 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   if (p.earlyAccessUntil && p.earlyAccessUntil > new Date() && !user?.loyaltyTier?.earlyAccess) {
     redirect(`/circle?early=${p.slug}`);
   }
-  const [inWishlist, tier, related, delivery, seller] = await Promise.all([
+  const [inWishlist, tier, related, delivery, seller, installments] = await Promise.all([
     user ? db.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } }) : null,
     user?.loyaltyTier ?? db.loyaltyTier.findFirst({ orderBy: { threshold: "asc" } }),
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4 }),
     getSetting("delivery"),
     getSetting("seller"),
+    // «4 платежа» обещаем, только если оплата Долями подключена и цена в её пределах
+    dolyameAvailableFor(p.price).catch(() => false),
   ]);
   const pts = Math.floor((p.price * (tier?.cashbackPct ?? 3)) / 100 / 100);
   // «С этим носят»: вещи из тех же образов лукбука, иначе соседи по категории
-  const lookMates = p.lookItems.flatMap((li) => li.look.items.map((it) => it.product)).filter((r, i, arr) => r.id !== p.id && r.status === "ACTIVE" && arr.findIndex((x) => x.id === r.id) === i).slice(0, 4);
-  const wornWith = lookMates.length > 0 ? lookMates : photoFirst(related);
+  // в подборках под карточкой — только вещи со съёмкой, иначе блок из заглушек выглядит незаконченным
+  const lookMates = p.lookItems.flatMap((li) => li.look.items.map((it) => it.product)).filter((r, i, arr) => r.id !== p.id && r.status === "ACTIVE" && isRealPhoto(r.images[0]?.url) && arr.findIndex((x) => x.id === r.id) === i).slice(0, 4);
+  const relatedReal = photoFirst(related).filter((r) => isRealPhoto(r.images[0]?.url));
+  const wornWith = lookMates.length > 0 ? lookMates : relatedReal;
+  const lookSlug = lookMates.length > 0 ? p.lookItems[0]?.look.slug : undefined;
+  // размер по меркам из профиля: если подходит точно, он выбран заранее
+  const chart = chartForProduct(p);
+  const advice = chart && user ? recommendSize(chart, user) : null;
   const rating = p.reviews.length ? p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length : null;
   const specs: [string, string | null | undefined][] = [
     ["Состав", p.composition],
@@ -89,12 +99,14 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="text-[1.05rem]">{formatMoney(p.price)}</span>
             {p.compareAt && <span className="text-muted line-through">{formatMoney(p.compareAt)}</span>}
-            {rating && <a href="#reviews" className="text-[0.75rem] text-muted underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
+            {rating && <a href="#reviews" className="-my-2 py-2 text-[0.75rem] text-muted underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
           </div>
+          {installments && !p.isPreloved && <div className="mt-1 text-[0.78rem]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
           <div className="mt-1 text-[0.75rem] text-muted">+{pts.toLocaleString("ru-RU")} баллов Circle{p.isPreloved && p.condition ? ` · состояние: ${p.condition}` : ""}</div>
           {p.isPreorder && <p className="mt-4 border-l-2 border-ink pl-3 text-[0.8rem]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
-          <div className="mt-6">
-            <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
+          <div className="mt-5"><SizeAdvisor product={p} user={user} /></div>
+          <div className="mt-5">
+            <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} defaultSize={advice?.fit === "точно" ? advice.size : null} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
               <form action={toggleWishlistAction}>
                 <input type="hidden" name="productId" value={p.id} />
                 <input type="hidden" name="back" value={`/product/${p.slug}`} />
@@ -102,10 +114,10 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
               </form>
             </AddToCart>
           </div>
-          <div className="mt-3"><SizeAdvisor product={p} user={user} /></div>
           <ul className="mt-5 grid grid-cols-3 gap-2 border-y border-line py-4 text-center text-[0.68rem] uppercase leading-snug tracking-[0.06em] text-muted">
             <li>Примерка<br />курьером</li>
-            <li>Доставка<br />1–2 дня</li>
+            {/* коротко и в согласии с разметкой Offer: бесплатно от порога из настроек, иначе — срок без привязки к городу */}
+            <li>{p.price >= delivery.freeFrom ? <>Бесплатная<br />доставка</> : <>Доставка<br />от 1 дня</>}</li>
             <li>Возврат<br />14 дней</li>
           </ul>
           <div className="divide-y divide-line border-b border-line">
@@ -146,7 +158,8 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
               </dl>
             </details>
           </div>
-          {p.lookItems.length > 0 && (
+          {/* образ, в котором снята вещь: если подборки «Собрать образ» ниже нет, ссылка на страницу образа остаётся здесь */}
+          {lookMates.length === 0 && p.lookItems.length > 0 && (
             <div className="mt-5 text-[0.78rem] text-muted">
               {p.lookItems.map((li) => <div key={li.id}>В образе: <Link href={`/lookbook/${li.look.slug}`} className="text-ink underline underline-offset-4">{li.look.title}</Link></div>)}
             </div>
@@ -156,7 +169,10 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
 
       {wornWith.length > 0 && (
         <section className="mt-20 px-1 md:px-0">
-          <h2 className="section-title mb-5 px-3 md:px-1">{lookMates.length > 0 ? "Собрать образ" : "Вам может понравиться"}</h2>
+          <div className="mb-5 flex items-baseline justify-between px-3 md:px-1">
+            <h2 className="section-title">{lookMates.length > 0 ? "Собрать образ" : "Вам может понравиться"}</h2>
+            {lookSlug && <Link href={`/lookbook/${lookSlug}`} className="nav-link -my-2 py-2 underline underline-offset-4">Весь образ</Link>}
+          </div>
           <div className="grid grid-cols-2 gap-x-1 md:grid-cols-4">{wornWith.map((r) => <ProductCard key={r.id} p={r} />)}</div>
         </section>
       )}

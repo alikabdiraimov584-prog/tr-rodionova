@@ -44,7 +44,7 @@ export default async function ResalePage() {
         ].map(([n, t, d]) => (
           <div key={n} className="bg-ivory p-6">
             <div className="eyebrow">{n}</div>
-            <h3 className="mt-2 text-xl">{t}</h3>
+            <h3 className="mt-2">{t}</h3>
             <p className="mt-2 text-sm text-muted">{d}</p>
           </div>
         ))}
@@ -61,12 +61,12 @@ export default async function ResalePage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-xl">Подать заявку</h2>
+        <h2 className="mb-4">Подать заявку</h2>
         <ResaleRequestForm items={candidates} />
       </section>
 
       <section>
-        <h2 className="mb-4 text-xl">Мои заявки</h2>
+        <h2 className="mb-4">Мои заявки</h2>
         {requests.length === 0 ? (
           <p className="text-sm text-muted">Заявок пока нет. <Link href="/preloved" className="underline">Посмотреть витрину pre-loved</Link></p>
         ) : (

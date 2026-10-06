@@ -28,14 +28,14 @@ export function Markdown({ source }: { source: string }) {
     const b = block.trim();
     if (!b) return;
     if (b.startsWith("# ")) {
-      out.push(<h1 key={i} className="text-4xl leading-tight md:text-5xl">{b.slice(2)}</h1>);
+      out.push(<h1 key={i}>{b.slice(2)}</h1>);
     } else if (b.startsWith("## ")) {
       const title = b.slice(3);
       const id = anchor(title);
       if (id) toc.push({ id, title });
-      out.push(<h2 key={i} id={id} className="mt-12 scroll-mt-32 text-2xl">{title}</h2>);
+      out.push(<h2 key={i} id={id} className="mt-12 scroll-mt-32">{title}</h2>);
     } else if (b.startsWith("### ")) {
-      out.push(<h3 key={i} className="mt-8 text-xl">{b.slice(4)}</h3>);
+      out.push(<h3 key={i} className="mt-8">{b.slice(4)}</h3>);
     } else if (b.split("\n").every((l) => l.trim().startsWith("- "))) {
       out.push(
         <ul key={i} className="my-3 list-disc space-y-1.5 pl-6">

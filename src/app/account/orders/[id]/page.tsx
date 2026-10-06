@@ -133,7 +133,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
       </div>
 
       <section>
-        <h2 className="mb-3 text-xl">История</h2>
+        <h2 className="mb-3">История</h2>
         <ul className="space-y-2 text-sm">
           {order.history.map((h) => (
             <li key={h.id} className="flex flex-col gap-0.5 sm:flex-row sm:gap-4"><span className="shrink-0 text-xs text-muted sm:w-36">{formatDate(h.createdAt, true)}</span><span>{h.status ? `${ORDER_STATUS[h.status].label}. ` : ""}{h.message !== "Статус изменён" ? h.message : ""}</span></li>

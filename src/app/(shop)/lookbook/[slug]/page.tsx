@@ -37,11 +37,11 @@ export default async function LookPage({ params }: PageProps<"/lookbook/[slug]">
       <nav className="mb-6 text-[0.65rem] uppercase tracking-[0.2em] text-muted">
         <Link href="/lookbook">Лукбук</Link> / {look.title}
       </nav>
-      <div className="grid gap-10 md:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <div className="relative aspect-[3/4] bg-sand">
           {(look.coverUrl ?? look.items[0]?.product.images[0]?.url) && <Image src={look.coverUrl ?? look.items[0]!.product.images[0]!.url} alt={look.title} fill priority sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />}
         </div>
-        <div className="md:sticky md:top-32 md:self-start">
+        <div className="min-w-0 md:sticky md:top-24 md:self-start">
           {look.season && <Eyebrow>{look.season}</Eyebrow>}
           <h1 className="mt-2">{look.title}</h1>
           {look.description && <p className="mt-4 text-sm leading-relaxed text-ink/80">{look.description}</p>}
