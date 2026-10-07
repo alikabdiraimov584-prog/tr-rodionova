@@ -7,7 +7,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createOrderPayment, ONLINE_PAYMENT_METHODS, onlinePaymentsAvailable, paymentsEnabled } from "@/lib/payments/provider";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getCurrentUser, requireUser } from "@/lib/auth";
+import { getCurrentCustomer, getCurrentUser, requireUser } from "@/lib/auth";
 import { createOrderFromCart, cancelOrder } from "@/lib/orders";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
@@ -28,7 +28,8 @@ import { randomBytes } from "node:crypto";
  * карточка показывает ответ только пока выбран тот же размер и цвет.
  */
 export async function addToCartAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  const user = await getCurrentUser();
+  // сотрудник на витрине — гость (как на страницах корзины и оформления), иначе вещь уходит в невидимую корзину
+  const user = await getCurrentCustomer();
   const variantId = String(formData.get("variantId") ?? "");
   if (!variantId) return { error: "Выберите размер" };
   if (!user) {
@@ -61,7 +62,7 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
 }
 
 export async function updateCartAction(formData: FormData) {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   const variantId = String(formData.get("variantId"));
   const qty = Number(formData.get("quantity"));
   if (!user) {
@@ -156,7 +157,7 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
   if ((ONLINE_PAYMENT_METHODS as readonly string[]).includes(d.paymentMethod) && !(await onlinePaymentsAvailable())) {
     return { error: "Оплата картой на сайте пока недоступна: выберите «При получении» или «Перевод по реквизитам»" };
   }
-  let user = await getCurrentUser();
+  let user = await getCurrentCustomer();
   if (!user) {
     if (d.consent !== "on" || d.offer !== "on") return { error: "Нужно согласие на обработку данных и условия оферты" };
     const email = d.email.toLowerCase();
@@ -257,7 +258,7 @@ export type QuoteView = {
 };
 
 export async function quoteAction(input: { promoCode?: string; pointsToUse?: number; deliveryMethod: DeliveryMethod; giftCode?: string }): Promise<QuoteView> {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   const { quoteCart, quoteGuestCart } = await import("@/lib/orders");
   const q = user ? await quoteCart(user.id, input) : await quoteGuestCart(await getGuestToken(), input);
   const pct = user?.loyaltyTier?.cashbackPct ?? 3;

@@ -1,6 +1,6 @@
 import { publicPhone } from "@/lib/seo";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 import { cabinetLink } from "@/lib/role-links";
 import { getGuestToken, guestCartCount } from "@/lib/guest-cart";
 import { getSettingOrDefault } from "@/lib/settings";
@@ -15,9 +15,10 @@ import { IconBag, IconHeart, IconSearch, IconUser } from "@/components/shop/icon
  */
 export async function ShopHeader() {
   const user = await getCurrentUser();
+  const customer = user && !isStaff(user.role) ? user : null; // счётчик корзины: у сотрудника на витрине гостевая корзина
   const cabinet = cabinetLink(user);
   const [cartCount, categories] = await Promise.all([
-    user ? db.cartItem.aggregate({ where: { userId: user.id }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount),
+    customer ? db.cartItem.aggregate({ where: { userId: customer.id }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount),
     shopCategories(),
   ]);
   const count = cartCount || 0;
