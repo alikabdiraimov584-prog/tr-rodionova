@@ -4,12 +4,15 @@ import { getCurrentCustomer } from "@/lib/auth";
 import { PageTitle } from "@/components/ui";
 import { GiftForm } from "@/components/shop/gift-form";
 import { GIFT_MIN_RUB, GIFT_PRESETS, GIFT_VALIDITY_MONTHS } from "@/lib/gift";
+import { onlinePaymentsAvailable } from "@/lib/payments/provider";
 
 export const metadata: Metadata = { title: "Подарочный сертификат", description: "Электронный подарочный сертификат T.Rodionova на любую сумму от 5 000 ₽." };
 
 export default async function GiftPage() {
   // страница открыта всем (её читают поисковики и ИИ), покупка — после входа
   const user = await getCurrentCustomer();
+  // сертификат оплачивается только онлайн: пока касса не подключена, форма не создаёт неоплачиваемых сертификатов
+  const online = await onlinePaymentsAvailable();
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 md:px-8">
       <PageTitle eyebrow="Подарок" title="Подарочный сертификат">
@@ -17,7 +20,15 @@ export default async function GiftPage() {
       </PageTitle>
       <div className="grid gap-10 md:grid-cols-[1fr_320px]">
         <div className="card p-6 md:p-8">
-          {user ? (
+          {!online ? (
+            <div className="space-y-4 text-sm leading-relaxed">
+              <p>Онлайн-оплата сертификатов скоро появится на сайте. Пока сертификат на любую сумму от {GIFT_MIN_RUB.toLocaleString("ru-RU")} ₽ можно купить в шоуруме или заказать у нас в сообщениях — оформим и пришлём код.</p>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/account/support" className="btn-primary">Написать нам</Link>
+                <Link href="/showroom" className="btn-outline">Шоурум</Link>
+              </div>
+            </div>
+          ) : user ? (
             <GiftForm presets={GIFT_PRESETS} minRub={GIFT_MIN_RUB} validityMonths={GIFT_VALIDITY_MONTHS} />
           ) : (
             <div className="space-y-4 text-sm leading-relaxed">

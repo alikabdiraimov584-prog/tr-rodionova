@@ -11,7 +11,7 @@ import { ReviewForm } from "@/components/account/review-form";
 import { ExchangeForm } from "@/components/account/exchange-form";
 import { cancelOwnOrderAction } from "@/app/actions/shop";
 import { PayButton } from "@/components/account/pay-button";
-import { syncOrderPayment, paymentsEnabled } from "@/lib/payments/provider";
+import { syncOrderPayment, paymentsEnabled, onlinePaymentsAvailable } from "@/lib/payments/provider";
 import { getSettingOrDefault } from "@/lib/settings";
 import { trackingUrl } from "@/lib/delivery";
 
@@ -44,10 +44,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
         <div className="card flex flex-wrap items-center justify-between gap-4 p-5">
           <div>
             <div className="text-sm">Ожидает оплаты: {formatMoney(order.total)}</div>
-            <div className="text-xs text-muted">{payment ? PAYMENT_METHOD[payment.method] : ""} · резерв действует 24 часа{order.isPreorder ? " · предзаказ" : ""}</div>
+            <div className="text-xs text-muted">{payment ? PAYMENT_METHOD[payment.method] : ""}{/* снимается через сутки только неоплаченная онлайн-оплата; при получении и переводом резерв держится */}{payment && ["CARD", "SBP", "INSTALLMENT"].includes(payment.method) ? " · резерв действует 24 часа" : ""}{order.isPreorder ? " · предзаказ" : ""}</div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <PayButton orderId={order.id} live={await paymentsEnabled()} />
+            {/* кнопка оплаты — только когда заплатить на сайте можно; иначе заказ ждёт оплаты при получении или переводом */}
+            {(await onlinePaymentsAvailable()) && <PayButton orderId={order.id} live={await paymentsEnabled()} />}
             <form action={cancelOwnOrderAction}>
               <input type="hidden" name="orderId" value={order.id} />
               <ConfirmButton message="Отменить заказ? Списанные баллы вернутся на счёт.">Отменить</ConfirmButton>

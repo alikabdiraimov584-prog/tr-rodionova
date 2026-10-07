@@ -19,13 +19,17 @@ const STEPS = ["Доставка", "Оплата", "Проверка"] as const;
  * неактивные шаги скрыты; итог и кнопка закреплены внизу экрана на телефоне.
  * Гость заполняет контакты и даёт согласия: аккаунт Circle создаётся вместе с заказом.
  */
-export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom, suggestions }: { profile: Profile | null; addresses: Address[]; initialQuote: QuoteView; guest: boolean; showroom: string | null; suggestions: boolean }) {
+const ONLINE: PaymentMethod[] = ["CARD", "SBP", "INSTALLMENT"];
+
+export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom, suggestions, online }: { profile: Profile | null; addresses: Address[]; initialQuote: QuoteView; guest: boolean; showroom: string | null; suggestions: boolean; online: boolean }) {
+  // без подключённой кассы — только способы, которые работают: при получении и переводом по реквизитам
+  const methods = (Object.keys(PAYMENT_METHOD) as PaymentMethod[]).filter((m) => online || !ONLINE.includes(m));
   const [state, action, pending] = useActionState(checkoutAction, undefined);
   const [step, setStep] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
   const [delivery, setDelivery] = useState<DeliveryMethod>("COURIER");
   const [moreDelivery, setMoreDelivery] = useState(false);
-  const [payment, setPayment] = useState<PaymentMethod>("CARD");
+  const [payment, setPayment] = useState<PaymentMethod>(online ? "CARD" : "CASH_ON_DELIVERY");
   const [addressId, setAddressId] = useState(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? "");
   const [addressText, setAddressText] = useState("");
   const [hints, setHints] = useState<{ value: string }[]>([]);
@@ -207,13 +211,14 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           <div>
             <h2 className="mb-4">Оплата</h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              {(Object.keys(PAYMENT_METHOD) as PaymentMethod[]).map((m) => (
+              {methods.map((m) => (
                 <label key={m} className={`flex cursor-pointer items-center gap-3 border p-4 text-sm ${payment === m ? "border-ink bg-white" : "border-line"}`}>
                   <input type="radio" name="paymentMethod" value={m} checked={payment === m} onChange={() => setPayment(m)} className="h-4 w-4 shrink-0 accent-black" />
                   {PAYMENT_METHOD[m]}
                 </label>
               ))}
             </div>
+            {!online && <p className="mt-3 text-xs text-muted">Оплата картой на сайте скоро появится. Сейчас можно оплатить при получении или переводом по реквизитам — они будут на странице заказа.</p>}
           </div>
           <details className="border border-line bg-white p-4">
             <summary className="cursor-pointer text-sm">Промокод или подарочный сертификат</summary>

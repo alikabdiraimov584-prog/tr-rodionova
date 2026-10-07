@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { createOrderPayment, paymentsEnabled } from "@/lib/payments/provider";
+import { createOrderPayment, ONLINE_PAYMENT_METHODS, onlinePaymentsAvailable, paymentsEnabled } from "@/lib/payments/provider";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser, requireUser } from "@/lib/auth";
@@ -152,6 +152,10 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
   const parsed = CheckoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  // форма, открытая до отключения кассы, не должна создать заказ, который нечем оплатить
+  if ((ONLINE_PAYMENT_METHODS as readonly string[]).includes(d.paymentMethod) && !(await onlinePaymentsAvailable())) {
+    return { error: "Оплата картой на сайте пока недоступна: выберите «При получении» или «Перевод по реквизитам»" };
+  }
   let user = await getCurrentUser();
   if (!user) {
     if (d.consent !== "on" || d.offer !== "on") return { error: "Нужно согласие на обработку данных и условия оферты" };

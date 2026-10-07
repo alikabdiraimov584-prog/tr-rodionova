@@ -27,6 +27,17 @@ export async function demoPaymentsAllowed() {
   return process.env.NODE_ENV !== "production" || process.env.ALLOW_DEMO_PAYMENTS === "1";
 }
 
+/** Способы, которые требуют онлайн-оплаты: без подключённой кассы на витрине их не предлагаем. */
+export const ONLINE_PAYMENT_METHODS = ["CARD", "SBP", "INSTALLMENT"] as const;
+
+/**
+ * Можно ли сейчас заплатить на сайте: подключена касса или Долями (или демо-режим стенда). Пока нельзя, покупательнице
+ * предлагаются оплата при получении и перевод по реквизитам — заказ не зависает «ожидающим оплаты» и не снимается через сутки.
+ */
+export async function onlinePaymentsAvailable() {
+  return (await paymentsEnabled()) || (await demoPaymentsAllowed());
+}
+
 export async function createOrderPayment(orderId: string, returnUrl: string) {
   // «Частями» по прямому договору с Долями, если интеграция включена; иначе через платёжную страницу кассы
   const pending = await db.payment.findFirst({ where: { orderId, status: "PENDING" }, select: { method: true } });
