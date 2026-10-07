@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { changeOrderStatusAction, partialReturnAction, courierSoonAction, issueReceiptAction } from "@/app/actions/crm-orders";
+import { changeOrderStatusAction, partialReturnAction, courierSoonAction, issueReceiptAction, syncPaymentAction } from "@/app/actions/crm-orders";
 import { ORDER_STATUS } from "@/lib/labels";
 import type { OrderStatus } from "@/generated/prisma/enums";
 
@@ -82,6 +82,18 @@ export function ReceiptForm({ orderId, kind, label }: { orderId: string; kind: "
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="kind" value={kind} />
       <button className="btn-outline btn-sm" disabled={pending}>{pending ? "Отправляем…" : label}</button>
+      {state?.error && <span className="text-xs text-danger">{state.error}</span>}
+      {state?.message && <span className="text-xs text-success">{state.message}</span>}
+    </form>
+  );
+}
+
+export function SyncPaymentForm({ orderId }: { orderId: string }) {
+  const [state, action, pending] = useActionState(syncPaymentAction, undefined);
+  return (
+    <form action={action} className="mt-2 flex flex-wrap items-center gap-2">
+      <input type="hidden" name="orderId" value={orderId} />
+      <button className="btn-outline btn-sm" disabled={pending}>{pending ? "Проверяем…" : "Сверить оплату с кассой"}</button>
       {state?.error && <span className="text-xs text-danger">{state.error}</span>}
       {state?.message && <span className="text-xs text-success">{state.message}</span>}
     </form>

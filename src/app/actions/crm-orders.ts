@@ -133,3 +133,23 @@ export async function issueReceiptAction(_: ActionState, formData: FormData): Pr
   if (!r.ok) return { error: r.error };
   return { ok: true, message: r.skipped ? `Чек не отправлен: ${r.skipped}` : `Чек отправлен в кассу${r.id ? ` (${r.id})` : ""}` };
 }
+
+/** Неоплаченный онлайн-заказ: спросить кассу напрямую, если уведомление об оплате не дошло. */
+export async function syncPaymentAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const staff = await requireSection("ordersEdit");
+  const orderId = String(formData.get("orderId"));
+  const before = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });
+  if (!before) return { error: "Заказ не найден" };
+  try {
+    const { syncOrderPayment } = await import("@/lib/payments/provider");
+    await syncOrderPayment(orderId);
+  } catch (e) {
+    return { error: errorMessage(e) };
+  }
+  const after = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { status: true, payments: { select: { payload: true, status: true }, take: 1, orderBy: { createdAt: "desc" } } } });
+  await audit(staff.id, "order.syncPayment", "Order", orderId, { before: before.status, after: after.status });
+  revalidatePath(`/crm/orders/${orderId}`);
+  if (after.status !== before.status) return { ok: true, message: "Оплата найдена в кассе: заказ переведён в «Оплачен»" };
+  const st = (after.payments[0]?.payload as { status?: string } | null)?.status;
+  return { ok: true, message: st ? `Касса ответила: платёж ${st === "Declined" ? "отклонён" : st === "Cancelled" ? "отменён" : st}` : "В кассе нет успешной оплаты по этому заказу: покупательница не завершила платёж" };
+}

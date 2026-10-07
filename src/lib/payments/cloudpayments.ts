@@ -164,6 +164,18 @@ export async function handleWebhook(kind: "pay" | "fail" | "refund", fields: Rec
   const invoiceId = fields.InvoiceId ?? "";
   const transactionId = Number(fields.TransactionId);
   if (!invoiceId || !transactionId) return { ok: false, reason: "no invoice" };
+  const r = await handleWebhookInner(kind, invoiceId, transactionId, fields);
+  // след в ленте заказа: видно в CRM, дошло ли уведомление и чем кончилось, без логов сервера
+  if (!invoiceId.startsWith("gift:")) {
+    const payment = await db.payment.findFirst({ where: { id: invoiceId }, select: { orderId: true } });
+    const label = kind === "pay" ? "оплата" : kind === "fail" ? "отказ" : "возврат";
+    const outcome = r.ok ? ("status" in r && r.status === "paid" ? "заказ оплачен" : `статус ${"status" in r ? r.status : "принято"}`) : `не принято: ${"reason" in r ? r.reason : ""}`;
+    if (payment) await db.orderEvent.create({ data: { orderId: payment.orderId, message: `CloudPayments: уведомление «${label}», транзакция ${transactionId} — ${outcome}` } }).catch(() => undefined);
+  }
+  return r;
+}
+
+async function handleWebhookInner(kind: "pay" | "fail" | "refund", invoiceId: string, transactionId: number, fields: Record<string, string>) {
   if (kind === "pay") return settleByInvoice(invoiceId, transactionId);
   if (kind === "fail") {
     if (!invoiceId.startsWith("gift:")) {

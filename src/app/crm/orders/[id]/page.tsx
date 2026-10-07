@@ -6,7 +6,7 @@ import { ORDER_TRANSITIONS } from "@/lib/orders";
 import { formatDate, formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, STOCK_MOVEMENT, LEDGER_TYPE, TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle } from "@/components/ui";
-import { StatusForm, ReturnForm, CourierSoonForm, ReceiptForm } from "@/components/crm/order-forms";
+import { StatusForm, ReturnForm, CourierSoonForm, ReceiptForm, SyncPaymentForm } from "@/components/crm/order-forms";
 import { SubmitButton } from "@/components/form";
 import { updateOrderInfoAction } from "@/app/actions/crm-orders";
 import { can } from "@/lib/permissions";
@@ -116,6 +116,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
                     {payload.receipts && (
                       <div className="text-xs text-muted">Чеки: {payload.receipts.prepayment ? "предоплата ✓" : "предоплата —"} · {payload.receipts.settlement ? "полный расчёт ✓" : "полный расчёт —"}</div>
                     )}
+                    {canEdit && online && p.status === "PENDING" && order.status === "NEW" && payload.provider && <SyncPaymentForm orderId={order.id} />}
                     {canEdit && online && p.status === "SUCCEEDED" && payload.provider === "dolyame" && !payload.receipts?.prepayment && ["PAID", "CONFIRMED", "PACKING", "SHIPPED"].includes(order.status) && (
                       <ReceiptForm orderId={order.id} kind="prepayment" label="Отправить чек предоплаты" />
                     )}

@@ -1,4 +1,5 @@
 import { handleWebhook, verifySignature } from "@/lib/payments/cloudpayments";
+import { recordCheck } from "@/lib/integrations/store";
 
 /**
  * Вебхуки CloudPayments. В кабинете (Сайты → Уведомления) укажите один адрес для Pay, Fail и Refund:
@@ -10,7 +11,11 @@ export async function POST(request: Request) {
   const kind = url.searchParams.get("kind");
   if (kind !== "pay" && kind !== "fail" && kind !== "refund") return Response.json({ code: 13 }, { status: 400 });
   const raw = await request.text();
-  if (!(await verifySignature(raw, request.headers.get("content-hmac")))) return new Response("bad signature", { status: 401 });
+  if (!(await verifySignature(raw, request.headers.get("content-hmac")))) {
+    // видно в CRM → Интеграции как ошибка: обычно API Secret в CRM не совпадает с кабинетом или выключена подпись HMAC
+    await recordCheck("cloudpayments", false, "Уведомление отклонено: неверная подпись HMAC (проверьте API Secret и настройку подписи в кабинете)").catch(() => undefined);
+    return new Response("bad signature", { status: 401 });
+  }
   let fields: Record<string, string> = {};
   try {
     const ct = request.headers.get("content-type") ?? "";
@@ -26,6 +31,7 @@ export async function POST(request: Request) {
   try {
     const r = await handleWebhook(kind, fields);
     if (!r.ok) console.warn("cloudpayments webhook", kind, r.reason);
+    else await recordCheck("cloudpayments", true).catch(() => undefined);
   } catch (e) {
     console.error("cloudpayments webhook", e);
     return Response.json({ code: 13 }, { status: 500 }); // CloudPayments повторит уведомление
