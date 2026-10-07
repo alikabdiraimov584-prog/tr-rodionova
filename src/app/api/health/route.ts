@@ -34,6 +34,18 @@ async function uploadsStatus() {
   }
 }
 
+/**
+ * Какие интеграции включены — только ключи, без настроек и секретов, — и у каких последняя проверка из CRM не прошла.
+ * Нужно внешнему мониторингу: снаружи видно, подключены ли оплата, касса, доставка, копии в S3 и каналы сообщений.
+ */
+async function integrationsStatus() {
+  const [rows, channels] = await Promise.all([
+    db.integration.findMany({ where: { enabled: true }, select: { key: true, lastCheckOk: true }, orderBy: { key: "asc" } }),
+    db.channelIntegration.findMany({ where: { enabled: true }, select: { channel: true }, orderBy: { channel: "asc" } }),
+  ]);
+  return { enabled: rows.map((r) => r.key), failing: rows.filter((r) => r.lastCheckOk === false).map((r) => r.key), channels: channels.map((c) => c.channel) };
+}
+
 /** Проверка живости: версия сборки (коммит) и доступность базы. Используется мониторингом и аудитом. */
 export async function GET() {
   let dbOk = true;
@@ -45,8 +57,9 @@ export async function GET() {
   const uploads = await uploadsStatus();
   const backup = dbOk ? await backupStatus().catch(() => null) : null;
   const mail = dbOk ? await mailStatus().catch(() => null) : null;
+  const integrations = dbOk ? await integrationsStatus().catch(() => null) : null;
   return NextResponse.json(
-    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), uploads, backup, mail },
+    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), uploads, backup, mail, integrations },
     { status: dbOk ? 200 : 503, headers: { "cache-control": "no-store" } },
   );
 }

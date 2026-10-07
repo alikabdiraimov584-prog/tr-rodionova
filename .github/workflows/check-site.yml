@@ -77,6 +77,12 @@ jobs:
               echo "Копия в S3: ещё не загружалась"; fail="$fail копия в S3 не загружалась;"
             fi
           fi
+          # что подключено (без ключей): оплата, касса, доставка, копии в S3, каналы — для сводки, без тревоги
+          ints=$(echo "$health" | sed -n 's/.*"integrations":{"enabled":\[\([^]]*\)\].*/\1/p' | tr -d '"')
+          chans=$(echo "$health" | sed -n 's/.*"channels":\[\([^]]*\)\].*/\1/p' | tr -d '"')
+          echo "Интеграции: ${ints:-не включены}; каналы сообщений: ${chans:-не включены}"
+          failing=$(echo "$health" | sed -n 's/.*"failing":\[\([^]]*\)\].*/\1/p' | tr -d '"')
+          [ -z "$failing" ] || echo "Последняя проверка из CRM не прошла: $failing"
           echo "fail=$fail" >> "$GITHUB_OUTPUT"
           [ -z "$fail" ] || { echo "ПРОБЛЕМЫ:$fail"; exit 1; }
       # Тревога в Telegram: секреты TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID в настройках репозитория (Settings → Secrets).

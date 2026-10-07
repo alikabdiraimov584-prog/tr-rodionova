@@ -1,5 +1,6 @@
 // Стендовая проверка загрузки фото в карточку вещи через CRM: файлы крупнее 1 МБ (как кадры со съёмки) должны
-// проходить, сообщение об успехе появляться, фото — попадать в галерею. После проверки загруженное удаляется.
+// проходить кнопкой «Загрузить фото» и перетаскиванием на страницу, сообщение об успехе появляться, фото — попадать
+// в галерею. После проверки загруженное удаляется.
 // Запуск: CHROME_PATH=… BASE_URL=http://127.0.0.1:3100 DATABASE_URL=… FILES=/путь/a.jpg,/путь/b.png node scripts/tests/upload-stand-test.mjs
 import { chromium } from "playwright-core";
 import { rm } from "node:fs/promises";
@@ -20,15 +21,32 @@ const http = [];
 p.on("response", (r) => { if (r.request().method() === "POST" && r.url().includes("/crm/products/")) http.push(r.status()); });
 await p.goto(`${base}/login`); await p.fill('input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click("form button.btn-primary"); await p.waitForURL(/crm/);
 await p.goto(`${base}/crm/products/${prod.id}`);
-await p.setInputFiles('input[name="files"]', files);
-await p.click('button:has-text("Загрузить фото")');
-await p.waitForTimeout(8000);
-const t = await p.textContent("body");
-const msg = (t.match(/Загружено: [^)]*\)[^<]{0,40}|[^.]{0,80}больше 12 МБ|Раздел не открылся|CRM обновилась/) ?? [""])[0];
+// «Загрузить фото» открывает выбор файлов, выбранные кадры уходят сразу — второй кнопки нет
+await p.setInputFiles('input[type="file"][accept]', files);
+const answer = () => p.waitForFunction(() => /Загружено фото: \d+|Не загружено|Сервер не смог|Раздел не открылся/.test(document.body.innerText), null, { timeout: 60000 }).catch(() => null);
+await answer();
+const t = await p.evaluate(() => document.body.innerText);
+const msg = (t.match(/Загружено фото: [^\n]*|Не загружено[^\n]*|Сервер не смог[^\n]*|Раздел не открылся/) ?? [""])[0];
 const after = (await pool.query(`SELECT count(*)::int AS n FROM "ProductImage" WHERE "productId" = $1`, [prod.id])).rows[0].n;
 console.log(`файлы: ${files.map((f) => `${f.split("/").pop()} ${Math.round(statSync(f).size / 1024)} КБ`).join(", ")}; POST статусы: ${http.join(",") || "—"}; текст: ${msg.trim() || "(нет сообщения)"}`);
-check("загрузка прошла: фото добавлены в галерею", after === before + files.length, `было ${before}, стало ${after}`);
+check("загрузка кнопкой: фото добавлены в галерею", after === before + files.length, `было ${before}, стало ${after}`);
 check("нет страницы ошибки", !/Раздел не открылся/.test(t));
+// перетаскивание файла из «Загрузок» в любое место страницы
+await p.evaluate(() => { const i = document.createElement("input"); i.type = "file"; i.id = "dnd-source"; i.hidden = true; document.body.append(i); });
+await p.setInputFiles("#dnd-source", files[0]);
+const dropped = await p.evaluate(() => {
+  const dt = new DataTransfer();
+  for (const f of document.getElementById("dnd-source").files) dt.items.add(f);
+  const opts = { bubbles: true, cancelable: true, dataTransfer: dt };
+  const target = document.querySelector("h1");
+  target.dispatchEvent(new DragEvent("dragover", opts));
+  const drop = new DragEvent("drop", opts);
+  target.dispatchEvent(drop);
+  return drop.defaultPrevented;
+});
+await p.waitForFunction(() => /Загружено фото: 1,/.test(document.body.innerText), null, { timeout: 60000 }).catch(() => null);
+const afterDrop = (await pool.query(`SELECT count(*)::int AS n FROM "ProductImage" WHERE "productId" = $1`, [prod.id])).rows[0].n;
+check("перетаскивание: браузер не открыл файл, фото добавлено", dropped && afterDrop === after + 1, `было ${after}, стало ${afterDrop}`);
 await b.close();
 // уборка: удалить загруженное из базы и с диска
 const { rows: added } = await pool.query(`SELECT id, url FROM "ProductImage" WHERE "productId" = $1 AND url LIKE '/uploads/%'`, [prod.id]);
