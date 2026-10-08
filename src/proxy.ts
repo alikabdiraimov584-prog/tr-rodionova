@@ -30,7 +30,9 @@ function csp(nonce: string, dev: boolean) {
     "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
     "frame-src https://mc.yandex.ru https://mc.yandex.com",
     "frame-ancestors 'none'",
-    "form-action 'self' https://yoomoney.ru https://*.yookassa.ru",
+    // платёжные страницы касс: форма оформления до загрузки скриптов уходит обычным POST, и редирект на оплату
+    // проверяется этим правилом (ЮKassa, CloudPayments orders.cloudpayments.ru, Долями)
+    "form-action 'self' https://yoomoney.ru https://*.yookassa.ru https://*.cloudpayments.ru https://dolyame.ru https://*.dolyame.ru",
     "base-uri 'self'",
     "object-src 'none'",
     // по http (локальный стенд) апгрейд ломал бы запросы к самому себе
