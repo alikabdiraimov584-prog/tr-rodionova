@@ -14,7 +14,7 @@ await new Promise((r) => server.listen(2525, "127.0.0.1", r));
 const base = "http://127.0.0.1:3100";
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 const ctx = await b.newContext(); const p = await ctx.newPage();
-await p.goto(`${base}/login`); await p.fill('input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click("form button.btn-primary");
+await p.goto(`${base}/login`); await p.fill('form:has(input[name="password"]) input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click('form:has(input[name="password"]) button.btn-primary');
 await p.waitForURL(/\/crm/, { timeout: 20000 });
 await p.goto(`${base}/crm/settings/channels`);
 const form = p.locator('form:has(input[name="channel"][value="EMAIL"])');

@@ -30,9 +30,10 @@ function totpCode(secret) {
 /** Вход сотрудника: пароль и, если спросили, код из приложения. */
 async function staffLogin(page, email, password) {
   await page.goto(`${base}/login`);
-  await page.fill('input[name="email"]', email);
+  // при подключённой почте на странице две формы (вход по коду и по паролю) — поле из формы с паролем
+  await page.fill('form:has(input[name="password"]) input[name="email"]', email);
   await page.fill('input[name="password"]', password);
-  await page.click("form button.btn-primary");
+  await page.click('form:has(input[name="password"]) button.btn-primary');
   await page.waitForURL((u) => !/^\/login\/?$/.test(u.pathname), { timeout: 20000 });
   if (page.url().includes("/login/2fa")) {
     if (!crmTotp) throw new Error("CRM требует код 2FA: задайте CRM_TOTP_SECRET");
@@ -346,9 +347,9 @@ async function guestJourney(viewport, label) {
   });
   await step("вход: неверный пароль показывает ошибку", async () => {
     await page.goto(base + "/login");
-    await page.fill('input[name="email"]', "nobody@example.com");
+    await page.fill('form:has(input[name="password"]) input[name="email"]', "nobody@example.com");
     await page.fill('input[name="password"]', "wrong-password-1");
-    await page.click("form button.btn-primary");
+    await page.click('form:has(input[name="password"]) button.btn-primary');
     await page.locator("p.text-danger").first().waitFor({ timeout: 15000 });
   });
   await step("восстановление пароля: форма принимает e-mail", async () => {

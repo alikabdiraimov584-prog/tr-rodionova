@@ -17,6 +17,7 @@ import { recordConsent } from "@/lib/consent";
 import { trackEvent } from "@/lib/web-analytics";
 import { sendVia } from "@/lib/notifications";
 import { createHash, randomInt } from "node:crypto";
+import { notifyWelcome } from "@/lib/notifications";
 
 function safeNext(next: FormDataEntryValue | null, fallback: string) {
   const n = typeof next === "string" ? next : "";
@@ -103,6 +104,7 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
   });
   await loginAs(user.id, user.role, user.sessionVersion);
   await trackEvent("REGISTER", { userId: user.id });
+  void notifyWelcome(user.id, "register");
   redirect(safeNext(formData.get("next"), "/account?welcome=1"));
 }
 

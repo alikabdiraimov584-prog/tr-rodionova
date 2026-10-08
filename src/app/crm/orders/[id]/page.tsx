@@ -43,7 +43,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
       <PageTitle
         eyebrow={formatDate(order.createdAt, true)}
         title={`Заказ №${order.number}`}
-        actions={<><a href={`/crm/orders/${order.id}/print`} target="_blank" className="btn-outline btn-sm">Печать: сборочный лист, накладная, возврат</a><Badge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</Badge></>}
+        actions={<>{([["picking", "Сборочный лист"], ["invoice", "Накладная"], ["return", "Бланк возврата"]] as const).map(([doc, label]) => <a key={doc} href={`/crm/orders/${order.id}/print?doc=${doc}`} target="_blank" className="btn-outline btn-sm">{label}</a>)}<Badge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</Badge></>}
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="min-w-0 space-y-6">

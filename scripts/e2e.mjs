@@ -111,9 +111,10 @@ const crm = await admin.newPage();
 crm.on("dialog", (d) => d.accept());
 await step("Вход администратора в CRM", async () => {
   await crm.goto(`${base}/login`);
-  await crm.fill('input[name="email"]', "admin@tr-rodionova.ru");
+  // при подключённой почте на странице две формы (вход по коду и по паролю) — берём поле из формы с паролем
+  await crm.fill('form:has(input[name="password"]) input[name="email"]', "admin@tr-rodionova.ru");
   await crm.fill('input[name="password"]', "admin12345");
-  await crm.click("form button.btn-primary");
+  await crm.click('form:has(input[name="password"]) button.btn-primary');
   await crm.waitForURL(/\/crm/, { timeout: 20000 });
 });
 

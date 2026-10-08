@@ -74,7 +74,7 @@ export default async function Stock({ searchParams }: PageProps<"/crm/stock">) {
                   <td className="text-right">{s30 || "—"}{cover !== null && <div className="text-[0.65rem] text-muted">хватит на ~{cover} дн.</div>}</td>
                   <td className="text-right">{v._count.alerts || "—"}</td>
                   <td className="whitespace-nowrap text-right text-muted">{formatMoney(v.stock * (v.product.costPrice ?? 0))}</td>
-                  <td><Link href={qs("/crm/stock", { q, low: low ? 1 : undefined, variant: v.id })} className="text-xs underline">операция</Link></td>
+                  <td><Link href={qs("/crm/stock", { q, low: low ? 1 : undefined, variant: v.id })} prefetch={false} className="text-xs underline">операция</Link></td>
                 </tr>
               );
             })}

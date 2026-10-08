@@ -5,7 +5,7 @@ import { activeIntegration, recordCheck } from "@/lib/integrations/store";
 
 /**
  * Тревоги владельцу в Telegram: сбой автообновления, неудачный дамп базы, устаревшая копия в S3, упавшие ночные задачи.
- * Бот и chat id задаются в CRM → Интеграции → «Тревоги в Telegram». Одна и та же тревога не повторяется чаще,
+ * Бот и chat id задаются в CRM → Интеграции → «Заказы и тревоги в Telegram». Одна и та же тревога не повторяется чаще,
  * чем раз в REPEAT_HOURS, чтобы ночной сбой не превращался в поток сообщений.
  */
 const STATE_KEY = "alertState";
@@ -15,7 +15,8 @@ const PREFIX = "⚠️ tr-rodionova.ru: ";
 type AlertState = Record<string, string>; // ключ тревоги → время последней отправки
 
 export async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
-  const r = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+  // TELEGRAM_API_URL — только для стенда: подставной сервер вместо Telegram, чтобы проверить тексты сообщений
+  const r = await fetch(`${process.env.TELEGRAM_API_URL ?? "https://api.telegram.org"}/bot${botToken}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
@@ -29,7 +30,7 @@ export async function sendTelegramMessage(botToken: string, chatId: string, text
 export async function testTelegramAlerts(config: Record<string, string>) {
   if (!config.botToken || !config.chatId) return { ok: false as const, error: "Укажите токен бота и chat id" };
   try {
-    await sendTelegramMessage(config.botToken, config.chatId, "Проверка связи: сюда будут приходить тревоги с сайта T.Rodionova (сбой обновления, бэкапов, ночных задач).");
+    await sendTelegramMessage(config.botToken, config.chatId, "Проверка связи: сюда будут приходить новые заказы и тревоги с сайта T.Rodionova (сбой обновления, бэкапов, ночных задач).");
     return { ok: true as const, info: "Пробное сообщение отправлено — проверьте Telegram" };
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : "Telegram недоступен" };

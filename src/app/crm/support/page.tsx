@@ -153,7 +153,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
               const last = c.messages[0];
               return (
                 <li key={c.id}>
-                  <Link href={qs("/crm/support", { ...base, c: c.id })} className={`flex gap-3 border-b border-line/60 px-3 py-3 hover:bg-ivory ${selected === c.id ? "bg-sand/50" : ""}`}>
+                  <Link href={qs("/crm/support", { ...base, c: c.id })} prefetch={false} className={`flex gap-3 border-b border-line/60 px-3 py-3 hover:bg-ivory ${selected === c.id ? "bg-sand/50" : ""}`}>
                     <ChannelDot channel={c.channel} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">

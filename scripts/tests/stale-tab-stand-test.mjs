@@ -13,7 +13,7 @@ const errors = [];
 p.on("pageerror", (e) => errors.push("pageerror: " + e.message.slice(0, 300)));
 p.on("console", (m) => { if (m.type() === "error") errors.push("console: " + m.text().slice(0, 400)); });
 p.on("response", (r) => { if (r.status() >= 400) errors.push(`http ${r.status()} ${r.url().slice(0, 120)}`); });
-await p.goto(`${base}/login`); await p.fill('input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click("form button.btn-primary"); await p.waitForURL(/crm/);
+await p.goto(`${base}/login`); await p.fill('form:has(input[name="password"]) input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click('form:has(input[name="password"]) button.btn-primary'); await p.waitForURL(/crm/);
 await p.goto(`${base}/crm/tasks`);
 console.log("страница задач открыта, жду флаг", new Date().toISOString());
 while (!existsSync(flag)) await new Promise((r) => setTimeout(r, 2000));

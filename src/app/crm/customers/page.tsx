@@ -92,7 +92,7 @@ export default async function Customers({ searchParams }: PageProps<"/crm/custom
             {pageRows.map(({ u, last, orders, seg }) => (
               <tr key={u.id}>
                 <td>
-                  <Link href={`/crm/customers/${u.id}`} className="underline underline-offset-4">{u.firstName} {u.lastName}</Link>
+                  <Link href={`/crm/customers/${u.id}`} prefetch={false} className="underline underline-offset-4">{u.firstName} {u.lastName}</Link>
                   <div className="text-xs text-muted">{u.phone ?? u.email}</div>
                   {u.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{u.tags.map((t) => <span key={t} className="text-[0.6rem] text-taupe-dark">#{t}</span>)}</div>}
                 </td>

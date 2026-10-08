@@ -4,6 +4,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { backupStatus } from "@/lib/backups";
+import { cronRuns } from "@/lib/cron-runs";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +59,10 @@ export async function GET() {
   const backup = dbOk ? await backupStatus().catch(() => null) : null;
   const mail = dbOk ? await mailStatus().catch(() => null) : null;
   const integrations = dbOk ? await integrationsStatus().catch(() => null) : null;
+  // планировщик: напоминания об оплате, снятие резерва, отзывы, баллы — без него воронка после заказа молчит
+  const jobs = dbOk ? await cronRuns().catch(() => null) : null;
   return NextResponse.json(
-    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), uploads, backup, mail, integrations },
+    { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), uploads, backup, mail, integrations, jobs },
     { status: dbOk ? 200 : 503, headers: { "cache-control": "no-store" } },
   );
 }

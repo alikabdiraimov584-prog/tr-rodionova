@@ -37,7 +37,7 @@ export default async function Products({ searchParams }: PageProps<"/crm/product
               const margin = p.costPrice ? Math.round(((p.price - p.costPrice) / p.price) * 100) : null;
               return (
                 <tr key={p.id}>
-                  <td><Link href={`/crm/products/${p.id}`} className="underline underline-offset-4">{p.name}</Link>{p.isNew && <span className="ml-2 text-[0.6rem] uppercase text-taupe-dark">new</span>}</td>
+                  <td><Link href={`/crm/products/${p.id}`} prefetch={false} className="underline underline-offset-4">{p.name}</Link>{p.isNew && <span className="ml-2 text-[0.6rem] uppercase text-taupe-dark">new</span>}</td>
                   <td className="text-muted">{p.sku}</td>
                   <td className="text-muted">{p.category ? `${p.category.name}${p.category.isActive ? "" : " (скрыта)"}` : "—"}</td>
                   <td>{p.hiddenWithCategory ? <Badge tone="warning">скрыта с категорией</Badge> : <Badge tone={PRODUCT_STATUS[p.status].tone}>{PRODUCT_STATUS[p.status].label}</Badge>}</td>

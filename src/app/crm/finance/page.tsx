@@ -118,10 +118,18 @@ export default async function Finance({ searchParams }: PageProps<"/crm/finance"
   const finance = await getSetting("finance");
   const base = (p: Record<string, string | number | undefined>) => qs("/crm/finance", { tab, months, ...p });
 
-  const [rows, cash] = await Promise.all([pnlByMonth(months, finance.pnlCost), cashFlowByMonth(months, finance)]);
+  // считаем только то, что показывает открытая вкладка, и параллельно: «Расходы» не ждут P&L и ДДС за полгода
+  const needPnl = tab === "overview" || tab === "pnl";
+  const needCash = tab === "overview" || tab === "cashflow";
+  const needBs = tab === "overview" || tab === "stock";
+  const [rows, cash, bsOrNull] = await Promise.all([
+    needPnl ? pnlByMonth(months, finance.pnlCost) : ([] as PnlRow[]),
+    needCash ? cashFlowByMonth(months, finance) : ([] as CashRow[]),
+    needBs ? balanceSheetLite() : null,
+  ]);
   const total = sumRows(rows);
   const cashTotal = sumCash(cash);
-  const bs = await balanceSheetLite();
+  const bs = bsOrNull as Awaited<ReturnType<typeof balanceSheetLite>>;
 
   return (
     <div className="space-y-6">

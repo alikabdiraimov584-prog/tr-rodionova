@@ -30,8 +30,9 @@ jobs:
       - name: HTTP
         run: |
           D="$DOMAIN"
-          for p in / /collections /journal /crm /login /robots.txt /sitemap.xml; do
-            printf '%-14s %s\n' "$p" "$(curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}' "https://$D$p" 2>&1 || true)"
+          # «сервер A/B с»: A — соединение и TLS готовы, B — пришёл первый байт; B − A ≈ сборка страницы плюс один проход по сети
+          for p in / /catalog /collections /journal /crm /login /api/health /robots.txt /sitemap.xml; do
+            printf '%-14s %s\n' "$p" "$(curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}  сервер %{time_pretransfer}/%{time_starttransfer} с' "https://$D$p" 2>&1 || true)"
           done
           echo "== headers"; curl -sSI -m 30 "https://$D/" | grep -iE "^(HTTP|strict-transport|content-security|x-frame|server)" || true
           echo "== версия"; curl -sS -m 30 "https://$D/api/health" || true; echo
@@ -75,6 +76,26 @@ jobs:
               echo "Копия в S3: $upAt (${age} ч)"; [ "$age" -le 48 ] || fail="$fail копия в S3 старше 2 суток;"
             else
               echo "Копия в S3: ещё не загружалась"; fail="$fail копия в S3 не загружалась;"
+            fi
+          fi
+          # планировщик (контейнер cron): напоминания об оплате, снятие резерва, отзывы, баллы. Отметки хранятся в базе,
+          # их нет только до самого первого запуска — поэтому «нет отметки» тревожно лишь через 3 ч (26 ч) после сборки
+          if echo "$health" | grep -q '"jobs":{'; then
+            builtAt=$(echo "$health" | sed -n 's/.*"builtAt":"\([^"]*\)".*/\1/p')
+            up=$(( (now - $(date -u -d "${builtAt:-1970-01-01T00:00:00Z}" +%s)) / 3600 ))
+            hourlyAt=$(echo "$health" | sed -n 's/.*"hourlyAt":"\([^"]*\)".*/\1/p')
+            dailyAt=$(echo "$health" | sed -n 's/.*"dailyAt":"\([^"]*\)".*/\1/p')
+            if [ -n "$hourlyAt" ]; then
+              age=$(( (now - $(date -u -d "$hourlyAt" +%s)) / 3600 ))
+              echo "Планировщик, ежечасные задачи: $hourlyAt (${age} ч)"; [ "$age" -le 3 ] || fail="$fail ежечасные задачи планировщика не запускались ${age} ч;"
+            else
+              echo "Планировщик, ежечасные задачи: ещё не отмечались"; [ "$up" -lt 3 ] || fail="$fail планировщик не запускает ежечасные задачи (контейнер cron);"
+            fi
+            if [ -n "$dailyAt" ]; then
+              age=$(( (now - $(date -u -d "$dailyAt" +%s)) / 3600 ))
+              echo "Планировщик, ночные задачи: $dailyAt (${age} ч)"; [ "$age" -le 26 ] || fail="$fail ночные задачи планировщика не запускались ${age} ч;"
+            else
+              echo "Планировщик, ночные задачи: ещё не отмечались"; [ "$up" -lt 26 ] || fail="$fail планировщик не запускает ночные задачи (контейнер cron);"
             fi
           fi
           # что подключено (без ключей): оплата, касса, доставка, копии в S3, каналы — для сводки, без тревоги

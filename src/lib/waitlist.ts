@@ -1,8 +1,9 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { notifySiteMessage } from "@/lib/notifications";
 
 /**
- * Товар снова в наличии: пишем каждой ожидающей клиентке в чат личного кабинета
+ * Товар снова в наличии: пишем каждой ожидающей клиентке в чат личного кабинета и на почту
  * и ставим менеджеру задачу позвонить VIP-клиенткам.
  */
 export async function notifyWaitlist(variantId: string) {
@@ -24,6 +25,9 @@ export async function notifyWaitlist(variantId: string) {
       await db.crmTask.create({ data: { title: `Позвонить: поступил ${v.product.name} ${v.size}`, details: `Клиентка ждала поступления с ${s.createdAt.toLocaleDateString("ru-RU")}`, customerId: s.userId, dueAt: new Date(Date.now() + 86_400_000) } });
     }
     await db.stockSubscription.update({ where: { id: s.id }, data: { notifiedAt: new Date() } });
+    // клиентка сама просила сообщить о поступлении: письмо уходит сразу, не дожидаясь, пока она зайдёт в кабинет
+    const site = process.env.APP_URL ?? "https://tr-rodionova.ru";
+    await notifySiteMessage(s.userId, `«${v.product.name}» в размере ${v.size}${v.color ? `, ${v.color}` : ""} снова в наличии: ${site}/product/${v.product.slug}\n\nОтложить для вас? Ответьте на это письмо или напишите в личном кабинете: ${site}/account/support`, { subject: `«${v.product.name}» снова в наличии`, force: true, raw: true });
   }
   return subs.length;
 }

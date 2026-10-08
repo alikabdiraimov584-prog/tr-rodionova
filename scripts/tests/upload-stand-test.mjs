@@ -19,7 +19,7 @@ const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile
 const p = await ctx.newPage();
 const http = [];
 p.on("response", (r) => { if (r.request().method() === "POST" && r.url().includes("/crm/products/")) http.push(r.status()); });
-await p.goto(`${base}/login`); await p.fill('input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click("form button.btn-primary"); await p.waitForURL(/crm/);
+await p.goto(`${base}/login`); await p.fill('form:has(input[name="password"]) input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click('form:has(input[name="password"]) button.btn-primary'); await p.waitForURL(/crm/);
 await p.goto(`${base}/crm/products/${prod.id}`);
 // «Загрузить фото» открывает выбор файлов, выбранные кадры уходят сразу — второй кнопки нет
 await p.setInputFiles('input[type="file"][accept]', files);

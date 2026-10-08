@@ -8,7 +8,7 @@ const check = (name, ok, extra = "") => { console.log(`${ok ? "PASS" : "FAIL"} $
 const b = await chromium.launch({ executablePath: process.env.CHROME_PATH });
 const ctx = await b.newContext();
 const p = await ctx.newPage();
-await p.goto(`${base}/login`); await p.fill('input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click("form button.btn-primary"); await p.waitForURL(/crm/);
+await p.goto(`${base}/login`); await p.fill('form:has(input[name="password"]) input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click('form:has(input[name="password"]) button.btn-primary'); await p.waitForURL(/crm/);
 await p.goto(`${base}/crm/tasks`);
 const title = `2fa-action-test ${Date.now()}`;
 let captured = null;

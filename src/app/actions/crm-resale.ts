@@ -9,6 +9,7 @@ import { audit } from "@/lib/audit";
 import { toKopecks } from "@/lib/money";
 import { errorMessage, type ActionState } from "@/lib/action-result";
 import { RESALE_CONDITIONS } from "@/lib/resale";
+import { notifyResale } from "@/lib/notifications";
 
 function revalidate(id: string) {
   revalidatePath("/crm/resale");
@@ -29,8 +30,9 @@ export async function offerResaleAction(_: ActionState, formData: FormData): Pro
   if (r.status !== "REQUESTED" && r.status !== "OFFERED") return { error: "Предложение можно сделать только по новой заявке" };
   await db.resaleRequest.update({ where: { id }, data: { status: "OFFERED", offerPoints: points, managerNote: note || null } });
   await audit(staff.id, "resale.offer", "ResaleRequest", id, { points, from: r.status });
+  void notifyResale(id, "RESALE_OFFERED");
   revalidate(id);
-  return { ok: true, message: `Предложено ${points.toLocaleString("ru-RU")} баллов — клиентка увидит в кабинете` };
+  return { ok: true, message: `Предложено ${points.toLocaleString("ru-RU")} баллов — клиентка получит письмо и увидит предложение в кабинете` };
 }
 
 export async function declineResaleAction(formData: FormData) {
@@ -41,6 +43,7 @@ export async function declineResaleAction(formData: FormData) {
   if (!r || !["REQUESTED", "OFFERED", "ACCEPTED"].includes(r.status)) return;
   await db.resaleRequest.update({ where: { id }, data: { status: "DECLINED", managerNote: note || r.managerNote } });
   await audit(staff.id, "resale.decline", "ResaleRequest", id, { from: r.status });
+  void notifyResale(id, "RESALE_DECLINED");
   revalidate(id);
 }
 
@@ -56,6 +59,7 @@ export async function receiveResaleAction(formData: FormData) {
     await tx.resaleRequest.update({ where: { id }, data: { status: "RECEIVED" } });
     await audit(staff.id, "resale.receive", "ResaleRequest", id, { points: r.offerPoints, userId: r.userId }, tx);
   });
+  void notifyResale(id, "RESALE_RECEIVED");
   revalidate(id);
   revalidatePath(`/crm/customers/${r.userId}`);
 }

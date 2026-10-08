@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { errorMessage, type ActionState } from "@/lib/action-result";
+import { notifySiteMessage } from "@/lib/notifications";
 
 function revalidate(id?: string) {
   revalidatePath("/crm/stylist");
@@ -116,6 +117,8 @@ export async function sendSelectionAction(formData: FormData) {
     await tx.conversation.update({ where: { id: conv.id }, data: { lastMessageAt: new Date(), status: conv.status === "OPEN" ? "OPEN" : "PENDING", closedAt: null } });
     await audit(staff.id, "selection.send", "Selection", id, { customerId: s.userId, items: s._count.items }, tx);
   });
+  // в письме полная ссылка: из почты относительный адрес не открыть
+  void notifySiteMessage(s.userId, `Я собрала для вас подборку «${s.title}»: ${process.env.APP_URL ?? "https://tr-rodionova.ru"}/account/stylist/${s.id}`, { subject: `Подборка «${s.title}» от стилиста`, force: true, raw: true });
   revalidate(id);
   revalidatePath("/account/support");
   revalidatePath("/crm/support");

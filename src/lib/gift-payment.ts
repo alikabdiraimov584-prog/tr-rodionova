@@ -11,7 +11,7 @@ type Tx = Prisma.TransactionClient;
  * (например, повторный вебхук) ничего не меняет.
  */
 export async function activateGiftCard(cardId: string, paymentId: string, opts: { createdBy?: string | null; demo?: boolean } = {}) {
-  return db.$transaction(async (tx: Tx) => {
+  const activated = await db.$transaction(async (tx: Tx) => {
     const activated = await tx.giftCard.updateMany({ where: { id: cardId, status: "PENDING" }, data: { status: "ACTIVE", paymentId } });
     if (activated.count === 0) return false;
     const card = await tx.giftCard.findUniqueOrThrow({ where: { id: cardId } });
@@ -21,4 +21,7 @@ export async function activateGiftCard(cardId: string, paymentId: string, opts: 
     await audit(opts.createdBy ?? null, "giftcard.paid", "GiftCard", card.id, { amount: card.amount, paymentId, demo: opts.demo ?? false }, tx);
     return true;
   });
+  // письмо получателю с кодом и словами дарителя, покупателю — подтверждение; только при первой активации
+  if (activated) void import("@/lib/notifications").then((n) => n.notifyGiftCard(cardId));
+  return activated;
 }

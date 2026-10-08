@@ -2,7 +2,7 @@ import { sendAlert } from "@/lib/alerts";
 
 /**
  * Тревога с сервера (скрипты deploy/*.sh): POST с Bearer CRON_SECRET, поля text и key (JSON или form).
- * Сообщение уходит владельцу в Telegram по настройкам CRM → Интеграции → «Тревоги в Telegram».
+ * Сообщение уходит владельцу в Telegram по настройкам CRM → Интеграции → «Заказы и тревоги в Telegram».
  */
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;

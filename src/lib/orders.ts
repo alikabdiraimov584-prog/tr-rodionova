@@ -7,7 +7,7 @@ import { earnForOrder, revertOrderPoints, grantReferralBonus, recalcTier, addPoi
 export const RETURN_WINDOW_DAYS = 14;
 import { audit } from "@/lib/audit";
 import { currentSession, trackEvent } from "@/lib/web-analytics";
-import { notifyOrder } from "@/lib/notifications";
+import { notifyOrder, notifyStaffOrder } from "@/lib/notifications";
 import type { Prisma } from "@/generated/prisma/client";
 import type { OrderStatus, DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 
@@ -346,7 +346,11 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
   });
   await trackEvent("ORDER", { orderId: order.id, value: order.total, userId });
   if (order.total === 0) await markOrderPaid(order.id, { externalId: "gift" });
-  else void notifyOrder(order.id, "ORDER_CREATED");
+  else {
+    void notifyOrder(order.id, "ORDER_CREATED");
+    // при получении и переводом денег сразу не будет, а собирать заказ уже пора
+    if (input.paymentMethod === "CASH_ON_DELIVERY" || input.paymentMethod === "MANUAL") void notifyStaffOrder(order.id, "created");
+  }
   return order;
 }
 
@@ -383,6 +387,8 @@ export async function markOrderPaid(orderId: string, opts: { createdBy?: string 
     await audit(opts.createdBy ?? null, "order.paid", "Order", orderId, undefined, tx);
   });
   void notifyOrder(orderId, "ORDER_PAID");
+  // владельцу — только оплата, пришедшая сама (касса, сертификат); «Оплачен», поставленный сотрудником, он видел сам
+  if (!opts.createdBy) void notifyStaffOrder(orderId, "paid");
 }
 
 /** Сторно себестоимости за позиции, вернувшиеся на склад: иначе P&L занижает маржу. */

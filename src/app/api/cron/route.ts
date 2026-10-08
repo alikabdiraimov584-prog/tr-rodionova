@@ -1,4 +1,5 @@
 import { runDailyJobs, runHourlyJobs } from "@/lib/jobs";
+import { recordCronRun } from "@/lib/cron-runs";
 
 /**
  * Планировщик. Вызывается с Bearer CRON_SECRET:
@@ -23,6 +24,8 @@ export async function GET(request: Request) {
       const backups = await import("@/lib/backups");
       result = { ...(await backups.uploadLatestBackup()), ...(await backups.checkBackupHealth()) };
     } else result = await runDailyJobs(null);
+    // время последнего успешного запуска — в /api/health: внешняя проверка видит, что планировщик жив
+    await recordCronRun(job).catch(() => null);
     return Response.json({ ok: true, ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -22,6 +22,7 @@ import { checkRate, clientIp } from "@/lib/ratelimit";
 import { activeIntegration } from "@/lib/integrations/store";
 import { ingestWebsite } from "@/lib/support/inbox";
 import { randomBytes } from "node:crypto";
+import { notifyWelcome } from "@/lib/notifications";
 
 /**
  * Одна штука выбранного варианта в корзину. code — id варианта (с «|max», если больше добавить нельзя):
@@ -146,6 +147,7 @@ async function createAccountForGuest(d: { email: string; phone: string; firstNam
   });
   await loginAs(user.id, user.role, user.sessionVersion);
   await trackEvent("REGISTER", { userId: user.id });
+  void notifyWelcome(user.id, "checkout");
   return user;
 }
 

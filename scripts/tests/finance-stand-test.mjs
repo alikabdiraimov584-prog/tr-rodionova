@@ -10,7 +10,7 @@ const fails = [];
 const check = (name, ok, extra = "") => { console.log(`${ok ? "PASS" : "FAIL"} ${name}${extra ? " — " + extra : ""}`); if (!ok) fails.push(name); };
 const body = async () => (await p.textContent("body")).replace(/\s+/g, " ");
 
-await p.goto(`${base}/login`); await p.fill('input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click("form button.btn-primary");
+await p.goto(`${base}/login`); await p.fill('form:has(input[name="password"]) input[name="email"]', "admin@tr-rodionova.ru"); await p.fill('input[name="password"]', "admin12345"); await p.click('form:has(input[name="password"]) button.btn-primary');
 await p.waitForURL(/\/crm/, { timeout: 20000 });
 
 for (const [tab, marker] of [["overview", "Юнит-экономика"], ["cashflow", "Движение денежных средств"], ["pnl", "Отчёт о прибылях"], ["expenses", "Проводки"], ["stock", "Остатки по вещам"]]) {

@@ -4,6 +4,7 @@ import { getSetting, type SupportSettings } from "@/lib/settings";
 import { ADAPTERS, type Inbound } from "@/lib/support/channels";
 import { loadChannel } from "@/lib/support/channel-config";
 import type { Channel, Priority } from "@/generated/prisma/enums";
+import { notifySiteMessage } from "@/lib/notifications";
 
 // ───────────── Умная маршрутизация ─────────────
 
@@ -179,8 +180,10 @@ async function deliver(conversationId: string, text: string, opts: { authorId?: 
     data: { conversationId, direction: opts.system ? "SYSTEM" : "OUT", text, authorId: opts.authorId ?? null, status: "QUEUED" },
   });
   if (conv.channel === "WEBSITE") {
-    // сайт: сообщение сразу видно клиенту в личном кабинете
-    return db.message.update({ where: { id: msg.id }, data: { status: "SENT" } });
+    // сайт: сообщение сразу видно клиенту в личном кабинете, а копия на почту говорит, что ответ пришёл
+    const sent = await db.message.update({ where: { id: msg.id }, data: { status: "SENT" } });
+    if (!opts.system && conv.customerId) void notifySiteMessage(conv.customerId, text);
+    return sent;
   }
   const integration = await channelConfig(conv.channel);
   const adapter = ADAPTERS[conv.channel];

@@ -4,7 +4,9 @@ import { getSetting } from "@/lib/settings";
 import { ADAPTERS } from "@/lib/support/channels";
 import { loadChannel } from "@/lib/support/channel-config";
 import { formatMoney } from "@/lib/money";
-import { DELIVERY_METHOD } from "@/lib/labels";
+import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
+import { activeIntegration } from "@/lib/integrations/store";
+import { sendTelegramMessage } from "@/lib/alerts";
 import type { Channel } from "@/generated/prisma/enums";
 
 /**
@@ -58,9 +60,14 @@ function signature(brand: { name: string; phone: string; email: string }) {
 /** Уведомление по событию заказа. Вызывать после фиксации транзакции; ошибки гасятся. */
 export async function notifyOrder(orderId: string, event: OrderEventKind) {
   try {
-    const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true, user: { select: { id: true, pointsBalance: true } } } });
+    const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true, user: { select: { id: true, pointsBalance: true } }, payments: { select: { method: true }, orderBy: { createdAt: "asc" }, take: 1 } } });
     if (!order) return;
     const brand = await getSetting("brand");
+    const method = order.payments[0]?.method;
+    // при получении деньги отдают курьеру или в пункте выдачи — даже когда в CRM заказ уже переведён в «Оплачен»,
+    // чтобы его собрать: в письмах об отправке и курьере — сколько приготовить
+    const cod = method === "CASH_ON_DELIVERY" && order.total > 0;
+    const due = cod ? `\nК оплате при получении: ${formatMoney(order.total)}.` : "";
     const n = `№${order.number}`;
     const link = `${siteUrl()}/account/orders/${order.id}`;
     const items = order.items.map((i) => `· ${i.productName}, ${i.size}${i.color ? `, ${i.color}` : ""} × ${i.quantity}`).join("\n");
@@ -69,22 +76,36 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
     let text = "";
     let sms: string | null = null;
     switch (event) {
-      case "ORDER_CREATED":
+      case "ORDER_CREATED": {
         subject = `Заказ ${n} принят`;
-        text = `${hi}\n\nМы приняли ваш заказ ${n} на ${formatMoney(order.total)}.\n\n${items}\n\n${order.status === "NEW" && order.total > 0 ? `Заказ ждёт оплаты: ${order.paymentUrl ?? link}` : `Подробности: ${link}`}`;
+        // что делать дальше, зависит от способа оплаты: онлайн — подтверждение придёт само, при получении — ничего,
+        // переводом — реквизиты прямо в письме
+        let next = `Подробности: ${link}`;
+        if (order.status === "NEW" && order.total > 0) {
+          if (method === "CASH_ON_DELIVERY") next = `Оплата при получении: ${order.deliveryMethod === "PICKUP" ? "в шоуруме" : order.deliveryMethod === "COURIER" ? "курьеру" : "в пункте выдачи"}. Когда передадим заказ в доставку, напишем.\n\nЗаказ в личном кабинете: ${link}`;
+          else if (method === "MANUAL") {
+            const seller = await getSetting("seller");
+            next = seller.account
+              ? `Оплата переводом по реквизитам:\nПолучатель: ${seller.name}\nИНН: ${seller.inn}\nБанк: ${seller.bank}, БИК ${seller.bik}\nРасчётный счёт: ${seller.account}${seller.corrAccount ? `\nКорр. счёт: ${seller.corrAccount}` : ""}\nСумма: ${formatMoney(order.total)}\nНазначение платежа: оплата заказа ${n}\n\nКогда деньги поступят, пришлём подтверждение. Заказ в личном кабинете: ${link}`
+              : `Оплата переводом по реквизитам: реквизиты и сумма — на странице заказа: ${link}`;
+          } else next = `Как только оплата пройдёт, пришлём подтверждение. Если оплатить не получилось, вернуться к оплате можно здесь: ${order.paymentUrl ?? link}`;
+        }
+        text = `${hi}\n\nМы приняли ваш заказ ${n} на ${formatMoney(order.total)}${method ? ` (${PAYMENT_METHOD[method].toLowerCase()})` : ""}.\n\n${items}\n\n${next}`;
         break;
+      }
       case "ORDER_PAID":
-        subject = `Заказ ${n} оплачен`;
-        text = `${hi}\n\nОплата заказа ${n} получена, спасибо. Мы начали собирать посылку${order.isPreorder ? "; вещи по предзаказу отшиваются под вас" : ""}.\n\nСпособ получения: ${DELIVERY_METHOD[order.deliveryMethod].label}.\nСледить за статусом: ${link}`;
+        // при получении «Оплачен» в CRM значит «подтверждён к сборке»: денег ещё нет, благодарить за оплату рано
+        subject = cod ? `Заказ ${n} подтверждён` : `Заказ ${n} оплачен`;
+        text = `${hi}\n\n${cod ? `Заказ ${n} подтверждён, мы начали собирать посылку` : `Оплата заказа ${n} получена, спасибо. Мы начали собирать посылку`}${order.isPreorder ? "; вещи по предзаказу отшиваются под вас" : ""}.${due}\n\nСпособ получения: ${DELIVERY_METHOD[order.deliveryMethod].label}.\nСледить за статусом: ${link}`;
         break;
       case "ORDER_SHIPPED":
         subject = `Заказ ${n} передан в доставку`;
-        text = `${hi}\n\nЗаказ ${n} передан в доставку (${DELIVERY_METHOD[order.deliveryMethod].label}).${order.deliverySlot ? `\nИнтервал доставки: ${order.deliverySlot}.` : ""}${order.fittingRequested ? "\nКурьер подождёт до 20 минут на примерку." : ""}${order.trackingNumber ? `\nТрек-номер: ${order.trackingNumber}` : ""}\n\nСледить за статусом: ${link}`;
+        text = `${hi}\n\nЗаказ ${n} передан в доставку (${DELIVERY_METHOD[order.deliveryMethod].label}).${order.deliverySlot ? `\nИнтервал доставки: ${order.deliverySlot}.` : ""}${order.fittingRequested ? "\nКурьер подождёт до 20 минут на примерку." : ""}${order.trackingNumber ? `\nТрек-номер: ${order.trackingNumber}` : ""}${due}\n\nСледить за статусом: ${link}`;
         sms = `T.Rodionova: заказ ${n} передан в доставку.${order.deliverySlot ? ` Интервал ${order.deliverySlot}.` : ""}${order.trackingNumber ? ` Трек ${order.trackingNumber}.` : ""}`;
         break;
       case "COURIER_SOON":
         subject = `Курьер с заказом ${n} будет в течение часа`;
-        text = `${hi}\n\nКурьер с заказом ${n} будет у вас в течение часа.${order.fittingRequested ? " На примерку есть до 20 минут: оплатите только то, что подошло." : ""}\n\nЕсли планы изменились, ответьте на это письмо или позвоните нам.`;
+        text = `${hi}\n\nКурьер с заказом ${n} будет у вас в течение часа.${order.fittingRequested ? " На примерку есть до 20 минут: оплатите только то, что подошло." : ""}${due}\n\nЕсли планы изменились, ответьте на это письмо или позвоните нам.`;
         sms = `T.Rodionova: курьер с заказом ${n} будет в течение часа.${order.fittingRequested ? " Примерка до 20 минут." : ""}`;
         break;
       case "ORDER_DELIVERED":
@@ -94,12 +115,18 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
         break;
       case "ORDER_COMPLETED":
         subject = `Баллы за заказ ${n} начислены`;
-        text = `${hi}\n\nЗа заказ ${n} начислено ${order.pointsEarned} баллов Circle. ${order.user ? `На вашем счёте ${order.user.pointsBalance} баллов — ими можно оплатить часть следующей покупки.` : ""}\n\nЛичный кабинет: ${siteUrl()}/account/loyalty`;
+        text = `${hi}\n\nЗа заказ ${n} начислено ${order.pointsEarned.toLocaleString("ru-RU")} баллов Circle. ${order.user ? `На вашем счёте ${order.user.pointsBalance.toLocaleString("ru-RU")} баллов — ими можно оплатить часть следующей покупки.` : ""}\n\nЛичный кабинет: ${siteUrl()}/account/loyalty`;
         break;
-      case "ORDER_CANCELLED":
+      case "ORDER_CANCELLED": {
         subject = `Заказ ${n} отменён`;
-        text = `${hi}\n\nЗаказ ${n} отменён.${order.total > 0 && order.paidAt ? " Деньги вернутся на карту в течение 3–10 рабочих дней." : ""}${order.pointsUsed > 0 ? ` Списанные баллы (${order.pointsUsed}) возвращены на счёт.` : ""}\n\nЕсли отмена произошла по ошибке, ответьте на это письмо.`;
+        // причина из ленты заказа: «Резерв снят: заказ не оплачен в течение 24 часов» и т. п.
+        const ev = await db.orderEvent.findFirst({ where: { orderId: order.id, status: "CANCELLED" }, orderBy: { createdAt: "desc" }, select: { message: true } });
+        const reason = ev?.message.replace(/^Заказ отменён:?\s*/, "").trim();
+        const unpaid = !!reason && /не оплачен/.test(reason);
+        const why = unpaid ? ": оплата не поступила за 24 часа, и резерв снят" : reason ? `: ${reason.charAt(0).toLowerCase()}${reason.slice(1).replace(/\.$/, "")}` : "";
+        text = `${hi}\n\nЗаказ ${n} отменён${why}.${unpaid ? ` Если вещи ещё нужны, оформите заказ заново: ${siteUrl()}/cart` : ""}${order.total > 0 && order.paidAt ? " Деньги вернутся на карту в течение 3–10 рабочих дней." : ""}${order.pointsUsed > 0 ? ` Списанные баллы (${order.pointsUsed}) возвращены на счёт.` : ""}\n\nЕсли отмена произошла по ошибке, ответьте на это письмо.`;
         break;
+      }
     }
     if (event === "ORDER_COMPLETED" && !(order.pointsEarned > 0)) return;
     await dispatch({ userId: order.userId, orderId: order.id, event, subject, text: text + signature(brand), email: order.email, phone: order.phone, sms: SMS_EVENTS.includes(event) ? sms : null });
@@ -191,7 +218,7 @@ export async function notifyAbandonedCarts(now = new Date()) {
 /** Уведомление клиентке по баллам (день рождения, скорое сгорание). */
 export async function notifyPoints(userId: string, event: "POINTS_BIRTHDAY" | "POINTS_EXPIRING", data: { points: number; expiresAt?: Date | null }) {
   try {
-    const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, phone: true, firstName: true, pointsBalance: true } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, phone: true, firstName: true, pointsBalance: true, loyaltyTier: { select: { maxPayPct: true } } } });
     if (!user) return;
     const brand = await getSetting("brand");
     const hi = `${user.firstName}, здравствуйте.`;
@@ -199,7 +226,7 @@ export async function notifyPoints(userId: string, event: "POINTS_BIRTHDAY" | "P
     const text =
       event === "POINTS_BIRTHDAY"
         ? `${hi}\n\nС днём рождения! Мы начислили ${data.points} подарочных баллов — они действуют 30 дней. На счёте сейчас ${user.pointsBalance} баллов.\n\nВыбрать подарок себе: ${siteUrl()}/catalog`
-        : `${hi}\n\n${data.points} баллов Circle сгорят ${data.expiresAt?.toLocaleDateString("ru-RU") ?? "в ближайшие дни"}. Ими можно оплатить до 30 % следующей покупки.\n\nКаталог: ${siteUrl()}/catalog`;
+        : `${hi}\n\n${data.points} баллов Circle сгорят ${data.expiresAt?.toLocaleDateString("ru-RU") ?? "в ближайшие дни"}. Ими можно оплатить до ${user.loyaltyTier?.maxPayPct ?? 20} % следующей покупки.\n\nКаталог: ${siteUrl()}/catalog`;
     await dispatch({ userId, event, subject, text: text + signature(brand), email: user.email, phone: user.phone, sms: null });
   } catch (e) {
     console.error("notifyPoints", event, userId, e);
@@ -230,4 +257,120 @@ export async function notifyExpiringPoints(days = 7, now = new Date()) {
     n++;
   }
   return n;
+}
+
+/**
+ * Владельцу о новом заказе — в Telegram из CRM → Интеграции → «Заказы и тревоги в Telegram»: оплаченный онлайн (kind "paid")
+ * или оформленный с оплатой при получении и переводом (kind "created" — деньги придут позже, а собирать уже пора).
+ */
+export async function notifyStaffOrder(orderId: string, kind: "paid" | "created") {
+  try {
+    const i = await activeIntegration("telegram_alerts");
+    if (!i?.config.botToken || !i.config.chatId) return;
+    const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true, payments: { select: { method: true }, orderBy: { createdAt: "asc" }, take: 1 } } });
+    if (!order) return;
+    const method = order.payments[0]?.method;
+    // заказ «при получении» владелец уже видел при оформлении; «Оплачен» в CRM ставит он сам, чтобы собрать заказ
+    if (kind === "paid" && method === "CASH_ON_DELIVERY") return;
+    const head =
+      kind === "paid"
+        ? `🛍 Оплачен заказ №${order.number} — ${formatMoney(order.total)}${method ? `, ${PAYMENT_METHOD[method].toLowerCase()}` : ""}`
+        : `🛍 Новый заказ №${order.number} — ${formatMoney(order.total)}, ${method === "MANUAL" ? "ждёт перевода по реквизитам" : "оплата при получении"}`;
+    const items = order.items.map((x) => `· ${x.productName}, ${x.size}${x.color ? `, ${x.color}` : ""} × ${x.quantity}`).join("\n");
+    const delivery = `${DELIVERY_METHOD[order.deliveryMethod].label}${order.deliverySlot ? `, ${order.deliverySlot}` : ""}${order.fittingRequested ? ", примерка курьером" : ""}${order.isPreorder ? ", предзаказ" : ""}`;
+    const text = `${head}\n${items}\n${delivery}\n${order.firstName} ${order.lastName ?? ""}`.trimEnd() + `, ${order.phone}\n${siteUrl()}/crm/orders/${order.id}`;
+    await sendTelegramMessage(i.config.botToken, i.config.chatId, text);
+  } catch (e) {
+    console.error("notifyStaffOrder", orderId, e);
+  }
+}
+
+/** Новая клиентка: что на счёте Circle и как войти. Аккаунт, созданный при оформлении заказа, — без пароля, вход по коду. */
+export async function notifyWelcome(userId: string, via: "register" | "checkout") {
+  try {
+    const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, pointsBalance: true, loyaltyTier: { select: { name: true, maxPayPct: true } } } });
+    if (!user) return;
+    const brand = await getSetting("brand");
+    const points = user.pointsBalance > 0 ? `\n\nНа ваш счёт ${brand.name} Circle начислено ${user.pointsBalance.toLocaleString("ru-RU")} приветственных баллов: ими можно оплатить до ${user.loyaltyTier?.maxPayPct ?? 20} % покупки.` : "";
+    const account =
+      via === "checkout"
+        ? `Мы создали для вас личный кабинет при оформлении заказа: там статус заказа, баллы и история покупок. Пароль не нужен — войти можно по коду из письма: ${siteUrl()}/login («Войти по коду из письма»).`
+        : `Ваш личный кабинет: ${siteUrl()}/account — заказы, баллы, избранное и мерки для подбора размера.`;
+    const text = `${user.firstName}, здравствуйте.\n\nДобро пожаловать в ${brand.name}.${points}\n\n${account}${signature(brand)}`;
+    await dispatch({ userId, event: "WELCOME", subject: `Добро пожаловать в ${brand.name}`, text, email: user.email, sms: null });
+  } catch (e) {
+    console.error("notifyWelcome", userId, e);
+  }
+}
+
+/**
+ * Подарочный сертификат оплачен: получателю — письмо с кодом и словами дарителя (форма обещает это письмо),
+ * покупателю — подтверждение с кодом. Без email получателя код отправляется только покупателю.
+ */
+export async function notifyGiftCard(cardId: string) {
+  try {
+    const card = await db.giftCard.findUnique({ where: { id: cardId }, include: { purchaser: { select: { id: true, email: true, firstName: true, lastName: true } } } });
+    if (!card || card.status !== "ACTIVE") return;
+    const brand = await getSetting("brand");
+    const until = card.expiresAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+    const howTo = `Как воспользоваться: при оформлении заказа на ${siteUrl()} откройте «Промокод или подарочный сертификат» и введите код — или назовите его в шоуруме. Остаток сохраняется на следующую покупку.`;
+    if (card.recipientEmail) {
+      const from = card.purchaser ? `${card.purchaser.firstName}${card.purchaser.lastName ? ` ${card.purchaser.lastName}` : ""}` : "Близкий вам человек";
+      const text = `${card.recipientName ? `${card.recipientName}, здравствуйте.` : "Здравствуйте."}\n\n${from} дарит вам подарочный сертификат ${brand.name} на ${formatMoney(card.amount)}.${card.message ? `\n\n«${card.message}»` : ""}\n\nКод сертификата: ${card.code}\nДействует до ${until}\n\n${howTo}${signature(brand)}`;
+      await dispatch({ userId: null, event: "GIFT_CARD_RECIPIENT", subject: `Вам подарочный сертификат ${brand.name}`, text, email: card.recipientEmail, sms: null });
+    }
+    if (card.purchaser) {
+      const sent = card.recipientEmail ? `Мы отправили его на ${card.recipientEmail}${card.message ? " вместе с вашими словами" : ""}.` : "Перешлите код получателю или покажите страницу сертификата в личном кабинете.";
+      const text = `${card.purchaser.firstName}, здравствуйте.\n\nСертификат ${brand.name} на ${formatMoney(card.amount)} оплачен. ${sent}\n\nКод: ${card.code}\nДействует до ${until}\nСертификат в личном кабинете: ${siteUrl()}/account/giftcards/${card.id}${signature(brand)}`;
+      await dispatch({ userId: card.purchaser.id, event: "GIFT_CARD_PAID", subject: `Сертификат на ${formatMoney(card.amount)} оплачен`, text, email: card.purchaser.email, sms: null });
+    }
+  } catch (e) {
+    console.error("notifyGiftCard", cardId, e);
+  }
+}
+
+/**
+ * Сообщение клиентке в чате личного кабинета (ответ поддержки, стилиста, вещь снова в наличии): копия на почту,
+ * иначе она узнает об ответе, только когда зайдёт на сайт. Не чаще раза в 10 минут на клиентку — несколько
+ * ответов подряд не превращаются в поток писем.
+ */
+export async function notifySiteMessage(userId: string, text: string, opts: { subject?: string; force?: boolean; raw?: boolean } = {}) {
+  try {
+    const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, isActive: true } });
+    if (!user?.isActive) return;
+    if (!opts.force) {
+      const recent = await db.notification.count({ where: { userId, event: "SITE_MESSAGE", createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
+      if (recent > 0) return;
+    }
+    const brand = await getSetting("brand");
+    const body = opts.raw
+      ? `${user.firstName}, здравствуйте.\n\n${text}${signature(brand)}`
+      : `${user.firstName}, здравствуйте.\n\nНовое сообщение от ${brand.name}:\n\n${text}\n\nОтветить можно в личном кабинете: ${siteUrl()}/account/support${signature(brand)}`;
+    await dispatch({ userId, event: "SITE_MESSAGE", subject: opts.subject ?? `Новое сообщение от ${brand.name}`, text: body, email: user.email, sms: null });
+  } catch (e) {
+    console.error("notifySiteMessage", userId, e);
+  }
+}
+
+/** Выкуп вещи: предложение суммы баллами (ждёт ответа клиентки), отказ, вещь принята и баллы начислены. */
+export async function notifyResale(requestId: string, event: "RESALE_OFFERED" | "RESALE_DECLINED" | "RESALE_RECEIVED") {
+  try {
+    const r = await db.resaleRequest.findUnique({ where: { id: requestId }, include: { user: { select: { id: true, email: true, firstName: true, pointsBalance: true } }, product: { select: { name: true } }, orderItem: { select: { productName: true } } } });
+    if (!r?.user) return;
+    const brand = await getSetting("brand");
+    const name = r.product?.name ?? r.orderItem?.productName;
+    const what = name ? `«${name}»` : "вещи";
+    const link = `${siteUrl()}/account/resale`;
+    const hi = `${r.user.firstName}, здравствуйте.`;
+    const note = r.managerNote ? `\n\nКомментарий: ${r.managerNote}` : "";
+    const [subject, text] =
+      event === "RESALE_OFFERED"
+        ? [`Предложение по выкупу ${what}`, `${hi}\n\nМы посмотрели вашу заявку на выкуп ${what} и готовы принять вещь за ${(r.offerPoints ?? 0).toLocaleString("ru-RU")} баллов Circle.${note}\n\nПринять или отклонить предложение: ${link}`]
+        : event === "RESALE_DECLINED"
+          ? [`Заявка на выкуп ${what}`, `${hi}\n\nК сожалению, сейчас мы не можем выкупить ${what}.${note}\n\nЗаявки в личном кабинете: ${link}`]
+          : [`Баллы за ${what} начислены`, `${hi}\n\nМы получили ${what} и начислили ${(r.offerPoints ?? 0).toLocaleString("ru-RU")} баллов Circle. Сейчас на счёте ${r.user.pointsBalance.toLocaleString("ru-RU")} баллов.\n\nЛичный кабинет: ${siteUrl()}/account/loyalty`];
+    await dispatch({ userId: r.user.id, event, subject, text: text + signature(brand), email: r.user.email, sms: null });
+  } catch (e) {
+    console.error("notifyResale", event, requestId, e);
+  }
 }

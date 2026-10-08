@@ -60,7 +60,7 @@ export default async function CrmOrders({ searchParams }: PageProps<"/crm/orders
           <tbody>
             {orders.map((o) => (
               <tr key={o.id}>
-                <td><Link href={`/crm/orders/${o.id}`} className="underline underline-offset-4">{o.number}</Link></td>
+                <td><Link href={`/crm/orders/${o.id}`} prefetch={false} className="underline underline-offset-4">{o.number}</Link></td>
                 <td className="whitespace-nowrap text-muted">{formatDate(o.createdAt, true)}</td>
                 <td>{o.firstName} {o.lastName}<div className="text-xs text-muted">{o.phone}</div></td>
                 <td className="text-muted">{o.user?.loyaltyTier?.name ?? "—"}</td>
