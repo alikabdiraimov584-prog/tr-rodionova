@@ -23,8 +23,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireUser(`/account/orders/${id}`);
-  // статус у ЮKassa запрашиваем только для своего заказа
-  if (sp.paid && (await db.order.count({ where: { id, userId: user.id } }))) await syncOrderPayment(id);
+  // статус у кассы запрашиваем только для своего заказа; сбой кассы не мешает показать заказ
+  if (sp.paid && (await db.order.count({ where: { id, userId: user.id } }))) await syncOrderPayment(id).catch((e) => console.error("sync payment", id, e));
   const order = await db.order.findUnique({
     where: { id },
     include: { items: { include: { variant: { include: { product: { include: { variants: { select: { size: true, color: true, stock: true, reserved: true } } } } } } } }, payments: true, history: { orderBy: { createdAt: "asc" } }, address: true },
@@ -39,6 +39,14 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
     <div className="space-y-8">
       <PageTitle eyebrow={formatDate(order.createdAt, true)} title={`Заказ №${order.number}`} actions={<Badge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</Badge>} />
       {sp.created && <Alert tone="success">Спасибо! Заказ оформлен, товары зарезервированы за вами.</Alert>}
+      {sp.paid && order.status !== "NEW" && order.status !== "CANCELLED" && <Alert tone="success">Оплата получена, спасибо! Мы начали собирать заказ.</Alert>}
+      {sp.paid && order.status === "NEW" && (() => {
+        // вернулись с платёжной страницы, а оплата не подтверждена: говорим, что ответила касса
+        const p = (payment?.payload ?? null) as { status?: string; reason?: string | null } | null;
+        if (p?.status === "Declined" || p?.status === "Cancelled") return <Alert tone="danger">Платёж не прошёл{p.reason ? `: ${p.reason}` : ""}. Попробуйте ещё раз или выберите другую карту.</Alert>;
+        if (p?.status === "TestMode") return <Alert tone="warning">Платёж прошёл в тестовом режиме кассы: деньги не списаны, заказ пока не оплачен.</Alert>;
+        return <Alert tone="warning">Касса ещё не подтвердила оплату. Обновите страницу через минуту — статус заказа сменится на «Оплачен».</Alert>;
+      })()}
 
       {order.status === "NEW" && (
         <div className="card flex flex-wrap items-center justify-between gap-4 p-5">

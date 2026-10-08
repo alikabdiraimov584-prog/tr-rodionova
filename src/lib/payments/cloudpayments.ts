@@ -130,20 +130,35 @@ export async function verifySignature(rawBody: string, header: string | null) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-type CpTransaction = { TransactionId: number; Amount: number; Currency: string; InvoiceId?: string | null; Status: "Authorized" | "Completed" | "Cancelled" | "Declined"; Email?: string };
+type CpTransaction = {
+  TransactionId: number;
+  Amount: number;
+  Currency: string;
+  InvoiceId?: string | null;
+  Status: "Authorized" | "Completed" | "Cancelled" | "Declined" | (string & {});
+  Email?: string;
+  /** Сайт в кабинете CloudPayments в тестовом режиме: деньги не списаны. */
+  TestMode?: boolean;
+  Reason?: string | null;
+  CardHolderMessage?: string | null;
+};
 
 /** Подтвердить оплату по счёту, перепроверив транзакцию запросом к API (телу уведомления не доверяем). */
 async function settleByInvoice(invoiceId: string, transactionId: number) {
   const fresh = await api<CpTransaction>("/payments/get", { TransactionId: transactionId });
   const t = fresh.Model;
-  if (!fresh.Success || !t) return { ok: false, reason: fresh.Message ?? "transaction not found" };
+  // по отклонённой транзакции касса отвечает Success: false, но с Model — статус берём из Model
+  if (!t?.TransactionId) return { ok: false, reason: fresh.Message ?? "transaction not found" };
   if ((t.InvoiceId ?? "") !== invoiceId) return { ok: false, reason: "invoice mismatch" };
-  const paid = t.Status === "Completed" || t.Status === "Authorized";
+  // тестовый платёж (сайт в кабинете CloudPayments в тестовом режиме) денег не приносит: заказ не оплачивается,
+  // иначе любой оплатил бы вещь тестовой картой 4242…
+  const paid = (t.Status === "Completed" || t.Status === "Authorized") && !t.TestMode;
+  const status = t.TestMode ? "TestMode" : t.Status;
   const amount = Math.round(t.Amount * 100);
   if (invoiceId.startsWith("gift:")) {
     const card = await db.giftCard.findFirst({ where: { id: invoiceId.slice(5) } });
     if (!card) return { ok: false, reason: "unknown gift card" };
-    if (!paid) return { ok: true, status: t.Status };
+    if (!paid) return { ok: true, status };
     if (amount !== card.amount) return { ok: false, reason: "amount mismatch" };
     if (card.status === "PENDING") await activateGiftCard(card.id, String(t.TransactionId));
     return { ok: true, status: "paid" };
@@ -151,31 +166,44 @@ async function settleByInvoice(invoiceId: string, transactionId: number) {
   const payment = await db.payment.findFirst({ where: { id: invoiceId }, include: { order: true } });
   if (!payment) return { ok: false, reason: "unknown payment" };
   if (!paid) {
-    if (t.Status === "Declined" || t.Status === "Cancelled") await db.payment.update({ where: { id: payment.id }, data: { payload: { ...((payment.payload as object) ?? {}), status: t.Status } } });
-    return { ok: true, status: t.Status };
+    // что ответила касса — видно в CRM («Сверить оплату с кассой») и покупательнице на странице заказа
+    if (status === "Declined" || status === "Cancelled" || status === "TestMode") {
+      await db.payment.update({ where: { id: payment.id }, data: { payload: { ...((payment.payload as object) ?? {}), status, reason: t.CardHolderMessage || t.Reason || null, transactionId: t.TransactionId } } });
+    }
+    return { ok: true, status };
   }
   if (amount !== payment.order.total) return { ok: false, reason: "amount mismatch" };
   if (payment.order.status === "NEW") await markOrderPaid(payment.orderId, { externalId: String(t.TransactionId) });
   return { ok: true, status: "paid" };
 }
 
-/** Уведомления Pay / Fail / Refund. Ответ CloudPayments ждёт в виде {"code":0}. */
-export async function handleWebhook(kind: "pay" | "fail" | "refund", fields: Record<string, string>) {
+export type WebhookKind = "pay" | "fail" | "refund";
+
+/**
+ * Уведомления Pay / Fail / Refund (и Check, если его тоже направили сюда). Ответ CloudPayments ждёт в виде {"code":0}.
+ * Вид уведомления берётся из ?kind=…, а без него — из тела: возврат узнаётся по PaymentTransactionId, всё остальное
+ * сверяется с кассой запросом payments/get, так что адрес из CRM можно вставить в кабинет как есть.
+ */
+export async function handleWebhook(kind: WebhookKind | null, fields: Record<string, string>) {
   const invoiceId = fields.InvoiceId ?? "";
   const transactionId = Number(fields.TransactionId);
   if (!invoiceId || !transactionId) return { ok: false, reason: "no invoice" };
-  const r = await handleWebhookInner(kind, invoiceId, transactionId, fields);
+  const k: WebhookKind = kind ?? (fields.PaymentTransactionId || fields.OperationType === "Refund" ? "refund" : "pay");
+  const r = await handleWebhookInner(k, invoiceId, transactionId, fields);
   // след в ленте заказа: видно в CRM, дошло ли уведомление и чем кончилось, без логов сервера
   if (!invoiceId.startsWith("gift:")) {
     const payment = await db.payment.findFirst({ where: { id: invoiceId }, select: { orderId: true } });
-    const label = kind === "pay" ? "оплата" : kind === "fail" ? "отказ" : "возврат";
-    const outcome = r.ok ? ("status" in r && r.status === "paid" ? "заказ оплачен" : `статус ${"status" in r ? r.status : "принято"}`) : `не принято: ${"reason" in r ? r.reason : ""}`;
-    if (payment) await db.orderEvent.create({ data: { orderId: payment.orderId, message: `CloudPayments: уведомление «${label}», транзакция ${transactionId} — ${outcome}` } }).catch(() => undefined);
+    const label = !kind ? "уведомление" : kind === "pay" ? "оплата" : kind === "fail" ? "отказ" : "возврат";
+    const st = "status" in r ? r.status : "";
+    const outcome = r.ok
+      ? st === "paid" ? "заказ оплачен" : st === "TestMode" ? "тестовый платёж, деньги не списаны: заказ не оплачен" : st === "Declined" ? "платёж отклонён" : `статус ${st || "принято"}`
+      : `не принято: ${"reason" in r ? r.reason : ""}`;
+    if (payment) await db.orderEvent.create({ data: { orderId: payment.orderId, message: `CloudPayments: ${kind ? `уведомление «${label}»` : label}, транзакция ${transactionId} — ${outcome}` } }).catch(() => undefined);
   }
   return r;
 }
 
-async function handleWebhookInner(kind: "pay" | "fail" | "refund", invoiceId: string, transactionId: number, fields: Record<string, string>) {
+async function handleWebhookInner(kind: WebhookKind, invoiceId: string, transactionId: number, fields: Record<string, string>) {
   if (kind === "pay") return settleByInvoice(invoiceId, transactionId);
   if (kind === "fail") {
     if (!invoiceId.startsWith("gift:")) {
@@ -188,11 +216,15 @@ async function handleWebhookInner(kind: "pay" | "fail" | "refund", invoiceId: st
   return { ok: true, status: "refund" };
 }
 
-/** При возврате клиентки с платёжной страницы: найти транзакцию по номеру счёта, если вебхук ещё не дошёл. */
+/**
+ * При возврате клиентки с платёжной страницы и по кнопке в CRM: найти транзакцию по номеру счёта, если уведомление
+ * не дошло. payments/find отдаёт последнюю транзакцию счёта одним объектом; при отказе — Success: false, но с Model.
+ */
 async function syncInvoice(invoiceId: string) {
-  const r = await api<CpTransaction[]>("/payments/find", { InvoiceId: invoiceId });
-  const t = r.Model?.find((x) => x.Status === "Completed" || x.Status === "Authorized") ?? r.Model?.[0];
-  if (!r.Success || !t) return;
+  const r = await api<CpTransaction | CpTransaction[]>("/payments/find", { InvoiceId: invoiceId });
+  const list = Array.isArray(r.Model) ? r.Model : r.Model ? [r.Model] : [];
+  const t = list.find((x) => x.Status === "Completed" || x.Status === "Authorized") ?? list[0];
+  if (!t?.TransactionId) return;
   await settleByInvoice(invoiceId, t.TransactionId);
 }
 

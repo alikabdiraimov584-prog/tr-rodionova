@@ -1,15 +1,15 @@
-import { handleWebhook, verifySignature } from "@/lib/payments/cloudpayments";
+import { handleWebhook, verifySignature, type WebhookKind } from "@/lib/payments/cloudpayments";
 import { recordCheck } from "@/lib/integrations/store";
 
 /**
- * Вебхуки CloudPayments. В кабинете (Сайты → Уведомления) укажите один адрес для Pay, Fail и Refund:
- *   https://<host>/api/payments/cloudpayments?kind=pay | fail | refund
+ * Вебхуки CloudPayments. В кабинете (Сайты → Уведомления) для Pay, Fail и Refund укажите один адрес как есть:
+ *   https://<host>/api/payments/cloudpayments
+ * Вид уведомления определяется по телу (прежние адреса с ?kind=pay | fail | refund тоже работают).
  * Подпись Content-HMAC проверяется по API Secret; формат тела — form-urlencoded или JSON.
  */
 export async function POST(request: Request) {
-  const url = new URL(request.url);
-  const kind = url.searchParams.get("kind");
-  if (kind !== "pay" && kind !== "fail" && kind !== "refund") return Response.json({ code: 13 }, { status: 400 });
+  const param = new URL(request.url).searchParams.get("kind");
+  const kind: WebhookKind | null = param === "pay" || param === "fail" || param === "refund" ? param : null;
   const raw = await request.text();
   if (!(await verifySignature(raw, request.headers.get("content-hmac")))) {
     // видно в CRM → Интеграции как ошибка: обычно API Secret в CRM не совпадает с кабинетом или выключена подпись HMAC
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
   try {
     const r = await handleWebhook(kind, fields);
-    if (!r.ok) console.warn("cloudpayments webhook", kind, r.reason);
+    if (!r.ok) console.warn("cloudpayments webhook", kind ?? "auto", r.reason);
     else await recordCheck("cloudpayments", true).catch(() => undefined);
   } catch (e) {
     console.error("cloudpayments webhook", e);

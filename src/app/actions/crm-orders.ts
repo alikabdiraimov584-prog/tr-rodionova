@@ -150,6 +150,9 @@ export async function syncPaymentAction(_: ActionState, formData: FormData): Pro
   await audit(staff.id, "order.syncPayment", "Order", orderId, { before: before.status, after: after.status });
   revalidatePath(`/crm/orders/${orderId}`);
   if (after.status !== before.status) return { ok: true, message: "Оплата найдена в кассе: заказ переведён в «Оплачен»" };
-  const st = (after.payments[0]?.payload as { status?: string } | null)?.status;
-  return { ok: true, message: st ? `Касса ответила: платёж ${st === "Declined" ? "отклонён" : st === "Cancelled" ? "отменён" : st}` : "В кассе нет успешной оплаты по этому заказу: покупательница не завершила платёж" };
+  const p = after.payments[0]?.payload as { status?: string; reason?: string | null; provider?: string } | null;
+  if (p?.status === "TestMode") return { ok: true, message: "Касса ответила: платёж тестовый (сайт в кабинете CloudPayments в тестовом режиме), деньги не списаны — заказ не переведён в «Оплачен»" };
+  if (p?.status === "Declined" || p?.status === "Cancelled") return { ok: true, message: `Касса ответила: платёж ${p.status === "Declined" ? "отклонён" : "отменён"}${p.reason ? ` — ${p.reason}` : ""}` };
+  if (p?.provider !== "cloudpayments") return { ok: true, message: "Заказ не отправлялся в CloudPayments: оплаты на платёжной странице кассы по нему не было" };
+  return { ok: true, message: "В кассе нет платежа по этому заказу: покупательница не дошла до оплаты или не завершила её" };
 }

@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Сертификат" };
 export default async function GiftCardPage({ params, searchParams }: PageProps<"/account/giftcards/[id]">) {
   const { id } = await params;
   const user = await requireUser(`/account/giftcards/${id}`);
-  if ((await searchParams).paid && (await db.giftCard.count({ where: { id, purchaserId: user.id } }))) await syncGiftCardPayment(id);
+  if ((await searchParams).paid && (await db.giftCard.count({ where: { id, purchaserId: user.id } }))) await syncGiftCardPayment(id).catch((e) => console.error("sync gift payment", id, e));
   const card = await db.giftCard.findUnique({
     where: { id },
     include: { redemptions: { orderBy: { createdAt: "desc" }, include: { order: { select: { number: true } } } } },
