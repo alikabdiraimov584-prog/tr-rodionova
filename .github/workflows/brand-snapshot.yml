@@ -1,0 +1,95 @@
+# Срез бренда на боевом сайте снаружи, только чтение: данные о бренде (llms-full.txt, разметка Organization),
+# контакты и заглушки в текстах, каталог из YML-фида (цены, наличие, фото), карточки вещей, карта сайта, журнал.
+# Нужен для отчёта «состояние бренда», когда с рабочего места сайт не открыть.
+name: Brand snapshot
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: Домен
+        default: tr-rodionova.ru
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Срез
+        env:
+          D: ${{ github.event.inputs.domain || 'tr-rodionova.ru' }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.request, xml.etree.ElementTree as ET
+          from collections import Counter
+          D = os.environ["D"]; B = os.environ.get("BASE") or f"https://{D}"
+          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36"}
+          def get(path):
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(path if path.startswith("http") else B + path, headers=UA), timeout=40)
+                  return r.status, r.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as e:
+                  return e.code, ""
+              except Exception as e:
+                  return 0, str(e)
+          def text(html):
+              html = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S)
+              return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+          def ld(html):
+              out = []
+              for m in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', html, re.S):
+                  try:
+                      j = json.loads(m)
+                  except Exception:
+                      continue
+                  for x in (j.get("@graph", [j]) if isinstance(j, dict) else j):
+                      out.append(x)
+              return out
+          print("== health"); print(get("/api/health")[1][:900])
+          print("\n== llms-full.txt (бренд)"); s, t = get("/llms-full.txt"); print(s); print("\n".join(t.splitlines()[:120]))
+          s, home = get("/")
+          print("\n== главная", s, re.search(r"<title>([^<]*)", home).group(1) if "<title>" in home else "")
+          for x in ld(home):
+              if x.get("@type") in ("Organization", "Store", "ClothingStore", "OnlineStore", "WebSite", "Person"):
+                  keep = {k: x.get(k) for k in ("@type", "name", "telephone", "email", "foundingDate", "sameAs", "address", "founder", "url", "logo", "description") if x.get(k)}
+                  print(json.dumps(keep, ensure_ascii=False)[:700])
+          links = sorted(set(re.findall(r'href="((?:tel:|mailto:|https?://(?:t\.me|vk\.com|instagram\.com|www\.instagram\.com|ok\.ru|dzen\.ru|youtube\.com|pinterest\.[a-z]+|yandex\.ru/maps|2gis\.ru|wa\.me|api\.whatsapp\.com)[^"]*))"', home)))
+          print("контакты и соцсети на главной:", links or "нет")
+          print("\n== заглушки и пробелы в текстах")
+          PAT = r"000-00-00|\[[А-ЯЁA-Z][^\]]{3,60}\]|lorem|TODO|example\.com|указывается после подключения|заглушк"
+          pages = ["/", "/about", "/seller", "/delivery", "/returns", "/offer", "/privacy", "/faq", "/press", "/showroom", "/sizes", "/care", "/gift", "/circle", "/preloved", "/lookbook", "/journal", "/collections", "/catalog", "/try-on", "/llms.txt", "/llms-full.txt"]
+          for p in pages:
+              s, h = get(p)
+              tx = h if p.endswith(".txt") else text(h)
+              hits = sorted(set(m.group(0) for m in re.finditer(PAT, tx, re.I)))
+              print(f"{p:16} {s} {len(tx):>6} симв. {('ЗАМЕЧАНИЯ: ' + ' | '.join(hits)) if hits else ''}")
+          print("\n== каталог (yml.xml)")
+          s, y = get("/yml.xml"); print("статус", s)
+          try:
+              root = ET.fromstring(y)
+              cats = {c.get("id"): c.text for c in root.iter("category")}
+              offers = list(root.iter("offer"))
+              groups = {}
+              for o in offers:
+                  g = o.get("group_id"); n = o.findtext("name"); url = o.findtext("url")
+                  grp = groups.setdefault(g, {"url": url, "name": n.split(",")[0], "price": set(), "sizes": 0, "avail": 0, "pics": len(o.findall("picture")), "cat": cats.get(o.findtext("categoryId"), "—")})
+                  grp["price"].add(int(o.findtext("price") or 0)); grp["sizes"] += 1; grp["avail"] += o.get("available") == "true"
+              print(f"категорий {len(cats)}: {', '.join(cats.values())}")
+              print(f"моделей {len(groups)}, вариантов {len(offers)}, в наличии вариантов {sum(o.get('available') == 'true' for o in offers)}")
+              for g, v in sorted(groups.items(), key=lambda kv: kv[1]["cat"]):
+                  print(f"  {v['name'][:34]:34} | {v['cat'][:12]:12} | {'/'.join(str(p) for p in sorted(v['price']))} ₽ | вариантов {v['sizes']}, в наличии {v['avail']} | фото {v['pics']} | {v['url'].split('/')[-1]}")
+          except Exception as e:
+              print("не разобран:", e, y[:300]); groups = {}
+          print("\n== карточки вещей")
+          for g, v in list(groups.items())[:40]:
+              s, h = get(v["url"])
+              prod = [x for x in ld(h) if x.get("@type") in ("Product", "ProductGroup")]
+              imgs = len(set(re.findall(r'(?:/images/|/uploads/)[^"&? ]+\.(?:jpg|jpeg|png|webp|avif)', h)))
+              desc = len((prod[0].get("description") or "")) if prod else 0
+              revs = (prod[0].get("aggregateRating") or {}).get("reviewCount") if prod else None
+              print(f"  {s} {v['url'].split('/')[-1][:30]:30} фото на странице {imgs:>2} | описание {desc:>4} симв. | отзывов {revs or 0}")
+          print("\n== карта сайта")
+          s, sm = get("/sitemap.xml"); locs = re.findall(r"<loc>([^<]+)</loc>", sm)
+          print(s, "адресов", len(locs), dict(Counter((l.replace(B, "").split("/")[1] or "/").split("?")[0] for l in locs)))
+          print("\n== журнал (feed.xml)")
+          s, f = get("/journal/feed.xml"); items = re.findall(r"<item>.*?<title>(.*?)</title>.*?<pubDate>(.*?)</pubDate>", f, re.S)
+          print(s, "статей", len(items)); [print("  ", d[:16], "·", re.sub(r"<!\[CDATA\[|\]\]>", "", t)[:80]) for t, d in items[:12]]
+          print("\n== robots.txt"); print(get("/robots.txt")[1][:600])
+          PY
