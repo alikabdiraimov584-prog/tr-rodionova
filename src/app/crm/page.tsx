@@ -7,6 +7,7 @@ import { formatDate, formatMoney, pct } from "@/lib/money";
 import { ORDER_STATUS } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
 import { BarChart, HBar } from "@/components/crm/charts";
+import { brandIssues } from "@/lib/brand-health";
 
 export default async function Dashboard() {
   const user = await requireSection("dashboard");
@@ -39,10 +40,23 @@ export default async function Dashboard() {
     segCounts.set(seg.code, (segCounts.get(seg.code) ?? 0) + 1);
   }
   const low = lowStock.filter((v) => v.stock - v.reserved <= 1).slice(0, 8);
-  const liability = await db.user.aggregate({ where: { role: "CUSTOMER" }, _sum: { pointsBalance: true } });
+  const [liability, issues] = await Promise.all([db.user.aggregate({ where: { role: "CUSTOMER" }, _sum: { pointsBalance: true } }), brandIssues()]);
   return (
     <div className="space-y-8">
       <PageTitle eyebrow={formatDate(now)} title={`Добрый день, ${user.firstName}`} actions={<Link href="/crm/orders/new" className="btn-primary btn-sm">Продажа в шоуруме</Link>} />
+      {issues.length > 0 && (
+        <div className="card border-l-4 border-l-warning p-5">
+          <Eyebrow>Проверьте перед продажами</Eyebrow>
+          <ul className="mt-3 space-y-2 text-sm">
+            {issues.map((i) => (
+              <li key={i.text} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <span>{i.text}</span>
+                <Link href={i.href} className="shrink-0 text-xs underline underline-offset-4">{i.action}</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Stat label="Выручка, 30 дней" value={formatMoney(cur.revenue)} hint={delta(cur.revenue, prev.revenue)} />
         <Stat label="Заказы" value={cur.count} hint={delta(cur.count, prev.count)} />

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSetting } from "@/lib/settings";
 import { TextPage, Section } from "@/components/shop/page-shell";
-import { JsonLd, storeJsonLd } from "@/lib/seo";
+import { JsonLd, publicPhone, storeJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = { title: "Шоурум и контакты" };
 
@@ -19,7 +19,7 @@ export default async function Showroom() {
       aside={
         <div className="border border-line bg-white p-5">
           <div className="eyebrow">Связь</div>
-          <p className="mt-2">{b.phone}<br />{b.email}<br /><a href={b.telegram} className="underline">Telegram</a></p>
+          <p className="mt-2">{publicPhone(b.phone) && <>{publicPhone(b.phone)}<br /></>}{b.email}{b.telegram && <><br /><a href={b.telegram} className="underline">Telegram</a></>}</p>
           <div className="eyebrow mt-5">Служба заботы</div>
           <p className="mt-2">{seller.hours}, ответ в течение 15 минут. <Link href="/account/support" className="underline">Написать в кабинете</Link></p>
           <p className="mt-5 text-xs text-muted"><Link href="/seller" className="underline">Информация о продавце</Link></p>

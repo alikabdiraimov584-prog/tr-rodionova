@@ -53,6 +53,7 @@ export type SellerSettings = {
   corrAccount: string; // корреспондентский счёт
   responsible: string; // ответственный за обработку ПДн (политика, 152-ФЗ)
   claimsAddress: string; // почтовый адрес для претензий и возвратов
+  rknNumber: string; // регистрационный номер в реестре операторов персональных данных (pd.rkn.gov.ru)
 };
 
 export type SupportSettings = {
@@ -89,6 +90,7 @@ const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: 
     corrAccount: "30101810145250000974",
     responsible: "Родионова Татьяна Ивановна",
     claimsAddress: "429909, Россия, Чувашская Республика, Цивильский район, д. Елюккасы, ул. Луговая, д. 9",
+    rknNumber: "",
   },
   support: {
     workFrom: 10,

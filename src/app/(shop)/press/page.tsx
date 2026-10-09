@@ -5,7 +5,7 @@ import { getSetting } from "@/lib/settings";
 import { formatMoney } from "@/lib/money";
 import { BRAND_FACTS } from "@/lib/brand-facts";
 import { TextPage, Section } from "@/components/shop/page-shell";
-import { JsonLd, absolute, ids } from "@/lib/seo";
+import { JsonLd, absolute, ids, publicPhone } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Пресс-кит",
@@ -86,7 +86,7 @@ export default async function PressPage() {
         </Section>
       )}
       <Section id="contact" title="Контакт для СМИ">
-        <p>Запросы на интервью, комментарии и вещи для съёмок: <a href={`mailto:${brand.email}`} className="underline">{brand.email}</a>, {brand.phone}{brand.telegram ? <>, <a href={brand.telegram} className="underline">Telegram</a></> : null}. Отвечаем {seller.hours || "в рабочие часы"}.</p>
+        <p>Запросы на интервью, комментарии и вещи для съёмок: <a href={`mailto:${brand.email}`} className="underline">{brand.email}</a>{publicPhone(brand.phone) ? `, ${publicPhone(brand.phone)}` : ""}{brand.telegram ? <>, <a href={brand.telegram} className="underline">Telegram</a></> : null}. Отвечаем {seller.hours || "в рабочие часы"}.</p>
         <p>Логотип: <a href="/logo.png" className="underline">PNG 512×512</a>. Для машинного чтения: <a href="/llms.txt" className="underline">llms.txt</a>.</p>
       </Section>
     </TextPage>

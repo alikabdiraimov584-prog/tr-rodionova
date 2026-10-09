@@ -180,7 +180,7 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
       const f = (k: string) => String(formData.get(k) ?? "").trim();
       await setSetting("seller", {
         name: f("name"), inn: f("inn").replace(/\D/g, ""), ogrn: f("ogrn").replace(/\D/g, ""), address: f("address"), hours: f("hours"), showroom: f("showroom"),
-        bank: f("bank"), bik: f("bik").replace(/\D/g, ""), account: f("account").replace(/\D/g, ""), corrAccount: f("corrAccount").replace(/\D/g, ""), responsible: f("responsible"), claimsAddress: f("claimsAddress"),
+        bank: f("bank"), bik: f("bik").replace(/\D/g, ""), account: f("account").replace(/\D/g, ""), corrAccount: f("corrAccount").replace(/\D/g, ""), responsible: f("responsible"), claimsAddress: f("claimsAddress"), rknNumber: f("rknNumber"),
       });
     } else if (section === "delivery") {
       const r = (k: string) => toKopecks(String(formData.get(k) ?? "0"));

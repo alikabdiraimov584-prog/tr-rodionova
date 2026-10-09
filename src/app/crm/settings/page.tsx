@@ -60,6 +60,7 @@ export default async function Settings() {
                   <label><span className="label">Режим работы</span><input name="hours" defaultValue={seller.hours} className="input py-2" /></label>
                   <label><span className="label">Шоурум (адрес, часы)</span><input name="showroom" defaultValue={seller.showroom} className="input py-2" /></label>
                   <label className="sm:col-span-2"><span className="label">Адрес для претензий и возвратов</span><input name="claimsAddress" defaultValue={seller.claimsAddress} className="input py-2" /></label>
+                  <label className="sm:col-span-2"><span className="label">Номер в реестре операторов персональных данных (Роскомнадзор)</span><input name="rknNumber" defaultValue={seller.rknNumber} placeholder="например, 21-26-012345 — после уведомления на pd.rkn.gov.ru" className="input py-2" /></label>
                   <label><span className="label">Банк</span><input name="bank" defaultValue={seller.bank} className="input py-2" /></label>
                   <label><span className="label">БИК</span><input name="bik" defaultValue={seller.bik} className="input py-2" /></label>
                   <label><span className="label">Расчётный счёт</span><input name="account" defaultValue={seller.account} className="input py-2" /></label>

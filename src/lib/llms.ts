@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { siteFaq } from "@/lib/faq";
 import { formatMoney } from "@/lib/money";
-import { absolute, siteUrl } from "@/lib/seo";
+import { absolute, publicPhone, siteUrl } from "@/lib/seo";
 import { BRAND_FACTS } from "@/lib/brand-facts";
 
 /**
@@ -44,7 +44,7 @@ export async function llmsText(full: boolean) {
   out.push(`- Доставка бесплатна от ${formatMoney(delivery.freeFrom)}; курьер с примеркой в Москве и Санкт-Петербурге ${formatMoney(delivery.courier)}, СДЭК по России ${formatMoney(delivery.cdek)}. Возврат 14 дней.`);
   out.push(`- Программа Circle: ${loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию, 1 балл = 1 ₽; уровни ${tiers.map((t) => `${t.name} ${t.cashbackPct}%`).join(", ")}.`);
   if (seller.showroom) out.push(`- Шоурум: ${seller.showroom}${seller.hours ? `, ${seller.hours}` : ""}.`);
-  out.push(`- Связь: ${brand.email}, ${brand.phone}${brand.telegram ? `, ${brand.telegram}` : ""}.`);
+  out.push(`- Связь: ${[brand.email, publicPhone(brand.phone), brand.telegram].filter(Boolean).join(", ")}.`);
   out.push("");
   out.push("## Главные страницы");
   out.push(`- [Каталог](${absolute("/catalog")}): все вещи текущей коллекции с ценами, составом и размерами`);

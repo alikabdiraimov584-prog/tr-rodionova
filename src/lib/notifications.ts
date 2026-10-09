@@ -8,6 +8,7 @@ import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
 import { activeIntegration } from "@/lib/integrations/store";
 import { sendTelegramMessage } from "@/lib/alerts";
 import type { Channel } from "@/generated/prisma/enums";
+import { publicPhone } from "@/lib/seo";
 
 /**
  * Сервисные уведомления: статусы заказа и баллы. Это не рассылки, поэтому согласие на маркетинг
@@ -54,7 +55,7 @@ async function dispatch(input: { userId?: string | null; orderId?: string | null
 }
 
 function signature(brand: { name: string; phone: string; email: string }) {
-  return `\n\n— ${brand.name}\n${brand.phone} · ${brand.email}`;
+  return `\n\n— ${brand.name}\n${[publicPhone(brand.phone), brand.email].filter(Boolean).join(" · ")}`;
 }
 
 /** Уведомление по событию заказа. Вызывать после фиксации транзакции; ошибки гасятся. */

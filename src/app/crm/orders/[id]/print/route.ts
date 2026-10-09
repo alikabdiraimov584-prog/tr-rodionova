@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { getSetting } from "@/lib/settings";
 import { formatDate, formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
+import { publicPhone } from "@/lib/seo";
 
 const esc = (s: unknown) => String(s ?? "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
 
@@ -43,7 +44,7 @@ export async function GET(req: Request, ctx: RouteContext<"/crm/orders/[id]/prin
   <div class="sign"><div>Собрал(а), дата</div><div>Проверил(а), дата</div></div>
 </section>`,
     invoice: `<section class="doc">
-  <div class="head"><div><h1>Товарная накладная к заказу №${order.number}</h1><div class="muted">${formatDate(order.createdAt)}</div></div><div class="r"><b>${esc(seller.name || brand.name)}</b><br>${seller.inn ? `ИНН ${esc(seller.inn)}` : `<span class="muted">ИНН: реквизиты продавца не заполнены</span>`}${seller.ogrn ? `<br>ОГРН/ОГРНИП ${esc(seller.ogrn)}` : ""}${seller.address ? `<br>${esc(seller.address)}` : ""}${seller.account ? `<br>${esc(seller.bank)}, БИК ${esc(seller.bik)}, р/с ${esc(seller.account)}` : ""}<br>${esc(brand.phone)} · ${esc(brand.email)}</div></div>
+  <div class="head"><div><h1>Товарная накладная к заказу №${order.number}</h1><div class="muted">${formatDate(order.createdAt)}</div></div><div class="r"><b>${esc(seller.name || brand.name)}</b><br>${seller.inn ? `ИНН ${esc(seller.inn)}` : `<span class="muted">ИНН: реквизиты продавца не заполнены</span>`}${seller.ogrn ? `<br>ОГРН/ОГРНИП ${esc(seller.ogrn)}` : ""}${seller.address ? `<br>${esc(seller.address)}` : ""}${seller.account ? `<br>${esc(seller.bank)}, БИК ${esc(seller.bik)}, р/с ${esc(seller.account)}` : ""}<br>${esc([publicPhone(brand.phone), brand.email].filter(Boolean).join(" · "))}</div></div>
   <p>Покупатель: ${esc(fullName)}, ${esc(order.phone)}, ${esc(order.email)}<br>Доставка: ${esc(DELIVERY_METHOD[order.deliveryMethod].label)}, ${esc(addr)}</p>
   <table><thead><tr><th>#</th><th>Наименование</th><th>Артикул</th><th>Размер / цвет</th><th class="r">Кол-во</th><th class="r">Цена</th><th class="r">Сумма</th><th></th></tr></thead><tbody>${rows}</tbody>
   <tfoot><tr><td colspan="6" class="r">Товары</td><td class="r">${formatMoney(order.subtotal)}</td><td></td></tr>

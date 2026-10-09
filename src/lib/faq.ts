@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { formatMoney } from "@/lib/money";
+import { publicPhone } from "@/lib/seo";
 
 /**
  * Вопросы и ответы для покупательниц и для ИИ-ответов: ответ идёт первым предложением, факты берутся из настроек
@@ -50,7 +51,7 @@ export async function siteFaq(): Promise<{ group: string; items: Faq[] }[]> {
       items: [
         { q: "Что такое T.Rodionova Circle и сколько баллов дают за регистрацию?", a: `Circle — программа лояльности: ${loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию, 1 балл = 1 ₽, ${loyalty.referralPoints.toLocaleString("ru-RU")} баллов за приглашённую подругу. Уровни: ${tierText}.`, href: "/circle" },
         { q: "Что такое pre-loved и выкуп вещей?", a: "Свою вещь T.Rodionova можно продать бренду обратно за баллы Circle, а на витрине pre-loved купить проверенные вещи прошлых сезонов с гарантией подлинности.", href: "/preloved" },
-        { q: "Как связаться со службой заботы?", a: `Напишите в чат личного кабинета или на ${brand.email}, позвоните ${brand.phone}${brand.telegram ? ", напишите в Telegram" : ""}. ${seller.hours ? `Режим работы: ${seller.hours}.` : ""}`.trim(), href: "/account/support" },
+        { q: "Как связаться со службой заботы?", a: `Напишите в чат личного кабинета или на ${brand.email}${publicPhone(brand.phone) ? `, позвоните ${publicPhone(brand.phone)}` : ""}${brand.telegram ? ", напишите в Telegram" : ""}. ${seller.hours ? `Режим работы: ${seller.hours}.` : ""}`.trim(), href: "/account/support" },
       ],
     },
   ];
