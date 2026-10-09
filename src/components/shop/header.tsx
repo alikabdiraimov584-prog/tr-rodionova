@@ -59,7 +59,7 @@ function shopCategories() {
 export async function ShopFooter() {
   const [brand, seller, categories] = await Promise.all([getSettingOrDefault("brand"), getSettingOrDefault("seller"), shopCategories()]);
   const cols: [string, [string, string][]][] = [
-    ["Каталог", [["/catalog?new=1", "Новинки"], ...categories.map((c) => [`/catalog?category=${c.slug}`, c.name] as [string, string]), ["/preloved", "Pre-loved"]]],
+    ["Каталог", [["/catalog?new=1", "Новинки"], ...categories.map((c) => [`/catalog?category=${c.slug}`, c.name] as [string, string])]],
     ["Покупателям", [["/delivery", "Доставка и возврат"], ["/sizes", "Размеры"], ["/care", "Уход"], ["/faq", "Вопросы и ответы"], ["/gift", "Подарочные сертификаты"]]],
     ["Бренд", [["/about", "О бренде"], ["/collections", "Коллекции"], ["/lookbook", "Лукбук"], ["/journal", "Журнал"], ["/showroom", "Шоурум"], ["/press", "Для прессы"]]],
     ["Circle", [["/circle", "Программа лояльности"], ["/account", "Личный кабинет"], ["/account/stylist", "Персональный стилист"]]],

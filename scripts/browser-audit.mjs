@@ -422,7 +422,7 @@ const only = process.env.ONLY ?? ""; // ONLY=journey|crm — запустить 
 const siteDesktop = only && only !== "site" ? 0 : await crawl("site-desktop", { width: 1366, height: 900 }, ["/"]);
 const siteMobile = only && only !== "site" ? 0 : await crawl("site-mobile", { width: 390, height: 844 }, ["/", "/catalog", "/cart", "/login", "/register", "/journal", "/lookbook", "/gift", "/circle"]);
 // витрина глазами вошедшей клиентки и сотрудника: те же страницы, но ссылки «Кабинет», «Вступить», избранное зависят от роли
-const SITE_START = ["/", "/circle", "/catalog", "/cart", "/journal", "/lookbook", "/gift", "/sizes", "/preloved", "/showroom", "/account"];
+const SITE_START = ["/", "/circle", "/catalog", "/cart", "/journal", "/lookbook", "/gift", "/sizes", "/showroom", "/account"];
 if ((!only || only === "site") && customerEmail && customerPassword) await crawl("site-customer", { width: 1366, height: 900 }, SITE_START, { email: customerEmail, password: customerPassword });
 if ((!only || only === "site") && crmEmail && crmPassword) await crawl("site-staff", { width: 1366, height: 900 }, SITE_START, { email: crmEmail, password: crmPassword });
 log("гостевой путь");

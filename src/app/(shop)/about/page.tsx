@@ -55,7 +55,7 @@ export default async function About() {
         <p>Пошив в Португалии и Литве на фабриках, с которыми работаем с первого сезона. Контроль качества в Москве: каждая вещь проверяется вручную до того, как попадёт в упаковку.</p>
       </Section>
       <Section id="service" title="Сервис">
-        <p>Примерка курьером в Москве и Петербурге, персональный стилист и подгонка в ателье для участниц Circle уровня Privé, выкуп своих вещей обратно за баллы и витрина pre-loved. <Link href="/circle" className="underline">О программе Circle</Link>. Для журналистов и партнёров — <Link href="/press" className="underline">пресс-кит</Link>.</p>
+        <p>Примерка курьером в Москве и Петербурге, персональный стилист и подгонка в ателье для участниц Circle уровня Privé. <Link href="/circle" className="underline">О программе Circle</Link>. Для журналистов и партнёров — <Link href="/press" className="underline">пресс-кит</Link>.</p>
       </Section>
     </TextPage>
   );

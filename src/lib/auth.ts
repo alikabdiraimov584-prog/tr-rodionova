@@ -34,7 +34,7 @@ export function isStaff(role: Role | undefined | null): boolean {
 }
 
 /**
- * Клиентка, если вошла именно она. Сотрудник на витрине — как гость: кабинет, избранное, мерки и выкуп
+ * Клиентка, если вошла именно она. Сотрудник на витрине — как гость: кабинет, избранное и мерки
  * относятся к клиентскому аккаунту, а в CRM ведёт только ссылка «CRM» в шапке.
  */
 export async function getCurrentCustomer(): Promise<CurrentUser | null> {

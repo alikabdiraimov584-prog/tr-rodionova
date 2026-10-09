@@ -32,7 +32,7 @@ export default async function PressPage() {
     ["Производство", "Пошив в Португалии и Литве; контроль качества в Москве, каждая вещь проверяется вручную"],
     ["Тираж", "До 60 единиц на модель; допошив только под предзаказ"],
     ["Цены", `Фиксированы на сезон, распродаж нет. Текущая коллекция: ${products.length ? `от ${formatMoney(Math.min(...products.map((p) => p.price)))} до ${formatMoney(Math.max(...products.map((p) => p.price)))}` : "см. каталог"}`],
-    ["Сервис", `Примерка курьером в Москве и Санкт-Петербурге, доставка по России; бесплатная доставка от ${formatMoney(delivery.freeFrom)}; возврат 14 дней; программа Circle; выкуп своих вещей обратно и витрина pre-loved`],
+    ["Сервис", `Примерка курьером в Москве и Санкт-Петербурге, доставка по России; бесплатная доставка от ${formatMoney(delivery.freeFrom)}; возврат 14 дней; программа Circle`],
     ...(seller.showroom ? [["Шоурум", `${seller.showroom}${seller.hours ? `, ${seller.hours}` : ""}`] as [string, string]] : []),
     ["Продавец", `${seller.name}${seller.inn ? `, ИНН ${seller.inn}` : ""}`],
     ["Сайт", absolute("/")],

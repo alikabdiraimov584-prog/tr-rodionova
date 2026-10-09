@@ -71,7 +71,6 @@ export function SiteMenu({ categories, account, cartCount }: { categories: Item[
                 {categories.map(([href, label]) => <Link key={href} href={href} className={small}>{label}</Link>)}
               </div>
               <Link href="/lookbook" className={big}>Лукбук</Link>
-              <Link href="/preloved" className={big}>Pre-loved</Link>
               <Link href="/gift" className={big}>Подарочная карта</Link>
               <div className="mt-6 border-t border-line pt-4">
                 <Link href="/circle" className={small}>Программа лояльности Circle</Link>

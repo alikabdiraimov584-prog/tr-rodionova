@@ -1,6 +1,6 @@
 // Воронка писем покупательнице на стенде: подставной SMTP принимает всё, что сайт отправляет, подставной Telegram —
 // оповещения владельцу. Проходит регистрацию, заказы с тремя способами оплаты, сборку, доставку, отзыв, баллы,
-// напоминания об оплате и автоотмену, сертификат с получателем, ответ поддержки, выкуп и «сообщить о поступлении».
+// напоминания об оплате и автоотмену, сертификат с получателем, ответ поддержки и «сообщить о поступлении».
 // Все письма сохраняются в FUNNEL_OUT (по умолчанию funnel-mail.txt) для чтения глазами.
 // Стенд: next start с CRON_SECRET=funnel-cron, TELEGRAM_API_URL=http://127.0.0.1:2626, APP_URL=http://127.0.0.1:3100.
 // Запуск: DATABASE_URL=… AUTH_SECRET=<как у стенда> BASE_URL=http://127.0.0.1:3100 CHROME_PATH=… node scripts/tests/funnel-stand-test.mjs
@@ -221,22 +221,17 @@ await crm.locator("textarea").first().fill("Добрый день! Шерсть 
 await crm.locator('form:has(textarea[name="text"]) button[type="submit"], form:has(textarea[name="text"]) button.btn-primary').first().click();
 check("ответ поддержки: письмо клиентке", await wait(() => /при 30 °C/.test(mailTo(email, /Новое сообщение/)?.text ?? "")));
 
-// 9. выкуп и «сообщить о поступлении» — через код действий
+// 9. «сообщить о поступлении» — через код действий
 const out = await helper(`
 import { db } from "@/lib/db";
-import { notifyResale } from "@/lib/notifications";
 import { notifyWaitlist } from "@/lib/waitlist";
 const user = await db.user.findUniqueOrThrow({ where: { email: "${email}" } });
-const item = await db.orderItem.findFirstOrThrow({ where: { orderId: "${o1.id}" } });
-const r = await db.resaleRequest.create({ data: { userId: user.id, orderItemId: item.id, description: "носила два раза", status: "OFFERED", offerPoints: 3500, managerNote: "Состояние отличное" } });
-await notifyResale(r.id, "RESALE_OFFERED");
 const v = await db.productVariant.findFirstOrThrow({ where: { stock: { gte: 2 } } });
 await db.stockSubscription.deleteMany({ where: { userId: user.id, variantId: v.id } });
 await db.stockSubscription.create({ data: { userId: user.id, variantId: v.id } });
 console.log("waitlist", await notifyWaitlist(v.id));
 await db.$disconnect();
 `);
-check("выкуп: письмо с предложением", await wait(() => /3\s500 баллов/.test(mailTo(email, /Предложение по выкупу/)?.text ?? "")));
 check("поступление: письмо «снова в наличии»", await wait(() => !!mailTo(email, /снова в наличии/)), out.trim());
 
 writeFileSync(process.env.FUNNEL_OUT ?? "funnel-mail.txt", [...mails.map((m) => `=== ${m.to} | ${m.subject}\n${m.text}\n`), ...tg.map((t) => `=== Telegram\n${t}\n`)].join("\n"));

@@ -23,7 +23,7 @@ export type CardProduct = {
  */
 export function ProductCard({ p, priority = false }: { p: CardProduct; priority?: boolean }) {
   const soldOut = !p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0);
-  const label = p.isPreloved ? (p.condition ? `Pre-loved · ${p.condition}` : "Pre-loved") : soldOut ? "Нет в наличии" : p.isPreorder ? "Предзаказ" : null;
+  const label = soldOut ? "Нет в наличии" : p.isPreorder ? "Предзаказ" : null;
   const shots = p.images.filter((i) => isRealPhoto(i.url)).slice(0, 4);
   const sizes = "(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw";
   return (

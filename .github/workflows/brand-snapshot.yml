@@ -54,7 +54,7 @@ jobs:
           print("контакты и соцсети на главной:", links or "нет")
           print("\n== заглушки и пробелы в текстах")
           PAT = r"000-00-00|\[[А-ЯЁA-Z][^\]]{3,60}\]|lorem|TODO|example\.com|указывается после подключения|заглушк"
-          pages = ["/", "/about", "/seller", "/delivery", "/returns", "/offer", "/privacy", "/faq", "/press", "/showroom", "/sizes", "/care", "/gift", "/circle", "/preloved", "/lookbook", "/journal", "/collections", "/catalog", "/try-on", "/llms.txt", "/llms-full.txt"]
+          pages = ["/", "/about", "/seller", "/delivery", "/returns", "/offer", "/privacy", "/faq", "/press", "/showroom", "/sizes", "/care", "/gift", "/circle", "/lookbook", "/journal", "/collections", "/catalog", "/try-on", "/llms.txt", "/llms-full.txt"]
           for p in pages:
               s, h = get(p)
               tx = h if p.endswith(".txt") else text(h)

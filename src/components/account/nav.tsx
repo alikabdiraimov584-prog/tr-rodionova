@@ -10,7 +10,6 @@ const items = [
   ["/account/wishlist", "Избранное"],
   ["/account/waitlist", "Лист ожидания"],
   ["/account/stylist", "Мой стилист"],
-  ["/account/resale", "Выкуп вещей"],
   ["/account/giftcards", "Сертификаты"],
   ["/account/profile", "Профиль и мерки"],
   ["/account/support", "Служба заботы"],

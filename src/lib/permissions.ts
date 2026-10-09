@@ -7,7 +7,6 @@ export const SECTIONS = {
   campaigns: ["MANAGER", "ADMIN"],
   content: ["MANAGER", "ADMIN"], // лукбук, журнал
   giftcards: ["SUPPORT", "MANAGER", "ADMIN"],
-  resale: ["MANAGER", "ADMIN"],
   stylist: ["SUPPORT", "MANAGER", "ADMIN"],
   support: ["SUPPORT", "MANAGER", "ADMIN"],
   orders: ["SUPPORT", "MANAGER", "ADMIN"],

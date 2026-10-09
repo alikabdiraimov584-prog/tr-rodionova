@@ -52,7 +52,8 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const wantedSize = typeof sp.size === "string" ? sp.size : null;
   const wantedColor = typeof sp.color === "string" ? sp.color : null;
   const p = await load(slug);
-  if (!p || p.status !== "ACTIVE") notFound();
+  // pre-loved убран из бренда: бывшие вещи витрины pre-loved не открываются
+  if (!p || p.status !== "ACTIVE" || p.isPreloved) notFound();
   // скрытая в CRM категория не показывается и в «хлебных крошках»
   const category = p.category?.isActive ? p.category : null;
   const user = await getCurrentCustomer();
@@ -89,7 +90,6 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     ["Уход", p.care],
     ["Производство", p.madeIn],
     ["Артикул", p.sku],
-    ...(p.isPreloved ? [["Состояние", p.condition] as [string, string | null]] : []),
     ...(p.isPreorder ? [["Отшив", p.preorderShipAt ? `к ${formatDate(p.preorderShipAt)}` : "4–6 недель"] as [string, string]] : []),
   ];
   const sizesAll = [...new Set(p.variants.map((v) => v.size))];
@@ -104,7 +104,6 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           <nav aria-label="Навигация" className="hidden text-[0.66rem] uppercase tracking-[0.12em] text-muted md:block [&_a]:hover:text-ink">
             <Link href="/catalog">Каталог</Link>
             {category && <> / <Link href={`/catalog?category=${category.slug}`}>{category.name}</Link></>}
-            {p.isPreloved && <> / <Link href="/preloved">Pre-loved</Link></>}
           </nav>
           <h1 className="mt-0 text-[1.15rem] uppercase tracking-[0.08em] md:mt-4 md:text-[1.35rem]">{p.name}</h1>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -112,8 +111,8 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             {p.compareAt && <span className="text-muted line-through">{formatMoney(p.compareAt)}</span>}
             {rating && <a href="#reviews" className="-my-2 py-2 text-[0.75rem] text-muted underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
           </div>
-          {installments && !p.isPreloved && <div className="mt-1 text-[0.78rem]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
-          <div className="mt-1 text-[0.75rem] text-muted">+{pts.toLocaleString("ru-RU")} баллов Circle{p.isPreloved && p.condition ? ` · состояние: ${p.condition}` : ""}</div>
+          {installments && <div className="mt-1 text-[0.78rem]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
+          <div className="mt-1 text-[0.75rem] text-muted">+{pts.toLocaleString("ru-RU")} баллов Circle</div>
           {p.isPreorder && <p className="mt-4 border-l-2 border-ink pl-3 text-[0.8rem]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
           <div className="mt-5"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
           <div className="mt-5">

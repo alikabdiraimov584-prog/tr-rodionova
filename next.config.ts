@@ -23,6 +23,15 @@ const nextConfig: NextConfig = {
   // юридические документы читаются с диска на сервере
   outputFileTracingIncludes: { "/offer": ["./docs/legal/**"], "/privacy": ["./docs/legal/**"] },
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "pg"],
+  // pre-loved и выкуп вещей убраны из бренда (9 октября 2026): старые ссылки и закладки ведут в каталог и кабинет
+  async redirects() {
+    return [
+      { source: "/preloved", destination: "/catalog", permanent: true },
+      { source: "/account/resale", destination: "/account", permanent: true },
+      { source: "/crm/resale", destination: "/crm", permanent: false },
+      { source: "/crm/resale/:id", destination: "/crm", permanent: false },
+    ];
+  },
   async headers() {
     const security = [
       { key: "X-Content-Type-Options", value: "nosniff" },

@@ -238,7 +238,7 @@ await step("CRM: дашборд, клиенты, склад, аналитика 
 
 await step("Сайт: публичные страницы открываются", async () => {
   const out = [];
-  for (const p of ["/", "/catalog", "/lookbook", "/journal", "/circle", "/gift", "/about", "/delivery", "/sizes", "/offer", "/privacy", "/preloved", "/nope-404"]) {
+  for (const p of ["/", "/catalog", "/lookbook", "/journal", "/circle", "/gift", "/about", "/delivery", "/sizes", "/offer", "/privacy", "/nope-404"]) {
     const r = await page.goto(`${base}${p}`);
     out.push(`${p}:${r.status()}`);
   }

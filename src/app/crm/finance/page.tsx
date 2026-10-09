@@ -385,7 +385,7 @@ async function StockTab({ months, bs }: { months: number; bs: Awaited<ReturnType
           <tbody>
             {stock.products.map((p) => (
               <tr key={p.id}>
-                <td><Link href={`/crm/products/${p.id}`} className="underline">{p.name}</Link><span className="ml-2 text-muted">{p.sku}</span>{p.isPreloved && <span className="ml-2 badge border-line">pre-loved</span>}{p.archived && <span className="ml-2 badge border-line text-muted">архив</span>}</td>
+                <td><Link href={`/crm/products/${p.id}`} className="underline">{p.name}</Link><span className="ml-2 text-muted">{p.sku}</span>{p.archived && <span className="ml-2 badge border-line text-muted">архив</span>}</td>
                 <td className="text-muted">{p.category || "—"}</td>
                 <td className="text-right">{p.qty}</td>
                 <td className="text-right text-muted">{p.reserved || "—"}</td>

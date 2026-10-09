@@ -352,26 +352,3 @@ export async function notifySiteMessage(userId: string, text: string, opts: { su
     console.error("notifySiteMessage", userId, e);
   }
 }
-
-/** Выкуп вещи: предложение суммы баллами (ждёт ответа клиентки), отказ, вещь принята и баллы начислены. */
-export async function notifyResale(requestId: string, event: "RESALE_OFFERED" | "RESALE_DECLINED" | "RESALE_RECEIVED") {
-  try {
-    const r = await db.resaleRequest.findUnique({ where: { id: requestId }, include: { user: { select: { id: true, email: true, firstName: true, pointsBalance: true } }, product: { select: { name: true } }, orderItem: { select: { productName: true } } } });
-    if (!r?.user) return;
-    const brand = await getSetting("brand");
-    const name = r.product?.name ?? r.orderItem?.productName;
-    const what = name ? `«${name}»` : "вещи";
-    const link = `${siteUrl()}/account/resale`;
-    const hi = `${r.user.firstName}, здравствуйте.`;
-    const note = r.managerNote ? `\n\nКомментарий: ${r.managerNote}` : "";
-    const [subject, text] =
-      event === "RESALE_OFFERED"
-        ? [`Предложение по выкупу ${what}`, `${hi}\n\nМы посмотрели вашу заявку на выкуп ${what} и готовы принять вещь за ${(r.offerPoints ?? 0).toLocaleString("ru-RU")} баллов Circle.${note}\n\nПринять или отклонить предложение: ${link}`]
-        : event === "RESALE_DECLINED"
-          ? [`Заявка на выкуп ${what}`, `${hi}\n\nК сожалению, сейчас мы не можем выкупить ${what}.${note}\n\nЗаявки в личном кабинете: ${link}`]
-          : [`Баллы за ${what} начислены`, `${hi}\n\nМы получили ${what} и начислили ${(r.offerPoints ?? 0).toLocaleString("ru-RU")} баллов Circle. Сейчас на счёте ${r.user.pointsBalance.toLocaleString("ru-RU")} баллов.\n\nЛичный кабинет: ${siteUrl()}/account/loyalty`];
-    await dispatch({ userId: r.user.id, event, subject, text: text + signature(brand), email: r.user.email, sms: null });
-  } catch (e) {
-    console.error("notifyResale", event, requestId, e);
-  }
-}

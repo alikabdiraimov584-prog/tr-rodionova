@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const now = new Date();
   const [products, articles, looks, categories] = await Promise.all([
-    db.product.findMany({ where: { status: "ACTIVE" }, select: { slug: true, updatedAt: true } }),
+    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, select: { slug: true, updatedAt: true } }),
     db.article.findMany({ where: { publishedAt: { not: null, lte: now } }, select: { slug: true, updatedAt: true } }),
     db.look.findMany({ where: { isPublished: true }, select: { slug: true, createdAt: true } }),
     // только категории, которые видны в меню: показанные и с вещами в продаже
@@ -35,7 +35,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page("/sizes", 0.5, "monthly"),
     page("/care", 0.4, "monthly"),
     page("/gift", 0.5, "monthly"),
-    page("/preloved", 0.5, "weekly"),
     page("/showroom", 0.4, "monthly"),
     page("/press", 0.4, "monthly"),
     page("/seller", 0.3, "yearly"),
