@@ -7,6 +7,7 @@ const RUB = 100;
  * если файлы есть (см. scripts/attach-brand-photos.ts), иначе остаются заглушки.
  * Запускается при каждом старте, но только добавляет недостающее: вещи, образы и категории, которые уже есть,
  * ведутся в CRM — правки названий, цен, описаний, скрытие и удаление категорий обновление сайта не откатывает.
+ * Себестоимость не задаётся: реальные цифры вводит владелец в CRM → карточка вещи (придуманных значений здесь нет).
  */
 export async function seedBrand(db: PrismaClient) {
   const cat = async (slug: string) => (await db.category.findUnique({ where: { slug } }))?.id ?? null;
@@ -22,7 +23,6 @@ export async function seedBrand(db: PrismaClient) {
       name: "Боди TR 01",
       category: "bodysuits",
       price: 18_900,
-      cost: 5_600,
       material: "вискоза",
       sizeChart: "knit",
       composition: "72% вискоза, 24% полиамид, 4% эластан",
@@ -40,7 +40,6 @@ export async function seedBrand(db: PrismaClient) {
       name: "Брюки TR Palazzo",
       category: "trousers",
       price: 32_900,
-      cost: 10_400,
       material: "шерсть",
       sizeChart: "trousers",
       composition: "96% шерсть, 4% эластан",
@@ -58,7 +57,6 @@ export async function seedBrand(db: PrismaClient) {
       name: "Юбка TR 01",
       category: "skirts",
       price: 24_900,
-      cost: 7_900,
       material: "шерсть",
       sizeChart: "skirt",
       composition: "96% шерсть, 4% эластан",
@@ -75,7 +73,6 @@ export async function seedBrand(db: PrismaClient) {
       name: "Жакет TR Noir",
       category: "jackets",
       price: 54_900,
-      cost: 17_500,
       material: "шерсть",
       sizeChart: "outer",
       composition: "92% шерсть, 8% шёлк, подкладка купро",
@@ -93,7 +90,6 @@ export async function seedBrand(db: PrismaClient) {
       name: "Платье TR Halter",
       category: "dresses",
       price: 46_900,
-      cost: 14_800,
       material: "шёлк",
       sizeChart: "dress",
       composition: "100% шёлковый креп",
@@ -124,7 +120,6 @@ export async function seedBrand(db: PrismaClient) {
         sizeChart: it.sizeChart,
         care: it.care,
         price: it.price * RUB,
-        costPrice: it.cost * RUB,
         isNew: true,
         isFeatured: it.featured ?? false,
         isPreorder: !!it.preorder,
@@ -140,7 +135,7 @@ export async function seedBrand(db: PrismaClient) {
         for (const size of it.sizes) {
           i++;
           const v = await db.productVariant.create({ data: { productId: product.id, sku: `${it.sku}-${String(i).padStart(2, "0")}`, size, color, colorHex: hex, stock: 3 } });
-          await db.stockMovement.create({ data: { variantId: v.id, type: "RECEIPT", quantity: 3, unitCost: it.cost * RUB, reason: "Первый приход" } });
+          await db.stockMovement.create({ data: { variantId: v.id, type: "RECEIPT", quantity: 3, unitCost: null, reason: "Первый приход" } });
         }
     }
   }
