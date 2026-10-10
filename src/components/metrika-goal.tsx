@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-
-declare global {
-  interface Window {
-    /** Функция счётчика Яндекс Метрики; появляется после согласия на cookie и загрузки tag.js. */
-    ym?: (...args: unknown[]) => void;
-    /** Номер счётчика, который подставил сервер в init (см. third-party-tags.tsx). */
-    __trMetrika?: number;
-    dataLayer?: unknown[];
-  }
-}
+import { trackGoal, type MetrikaGoalId } from "@/lib/metrika-client";
 
 export type MetrikaPurchase = {
   id: string;
@@ -23,7 +14,7 @@ export type MetrikaPurchase = {
  * Срабатывает один раз на событие: ключ в sessionStorage плюс защита от повторного рендера, иначе обновление
  * страницы «Спасибо за заказ» считало бы заказ дважды.
  */
-export function MetrikaGoal({ goal, dedupe, purchase }: { goal: string; dedupe: string; purchase?: MetrikaPurchase }) {
+export function MetrikaGoal({ goal, dedupe, purchase }: { goal: MetrikaGoalId; dedupe: string; purchase?: MetrikaPurchase }) {
   const sent = useRef(false);
   useEffect(() => {
     if (sent.current) return;
@@ -40,9 +31,7 @@ export function MetrikaGoal({ goal, dedupe, purchase }: { goal: string; dedupe: 
         ecommerce: { currencyCode: "RUB", purchase: { actionField: { id: purchase.id, revenue: purchase.revenue }, products: purchase.products } },
       });
     }
-    if (window.__trMetrika && typeof window.ym === "function") {
-      window.ym(window.__trMetrika, "reachGoal", goal, purchase ? { order_price: purchase.revenue, currency: "RUB" } : undefined);
-    }
+    trackGoal(goal, purchase ? { order_price: purchase.revenue, currency: "RUB" } : undefined);
   }, [goal, dedupe, purchase]);
   return null;
 }

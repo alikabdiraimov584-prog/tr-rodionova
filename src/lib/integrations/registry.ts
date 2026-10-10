@@ -44,6 +44,15 @@ async function json<T>(url: string, init?: RequestInit): Promise<{ status: numbe
   return { status: res.status, body };
 }
 
+/** Цели сайта в Яндекс Метрике (JavaScript-события): идентификаторы совпадают с trackGoal в lib/metrika-client.ts. */
+export const METRIKA_GOALS = [
+  { id: "order", name: "Заказ оформлен" },
+  { id: "checkout", name: "Открыто оформление заказа" },
+  { id: "cart", name: "Вещь добавлена в корзину" },
+  { id: "waitlist", name: "Подписка на поступление размера" },
+  { id: "register", name: "Регистрация в Circle" },
+] as const;
+
 export const INTEGRATIONS: IntegrationDef[] = [
   {
     key: "yookassa",
@@ -270,8 +279,31 @@ export const INTEGRATIONS: IntegrationDef[] = [
     fields: [
       { key: "counterId", label: "Номер счётчика", placeholder: "12345678" },
       { key: "webvisor", label: "Вебвизор", placeholder: "да", hint: "«да» или «on» — запись действий на страницах; в политике ПДн на сайте Вебвизор и cookie Метрики уже описаны (п. 9.2 и 14.1). Включите Вебвизор и в настройках счётчика на metrika.yandex.ru." },
+      { key: "token", label: "OAuth-токен Яндекса (для создания целей)", secret: true, hint: "Не обязателен. С ним «Проверить связь» сама создаёт в счётчике цели сайта: заказ, оформление, корзина, лист ожидания, регистрация. Как получить: oauth.yandex.ru → «Создать приложение» → платформа «Веб-сервисы», Redirect URI https://oauth.yandex.ru/verification_code, права «Яндекс Метрика → Создание счётчиков, изменение параметров» → после сохранения открыть https://oauth.yandex.ru/authorize?response_type=token&client_id=<ClientID приложения> и скопировать token из адресной строки." },
     ],
-    guide: ["Создайте счётчик на metrika.yandex.ru для домена tr-rodionova.ru: в настройках включите Вебвизор, карту кликов и электронную коммерцию (контейнер dataLayer).", "Вставьте номер и включите интеграцию. Цели «заказ» и «регистрация» отправляются автоматически (reachGoal: order, register).", "Счётчик ставится только посетительницам, нажавшим «Принять» в баннере cookie, поэтому цифры Метрики ниже реальной посещаемости.", "В Вебмастере привяжите этот счётчик к сайту (Настройки → Привязка к Метрике): поведенческие данные помогают ранжированию в Яндексе."],
+    test: async (config) => {
+      const counter = (config.counterId ?? "").replace(/\D/g, "");
+      if (!counter) return { ok: false, error: "Укажите номер счётчика" };
+      const token = (config.token ?? "").trim();
+      if (!token) return { ok: true, info: `Счётчик ${counter} будет ставиться после согласия на cookie. Цели создайте в Метрике вручную (JavaScript-событие): ${METRIKA_GOALS.map((g) => `${g.id} — ${g.name}`).join("; ")}. Или введите OAuth-токен, и проверка создаст их сама.` };
+      const base = `https://api-metrika.yandex.net/management/v1/counter/${counter}/goals`;
+      const headers = { Authorization: `OAuth ${token}`, "content-type": "application/json" };
+      const list = await json<{ goals?: { name: string; type: string; conditions?: { type: string; url: string }[] }[]; message?: string; errors?: { message: string }[] }>(base, { headers });
+      if (list.status === 401 || list.status === 403) return { ok: false, error: `Метрика не приняла токен (HTTP ${list.status}): ${list.body.message ?? list.body.errors?.[0]?.message ?? "проверьте права приложения и номер счётчика"}` };
+      if (list.status !== 200) return { ok: false, error: `Метрика ответила ${list.status}: ${list.body.message ?? "нет связи"}` };
+      const have = new Set((list.body.goals ?? []).flatMap((g) => (g.conditions ?? []).map((c) => c.url)));
+      const created: string[] = [], failed: string[] = [];
+      for (const g of METRIKA_GOALS) {
+        if (have.has(g.id)) continue;
+        const r = await json<{ message?: string; errors?: { message: string }[] }>(base, { method: "POST", headers, body: JSON.stringify({ goal: { name: g.name, type: "action", is_retargeting: 0, conditions: [{ type: "exact", url: g.id }] } }) });
+        if (r.status === 200 || r.status === 201) created.push(g.name);
+        else failed.push(`${g.name} (HTTP ${r.status}: ${r.body.message ?? r.body.errors?.[0]?.message ?? "ошибка"})`);
+      }
+      const existing = METRIKA_GOALS.length - created.length - failed.length;
+      if (failed.length) return { ok: false, error: `Создано целей: ${created.length}, уже было: ${existing}; не удалось: ${failed.join(", ")}` };
+      return { ok: true, info: `Цели в счётчике ${counter}: создано ${created.length}${created.length ? ` (${created.join(", ")})` : ""}, уже было ${existing}. Отчёт «Конверсии» в Метрике покажет их через несколько минут.` };
+    },
+    guide: ["Создайте счётчик на metrika.yandex.ru для домена tr-rodionova.ru: в настройках включите Вебвизор, карту кликов и электронную коммерцию (контейнер dataLayer).", "Вставьте номер и включите интеграцию. Сайт отправляет цели order, checkout, cart, waitlist, register и покупку в электронную коммерцию; «Проверить связь» с OAuth-токеном создаст эти цели в счётчике.", "Счётчик ставится только посетительницам, нажавшим «Принять» в баннере cookie, поэтому цифры Метрики ниже реальной посещаемости.", "В Вебмастере привяжите этот счётчик к сайту (Настройки → Привязка к Метрике): поведенческие данные помогают ранжированию в Яндексе."],
   },
   {
     key: "ga4",

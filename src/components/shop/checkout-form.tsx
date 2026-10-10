@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { checkoutAction, quoteAction, suggestAddressAction, type QuoteView } from "@/app/actions/shop";
+import { trackGoal } from "@/lib/metrika-client";
 import { formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
@@ -25,6 +26,8 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   // без подключённой кассы — только способы, которые работают: при получении и переводом по реквизитам
   const [state, action, pending] = useActionState(checkoutAction, undefined);
   const [step, setStep] = useState(0);
+  // цель Метрики: открыто оформление заказа (один раз при входе на страницу)
+  useEffect(() => { trackGoal("checkout"); }, []);
   const [stepError, setStepError] = useState<string | null>(null);
   const [delivery, setDelivery] = useState<DeliveryMethod>("COURIER");
   // курьер Яндекс Доставки деньги не принимает — «при получении» для него не предлагается

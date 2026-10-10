@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { addToCartAction } from "@/app/actions/shop";
 import { subscribeStockAction } from "@/app/actions/waitlist";
+import { trackGoal } from "@/lib/metrika-client";
 
 type V = { id: string; size: string; color: string | null; colorHex: string | null; available: number };
 
@@ -22,6 +23,9 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
   const [state, action, pending] = useActionState(addToCartAction, undefined);
   const [wait, waitAction, waitPending] = useActionState(subscribeStockAction, undefined);
   const selected = variants.find((v) => v.id === variantId);
+  // цели Метрики: вещь в корзине, подписка на поступление размера
+  useEffect(() => { if (state?.ok) trackGoal("cart", { product: slug }); }, [state, slug]);
+  useEffect(() => { if (wait?.ok) trackGoal("waitlist", { product: slug }); }, [wait, slug]);
   // ответ сервера относится к конкретному размеру и цвету: при выборе другого он не показывается
   const [answerFor, atMax] = (state?.code ?? "").split("|");
   const mine = !!variantId && answerFor === variantId;
