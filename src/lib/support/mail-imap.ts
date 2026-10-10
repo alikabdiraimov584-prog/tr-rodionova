@@ -105,12 +105,25 @@ export async function pollMailbox(): Promise<PollResult> {
     await client.logout();
     await db.channelIntegration.update({ where: { id: channel.id }, data: { lastEventAt: result.ingested ? new Date() : undefined, lastError: null } });
   } catch (e) {
-    const error = e instanceof Error ? e.message : "IMAP: ошибка";
-    result.error = /auth|login|invalid credentials/i.test(error) ? "IMAP не принял логин или пароль приложения; проверьте, что в Яндекс 360 разрешён доступ почтовых программ (IMAP)" : `IMAP: ${error}`;
+    result.error = imapError(e, s.host);
     await db.channelIntegration.update({ where: { id: channel.id }, data: { lastError: result.error } }).catch(() => null);
     try { await client.logout(); } catch { /* соединение уже закрыто */ }
   }
   return result;
+}
+
+/**
+ * Понятная причина отказа IMAP: ImapFlow кладёт ответ сервера не в message («Command failed»), а в responseText
+ * и serverResponseCode. У Яндекса «LOGIN invalid credentials or IMAP is disabled» значит либо пароль не приложения,
+ * либо в настройках ящика выключен IMAP (mail.yandex.ru → Все настройки → Почтовые программы).
+ */
+function imapError(e: unknown, host: string) {
+  const err = e as { message?: string; responseText?: string; serverResponseCode?: string } | null;
+  const text = [err?.serverResponseCode, err?.responseText].filter(Boolean).join(" ") || err?.message || "ошибка";
+  if (/AUTHENTICATIONFAILED|invalid credentials|IMAP is disabled|auth|login/i.test(text)) {
+    return `IMAP ${host} не принял вход (${text}): либо в ящике выключен IMAP — mail.yandex.ru → Все настройки → Почтовые программы → «С сервера imap.yandex.ru по протоколу IMAP», либо введён не пароль приложения`;
+  }
+  return `IMAP ${host}: ${text}`;
 }
 
 /** Проверка IMAP для кнопки в CRM: вход и состояние папки «Входящие». */
@@ -125,7 +138,6 @@ export async function checkMailbox(config: ChannelConfig): Promise<{ ok: true; i
     const st = status || { messages: 0, unseen: 0 };
     return { ok: true, info: `IMAP ${s.host}: вход выполнен, писем во «Входящих» ${st.messages ?? 0}, непрочитанных ${st.unseen ?? 0}` };
   } catch (e) {
-    const m = e instanceof Error ? e.message : "ошибка";
-    return { ok: false, error: /auth|login|invalid credentials/i.test(m) ? "IMAP не принял логин или пароль приложения; проверьте, что в Яндекс 360 разрешён доступ почтовых программ (IMAP)" : `IMAP ${s.host}: ${m}` };
+    return { ok: false, error: imapError(e, s.host) };
   }
 }
