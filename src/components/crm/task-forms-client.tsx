@@ -51,7 +51,7 @@ export function QuickTaskForm({ staff, customerId, orderId, highlight = false, l
       {customerId && <input type="hidden" name="customerId" value={customerId} />}
       {orderId && <input type="hidden" name="orderId" value={orderId} />}
       <div key={state.key} className="space-y-2">
-        <div className={`grid gap-2 ${row ? "md:grid-cols-[minmax(0,1fr)_200px_150px_130px_140px_auto]" : ""}`}>
+        <div className={`grid gap-2 ${row ? "md:grid-cols-[minmax(0,1fr)_230px_150px_130px_140px_auto]" : ""}`}>
           <input name="title" placeholder="Что сделать" className="input py-2" required maxLength={300} aria-label="Название задачи" autoComplete="off" />
           <input aria-label="Срок" name="dueAt" type="datetime-local" className="input py-2" />
           <select aria-label="Ответственный" name="assigneeId" className="input py-2" defaultValue="">

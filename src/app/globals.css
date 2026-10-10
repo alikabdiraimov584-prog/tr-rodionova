@@ -181,6 +181,17 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
   .hairline { border-top: 1px solid var(--line); }
 }
 
+/* Поля даты и времени: iOS рисует их по-своему — схлопывает ширину пустого поля, центрирует текст и не даёт
+   высоту как у остальных .input; Chrome на узком экране режет «дд.мм.гггг, --:--». Приводим к виду обычного поля. */
+input[type="date"].input, input[type="datetime-local"].input, input[type="time"].input {
+  -webkit-appearance: none; appearance: none;
+  display: block; width: 100%; min-width: 0; min-height: 2.75rem;
+  text-align: left; line-height: 1.4;
+}
+input[type="date"].input::-webkit-date-and-time-value, input[type="datetime-local"].input::-webkit-date-and-time-value, input[type="time"].input::-webkit-date-and-time-value {
+  text-align: left; min-height: 1.4em;
+}
+
 /* Касание: цели нажатия не меньше 44px, поля без автозума в iOS (шрифт ≥ 16px) */
 @media (pointer: coarse) {
   .btn { min-height: 44px; }
