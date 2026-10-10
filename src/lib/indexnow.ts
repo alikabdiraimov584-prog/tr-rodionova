@@ -7,7 +7,8 @@ import { siteUrl } from "@/lib/seo";
 /**
  * IndexNow: мгновенное уведомление Яндекса и Bing об изменённых страницах (протокол indexnow.org, один запрос
  * в api.indexnow.org доходит до всех участников). Ключ — любая строка 8–128 символов; сайт отдаёт её по адресу
- * /indexnow/<ключ>.txt, и поисковик по этому файлу убеждается, что уведомление прислал владелец сайта.
+ * /<ключ>.txt (корень сайта, rewrite в next.config.ts → /indexnow/<ключ>.txt), и поисковик по этому файлу убеждается,
+ * что уведомление прислал владелец сайта. Файл в подпапке не подходит: IndexNow принимает только адреса из папки ключа.
  */
 export const KEY_RE = /^[a-zA-Z0-9-]{8,128}$/;
 
@@ -64,7 +65,7 @@ export async function pingIndexNow(paths: string[]): Promise<IndexNowResult> {
     const res = await fetch("https://api.indexnow.org/indexnow", {
       method: "POST",
       headers: { "content-type": "application/json; charset=utf-8" },
-      body: JSON.stringify({ host, key, keyLocation: `${base}/indexnow/${key}.txt`, urlList }),
+      body: JSON.stringify({ host, key, keyLocation: `${base}/${key}.txt`, urlList }),
       signal: AbortSignal.timeout(8_000),
     });
     // 200 — принято, 202 — принято, ключ проверят позже; остальное — ошибка настройки, ответ сервера сохраняем целиком:

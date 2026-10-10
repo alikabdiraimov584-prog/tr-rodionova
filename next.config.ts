@@ -32,6 +32,11 @@ const nextConfig: NextConfig = {
       { source: "/crm/resale/:id", destination: "/crm", permanent: false },
     ];
   },
+  // Файл ключа IndexNow обязан лежать в корне сайта: api.indexnow.org принимает только адреса из папки ключа,
+  // и для /indexnow/<ключ>.txt отвечал 422 на все страницы. Сам маршрут остаётся в /indexnow/[file].
+  async rewrites() {
+    return [{ source: "/:file([a-zA-Z0-9-]{8,128}\\.txt)", destination: "/indexnow/:file" }];
+  },
   async headers() {
     const security = [
       { key: "X-Content-Type-Options", value: "nosniff" },

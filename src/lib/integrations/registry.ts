@@ -305,7 +305,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     group: "search",
     name: "IndexNow: Яндекс и Bing",
     summary: "Мгновенное уведомление поисковиков об изменённых страницах: новые статьи, вещи, цены.",
-    effect: "После сохранения статьи или вещи в CRM адрес страницы отправляется в api.indexnow.org (его читают Яндекс, Bing и другие участники). Ключ отдаётся по адресу /indexnow/<ключ>.txt.",
+    effect: "После сохранения статьи или вещи в CRM адрес страницы отправляется в api.indexnow.org (его читают Яндекс, Bing и другие участники). Ключ отдаётся по адресу /<ключ>.txt в корне сайта.",
     fields: [{ key: "key", label: "Ключ", hint: "8–128 латинских букв и цифр; оставьте пустым — создастся автоматически при включении" }],
     guide: ["Включите интеграцию: ключ создастся сам, регистрироваться нигде не нужно.", "В Яндекс Вебмастере раздел «Индексирование → IndexNow» покажет принятые адреса через несколько часов.", "Проверка связи ниже запрашивает файл ключа с боевого сайта."],
     test: async (config) => {
@@ -314,12 +314,12 @@ export const INTEGRATIONS: IntegrationDef[] = [
       const base = (process.env.APP_URL ?? "").replace(/\/$/, "");
       if (!base) return { ok: false, error: "APP_URL не задан в .env" };
       try {
-        const res = await fetch(`${base}/indexnow/${key}.txt`, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
+        const res = await fetch(`${base}/${key}.txt`, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
         const text = (await res.text()).trim();
         if (!res.ok || text !== key) return { ok: false, error: `Файл ключа недоступен (HTTP ${res.status})` };
         // настоящая отправка главной: IndexNow отвечает сразу, и его ответ — лучшая проверка ключа и домена
         const ping = await (await import("@/lib/indexnow")).pingIndexNow(["/"]);
-        return ping.ok ? { ok: true, info: `Файл ключа отдаётся: ${base}/indexnow/${key}.txt; IndexNow принял адрес главной (HTTP ${ping.status})` } : { ok: false, error: `Файл ключа отдаётся, но ${ping.error}` };
+        return ping.ok ? { ok: true, info: `Файл ключа отдаётся: ${base}/${key}.txt; IndexNow принял адрес главной (HTTP ${ping.status})` } : { ok: false, error: `Файл ключа отдаётся, но ${ping.error}` };
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : "нет связи" };
       }

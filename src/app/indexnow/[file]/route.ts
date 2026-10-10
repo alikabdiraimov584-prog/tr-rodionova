@@ -2,7 +2,7 @@ import { getIndexNowKey } from "@/lib/indexnow";
 
 export const dynamic = "force-dynamic";
 
-/** Файл ключа IndexNow: /indexnow/<ключ>.txt отдаёт сам ключ, любой другой адрес — 404. */
+/** Файл ключа IndexNow: /<ключ>.txt (rewrite из корня, см. next.config.ts) и /indexnow/<ключ>.txt отдают сам ключ, любой другой адрес — 404. */
 export async function GET(_req: Request, ctx: RouteContext<"/indexnow/[file]">) {
   const { file } = await ctx.params;
   const key = await getIndexNowKey();
