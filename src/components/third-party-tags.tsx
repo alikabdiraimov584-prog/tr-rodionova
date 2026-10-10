@@ -14,7 +14,7 @@ export async function ThirdPartyTags() {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const counter = metrika?.config.counterId?.replace(/\D/g, "");
   const ga4 = ga?.config.measurementId?.replace(/[^A-Z0-9-]/gi, "");
-  const webvisor = metrika?.config.webvisor === "on";
+  const webvisor = /^(on|да|yes|1|true|вкл)/i.test((metrika?.config.webvisor ?? "").trim()); // поле текстовое: принимаем «on», «да», «1»
   return (
     <>
       {counter && (
