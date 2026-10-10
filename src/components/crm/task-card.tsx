@@ -31,12 +31,13 @@ const dueClass = { danger: "text-danger", warning: "text-warning", muted: "text-
 /** Точка приоритета для списков, где карточка целиком не нужна (главная CRM, карточка клиентки). */
 export function PriorityDot({ priority }: { priority: TaskPriority }) {
   const p = TASK_PRIORITY[priority];
-  return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${p.bar}`} title={`Приоритет: ${p.label}`} aria-label={`Приоритет: ${p.label}`} />;
+  // role="img": aria-label на обычном span запрещён (axe aria-prohibited-attr), а подпись приоритета диктору нужна
+  return <span role="img" className={`inline-block h-2 w-2 shrink-0 rounded-full ${p.bar}`} title={`Приоритет: ${p.label}`} aria-label={`Приоритет: ${p.label}`} />;
 }
 
 export function Initials({ name, initials }: { name: string; initials: string }) {
   return (
-    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sand text-[0.6rem] font-semibold text-ink" title={`Ответственная: ${name}`} aria-label={`Ответственная: ${name}`}>
+    <span role="img" className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sand text-[0.6rem] font-semibold text-ink" title={`Ответственная: ${name}`} aria-label={`Ответственная: ${name}`}>
       {initials}
     </span>
   );
