@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useOptimistic, useState, type DragEvent, type MouseEvent } from "react";
+import { startTransition, useOptimistic, useState, useSyncExternalStore, type DragEvent, type MouseEvent } from "react";
 import type { TaskStatus } from "@/generated/prisma/enums";
 import { moveTaskAction } from "@/app/actions/crm-tasks";
 import { TASK_STATUS } from "@/lib/labels";
@@ -13,6 +13,18 @@ type Move = { id: string; status: TaskStatus; position: number };
 const APPEND = 100_000;
 
 const byPosition = (a: TaskCardData, b: TaskCardData) => a.position - b.position || b.createdAt - a.createdAt;
+
+/**
+ * Перетаскивание — только для мыши. На телефоне долгое нажатие на draggable-карточку запускает системное
+ * перетаскивание с «плавающей» копией и мешает прокрутке и нажатиям; там карточки двигают кнопками этапа.
+ * useSyncExternalStore: на сервере и при гидратации — false, после — реальное значение, без расхождения разметки.
+ */
+const subscribePointer = (cb: () => void) => {
+  const mq = window.matchMedia("(pointer: fine)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const useFinePointer = () => useSyncExternalStore(subscribePointer, () => window.matchMedia("(pointer: fine)").matches, () => false);
 
 /** Тот же порядок, что compareInColumn на сервере: по сроку, без срока — по position, «Выполнена» — свежие сверху. */
 function inColumn(status: TaskStatus) {
@@ -43,6 +55,7 @@ export function TaskBoard({ tasks, columns, highlightId }: { tasks: TaskCardData
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<TaskStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const canDrag = useFinePointer();
 
   // позиция для сервера — индекс среди остальных карточек колонки по position (так её понимает moveTask);
   // бросок перед карточкой со сроком не меняет порядок (срочные и так наверху) — карточка идёт в конец
@@ -114,8 +127,8 @@ export function TaskBoard({ tasks, columns, highlightId }: { tasks: TaskCardData
                 {items.map((t) => (
                   <div
                     key={t.id}
-                    draggable
-                    onDragStart={(e) => onDragStart(e, t.id)}
+                    draggable={canDrag}
+                    onDragStart={canDrag ? (e) => onDragStart(e, t.id) : undefined}
                     onDragEnd={onDragEnd}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -123,7 +136,7 @@ export function TaskBoard({ tasks, columns, highlightId }: { tasks: TaskCardData
                       if (over !== col.status) setOver(col.status);
                     }}
                     onDrop={(e) => dropOn(e, col.status, t)}
-                    className="cursor-grab active:cursor-grabbing"
+                    className={canDrag ? "cursor-grab active:cursor-grabbing" : ""}
                   >
                     <TaskCard t={t} highlighted={t.id === highlightId} dragging={t.id === dragId} actions={<CardActions t={t} columns={columns} onMove={(status) => move(t.id, status, null)} />} />
                   </div>
