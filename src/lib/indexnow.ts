@@ -34,11 +34,13 @@ export async function submitSitemapOnce(): Promise<{ sent: number; skipped?: str
   const key = await getIndexNowKey();
   if (!key) return { sent: 0, skipped: "интеграция выключена" };
   if (/localhost|127\.0\.0\.1/.test(siteUrl())) return { sent: 0, skipped: "стенд" };
-  const done = await db.setting.findUnique({ where: { key: "indexnowBulkAt" } });
-  if (done) return { sent: 0, skipped: `уже отправлялось ${String(done.value)}` };
+  const [done, last] = await Promise.all([db.setting.findUnique({ where: { key: "indexnowBulkAt" } }), db.integration.findUnique({ where: { key: "indexnow" }, select: { lastCheckOk: true } })]);
+  // прошлая отправка не удалась — пробуем снова при следующем обновлении, отметка ставится только после успеха
+  if (done && last?.lastCheckOk !== false) return { sent: 0, skipped: `уже отправлялось ${String(done.value)}` };
   const { default: sitemap } = await import("@/app/sitemap");
   const urls = (await sitemap()).map((e) => e.url);
-  await pingIndexNow(urls);
+  const r = await pingIndexNow(urls);
+  if (!r.ok) return { sent: 0, skipped: r.error };
   const at = new Date().toISOString();
   await db.setting.upsert({ where: { key: "indexnowBulkAt" }, update: { value: at }, create: { key: "indexnowBulkAt", value: at } });
   return { sent: urls.length };
@@ -48,25 +50,37 @@ export async function submitSitemapOnce(): Promise<{ sent: number; skipped?: str
  * Отправить адреса страниц (пути вида /journal/slug). Ошибка не мешает сохранению в CRM: она записывается в карточку
  * интеграции и видна там. Боевой адрес берётся из APP_URL — на стенде с localhost ничего не отправляется.
  */
-export async function pingIndexNow(paths: string[]): Promise<void> {
+export type IndexNowResult = { ok: boolean; status?: number; sent: number; error?: string };
+
+export async function pingIndexNow(paths: string[]): Promise<IndexNowResult> {
   try {
     const key = await getIndexNowKey();
-    if (!key) return;
+    if (!key) return { ok: false, sent: 0, error: "интеграция выключена" };
     const base = siteUrl();
     const host = new URL(base).host;
-    if (/localhost|127\.0\.0\.1/.test(host)) return;
+    if (/localhost|127\.0\.0\.1/.test(host)) return { ok: false, sent: 0, error: "стенд: адреса не отправляются" };
     const urlList = [...new Set(paths)].map((p) => (p.startsWith("http") ? p : `${base}${p}`)).slice(0, 10_000);
-    if (!urlList.length) return;
+    if (!urlList.length) return { ok: true, sent: 0 };
     const res = await fetch("https://api.indexnow.org/indexnow", {
       method: "POST",
       headers: { "content-type": "application/json; charset=utf-8" },
       body: JSON.stringify({ host, key, keyLocation: `${base}/indexnow/${key}.txt`, urlList }),
       signal: AbortSignal.timeout(8_000),
     });
-    // 200 — принято, 202 — принято, ключ проверят позже; остальное — ошибка настройки
-    if (res.status === 200 || res.status === 202) await recordCheck("indexnow", true, null);
-    else await recordCheck("indexnow", false, `IndexNow ответил ${res.status}${res.status === 403 ? ": ключ не подтверждён (файл ключа недоступен)" : res.status === 422 ? ": адреса не с этого домена" : ""}`);
+    // 200 — принято, 202 — принято, ключ проверят позже; остальное — ошибка настройки, ответ сервера сохраняем целиком:
+    // по одному коду причину не понять (422 — и «чужой домен», и ключ не по формату)
+    if (res.status === 200 || res.status === 202) {
+      await recordCheck("indexnow", true, null);
+      return { ok: true, status: res.status, sent: urlList.length };
+    }
+    const body = (await res.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 160);
+    const hint = res.status === 403 ? "ключ не подтверждён (файл ключа недоступен)" : res.status === 422 ? "адреса не с этого домена или ключ не по формату" : res.status === 429 ? "слишком много запросов, повтор позже" : "";
+    const error = `IndexNow ответил ${res.status}${hint ? `: ${hint}` : ""}${body ? ` — ${body}` : ""}`;
+    await recordCheck("indexnow", false, error);
+    return { ok: false, status: res.status, sent: 0, error };
   } catch (e) {
-    await recordCheck("indexnow", false, e instanceof Error ? e.message.slice(0, 200) : "ошибка").catch(() => {});
+    const error = e instanceof Error ? e.message.slice(0, 200) : "ошибка";
+    await recordCheck("indexnow", false, error).catch(() => {});
+    return { ok: false, sent: 0, error };
   }
 }

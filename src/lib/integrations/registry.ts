@@ -316,7 +316,10 @@ export const INTEGRATIONS: IntegrationDef[] = [
       try {
         const res = await fetch(`${base}/indexnow/${key}.txt`, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
         const text = (await res.text()).trim();
-        return res.ok && text === key ? { ok: true, info: `Файл ключа отдаётся: ${base}/indexnow/${key}.txt` } : { ok: false, error: `Файл ключа недоступен (HTTP ${res.status})` };
+        if (!res.ok || text !== key) return { ok: false, error: `Файл ключа недоступен (HTTP ${res.status})` };
+        // настоящая отправка главной: IndexNow отвечает сразу, и его ответ — лучшая проверка ключа и домена
+        const ping = await (await import("@/lib/indexnow")).pingIndexNow(["/"]);
+        return ping.ok ? { ok: true, info: `Файл ключа отдаётся: ${base}/indexnow/${key}.txt; IndexNow принял адрес главной (HTTP ${ping.status})` } : { ok: false, error: `Файл ключа отдаётся, но ${ping.error}` };
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : "нет связи" };
       }
