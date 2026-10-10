@@ -41,10 +41,13 @@ async function uploadsStatus() {
  */
 async function integrationsStatus() {
   const [rows, channels] = await Promise.all([
-    db.integration.findMany({ where: { enabled: true }, select: { key: true, lastCheckOk: true }, orderBy: { key: "asc" } }),
+    db.integration.findMany({ where: { enabled: true }, select: { key: true, lastCheckOk: true, lastError: true }, orderBy: { key: "asc" } }),
     db.channelIntegration.findMany({ where: { enabled: true }, select: { channel: true }, orderBy: { channel: "asc" } }),
   ]);
-  return { enabled: rows.map((r) => r.key), failing: rows.filter((r) => r.lastCheckOk === false).map((r) => r.key), channels: channels.map((c) => c.channel) };
+  // failures — текст последней ошибки по каждой упавшей интеграции (без ключей): чтобы разбирать сбой снаружи,
+  // по внешней проверке, не заходя в CRM
+  const failing = rows.filter((r) => r.lastCheckOk === false);
+  return { enabled: rows.map((r) => r.key), failing: failing.map((r) => r.key), failures: failing.map((r) => ({ key: r.key, error: (r.lastError ?? "").slice(0, 300) })), channels: channels.map((c) => c.channel) };
 }
 
 /** Проверка живости: версия сборки (коммит) и доступность базы. Используется мониторингом и аудитом. */
