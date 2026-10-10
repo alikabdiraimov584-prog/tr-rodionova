@@ -72,7 +72,8 @@ export function QuickTaskForm({ staff, customerId, orderId, highlight = false, l
         <button type="button" onClick={() => setMore((v) => !v)} className="text-xs text-muted underline underline-offset-4 hover:text-ink" aria-expanded={more}>
           {more ? "скрыть описание" : "подробнее"}
         </button>
-        {state.ok && state.message && (
+        {/* на доске (highlight) сообщение рендерит сервер по ?new=<id>: после смены адреса состояние формы теряется */}
+        {!highlight && state.ok && state.message && (
           <p role="status" className="text-xs text-success">
             {state.message}
             {state.code && <> · <Link href={`/crm/tasks/${state.code}`} prefetch={false} className="underline underline-offset-4">открыть задачу</Link></>}

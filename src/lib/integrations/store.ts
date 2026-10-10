@@ -10,7 +10,17 @@ function decode(key: string, raw: Record<string, string>) {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) {
     const secret = def?.fields.find((f) => f.key === k)?.secret;
-    out[k] = secret && typeof v === "string" ? decryptSecret(v) : String(v ?? "");
+    if (!secret || typeof v !== "string") {
+      out[k] = String(v ?? "");
+      continue;
+    }
+    // секрет под другим AUTH_SECRET (перенос базы, смена ключа) — интеграция выглядит ненастроенной, CRM не падает
+    try {
+      out[k] = decryptSecret(v);
+    } catch (e) {
+      console.warn(`integration ${key}: секрет ${k} не расшифрован (AUTH_SECRET изменился?)`, e instanceof Error ? e.message : e);
+      out[k] = "";
+    }
   }
   return out;
 }

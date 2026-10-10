@@ -80,6 +80,8 @@ const { stdout } = await run("node", ["--conditions=react-server", "--import", "
 const order = JSON.parse(stdout.trim().split("\n").at(-1));
 console.log("заказ", order);
 
+// CRM стримит заготовку раздела (loading.tsx): после перехода ждём, пока она сменится содержимым, иначе innerText пустой
+const settled = (p) => p.waitForFunction(() => !document.body.innerText.includes("Загружаем раздел"), null, { timeout: 20_000 }).catch(() => null);
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 const errors = [];
 async function login(email, password, next) {
@@ -94,7 +96,9 @@ async function login(email, password, next) {
   return page;
 }
 const crm = await login("admin@tr-rodionova.ru", "admin12345", `/crm/orders/${order.id}`);
-const card = crm.locator("div.card", { hasText: "Яндекс Доставка" }).last();
+// карточка заявки — по заголовку блока, иначе под фильтр попадает лента событий с текстом «Яндекс Доставка: …»
+const shipmentCard = (p) => p.locator("div.card", { has: p.locator(".eyebrow", { hasText: /^Яндекс Доставка/ }) }).first();
+const card = shipmentCard(crm);
 check("в карточке заказа есть блок Яндекс Доставки с кнопкой «Вызвать курьера»", (await card.locator('button:has-text("Вызвать курьера")').count()) === 1);
 await card.locator('button:has-text("Вызвать курьера")').click();
 await crm.waitForSelector("text=Ждёт подтверждения", { timeout: 60_000 });
@@ -116,9 +120,10 @@ check("заказ пока «Оплачен»", (await crm.locator("h1 ~ * .badg
 drive("pickuped", true);
 const cb = await fetch(`${base}/api/delivery/yandex`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ claim_id: [...claims.keys()][0], status: "pickuped", updated_ts: new Date().toISOString() }) });
 check("уведомление принято (200)", cb.status === 200, String(cb.status));
-await crm.reload();
+await crm.reload(); await settled(crm);
 const pageText = await crm.locator("body").innerText();
-check("после забора заказ «В доставке», статус заявки «Курьер забрал посылку»", /В доставке/.test(pageText) && /Курьер забрал посылку/.test(pageText));
+const badge = await crm.locator("h1").locator("xpath=..").locator("xpath=..").innerText().catch(() => "");
+check("после забора заказ «В доставке», статус заявки «Курьер забрал посылку»", /В доставке/.test(pageText) && /Курьер забрал посылку/.test(pageText), `${badge.replace(/\s+/g, " ").slice(0, 120)} | ${(await shipmentCard(crm).innerText()).replace(/\s+/g, " ").slice(0, 120)}`);
 
 const shop = await login("anna@example.com", "anna12345", `/account/orders/${order.id}`);
 const accountText = await shop.locator("body").innerText();
@@ -126,11 +131,12 @@ const link = shop.locator('a:has-text("Следить за курьером")');
 check("покупательница видит заказ «В доставке» и ссылку «Следить за курьером на карте»", /В доставке/.test(accountText) && (await link.count()) === 1 && /taxi\.yandex\.ru\/route/.test((await link.getAttribute("href")) ?? ""), accountText.replace(/\s+/g, " ").slice(0, 160));
 
 drive("delivered_finish", true);
-await crm.locator("div.card", { hasText: "Яндекс Доставка" }).last().locator('button:has-text("Обновить статус")').click();
+await shipmentCard(crm).locator('button:has-text("Обновить статус")').click();
 await crm.waitForSelector("text=Вручено, заявка закрыта", { timeout: 30_000 });
-await crm.reload();
+await crm.reload(); await settled(crm);
 const delivered = await crm.locator("body").innerText();
-check("вручено: заказ «Доставлен», кнопок заявки больше нет, расход на доставку в проводках", /Доставлен/.test(delivered) && (await crm.locator('button:has-text("Обновить статус")').count()) === 0 && /Яндекс Доставка по заказу/.test(delivered), delivered.includes("Яндекс Доставка по заказу") ? "проводка есть" : "проводки нет");
+const ledger = await crm.locator("div.card", { has: crm.locator(".eyebrow", { hasText: "Финансовые проводки" }) }).first().innerText().catch(() => "");
+check("вручено: заказ «Доставлен», кнопок заявки больше нет, расход «Доставка» 349 ₽ в проводках", /Доставлен/.test(delivered) && (await crm.locator('button:has-text("Обновить статус")').count()) === 0 && /Доставка[\s\S]*?349/.test(ledger), ledger.replace(/\s+/g, " ").slice(0, 160));
 check("ошибок в консоли браузера нет", errors.length === 0, errors.join(" | "));
 
 await browser.close();

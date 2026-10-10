@@ -18,7 +18,18 @@ export function decodeChannelConfig(channel: Channel, raw: unknown): ChannelConf
   const out: ChannelConfig = {};
   for (const [k, v] of Object.entries((raw as Record<string, unknown>) ?? {})) {
     if (typeof v !== "string") continue;
-    out[k] = secrets.has(k) ? decryptSecret(v) : v;
+    if (!secrets.has(k)) {
+      out[k] = v;
+      continue;
+    }
+    // секрет, зашифрованный другим AUTH_SECRET (перенос базы, смена ключа), не должен ронять все страницы CRM:
+    // канал выглядит ненастроенным, а причина — в логе сервера
+    try {
+      out[k] = decryptSecret(v);
+    } catch (e) {
+      console.warn(`channel ${channel}: секрет ${k} не расшифрован (AUTH_SECRET изменился?)`, e instanceof Error ? e.message : e);
+      out[k] = "";
+    }
   }
   return out;
 }

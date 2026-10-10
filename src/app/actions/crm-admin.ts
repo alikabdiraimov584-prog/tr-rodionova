@@ -229,9 +229,10 @@ export async function saveChannelAction(_: ActionState, formData: FormData): Pro
     if (enabled && !config.smtpHost && !config.postmarkToken) return { error: "Чтобы включить почту, укажите SMTP-сервер и пароль приложения (или Postmark server token)" };
   }
   const stored = encodeChannelConfig(channel, config);
+  // прошлая ошибка относится к старым настройкам: после сохранения она только путает — проверка запишет новую
   await db.channelIntegration.upsert({
     where: { channel },
-    update: { config: stored, enabled },
+    update: { config: stored, enabled, lastError: null },
     create: { channel, name: CHANNEL_NAMES[channel], config: stored, enabled },
   });
   await audit(me.id, "channel.save", "ChannelIntegration", channel, { enabled, keys: Object.keys(config) });

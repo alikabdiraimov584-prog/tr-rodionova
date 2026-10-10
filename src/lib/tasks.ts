@@ -146,6 +146,11 @@ export function compareInColumn(status: TaskStatus) {
   };
 }
 
+/** Заголовок и ответственный — для сообщения «задача создана» на доске после перехода с ?new=<id>. */
+export async function taskBrief(id: string) {
+  return db.crmTask.findUnique({ where: { id }, select: { id: true, title: true, assigneeId: true, createdAt: true, assignee: { select: { firstName: true, lastName: true } } } });
+}
+
 export async function getTask(id: string) {
   return db.crmTask.findUnique({
     where: { id },

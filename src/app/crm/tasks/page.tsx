@@ -4,7 +4,7 @@ import { TaskKind, TaskPriority, TaskStatus } from "@/generated/prisma/enums";
 import { requireSection } from "@/lib/auth";
 import { formatDate, plural } from "@/lib/money";
 import { TASK_KIND, TASK_PRIORITY, TASK_STATUS } from "@/lib/labels";
-import { ACTIVE_STATUSES, BOARD_COLUMNS, DONE_WINDOW_DAYS, cardData, listTasks, moscowClock, staffList, taskSummary, type TaskRow } from "@/lib/tasks";
+import { ACTIVE_STATUSES, BOARD_COLUMNS, DONE_WINDOW_DAYS, cardData, listTasks, moscowClock, staffList, staffName, taskBrief, taskSummary, type TaskRow } from "@/lib/tasks";
 import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
 import { qs, str } from "@/components/crm/pager";
 import { TaskBoard } from "@/components/crm/task-board";
@@ -40,7 +40,9 @@ export default async function Tasks({ searchParams }: PageProps<"/crm/tasks">) {
 
   const base = { mineOf: scope === "mine" ? user.id : undefined, assigneeId: assignee, kind, priority, q };
   const listStatuses: TaskStatus[] = statusParam === "all" ? Object.values(TaskStatus) : isEnum(Object.values(TaskStatus), statusParam) ? [statusParam as TaskStatus] : ACTIVE_STATUSES;
-  const [staff, summary, tasks] = await Promise.all([
+  // сообщение «создана» рендерится сервером по ?new=<id>: после перехода на новый адрес состояние формы в браузере
+  // не сохраняется, а менеджер должен видеть, кому ушла задача (10 минут — чтобы старая ссылка не показывала его вечно)
+  const [staff, summary, tasks, created] = await Promise.all([
     staffList(),
     taskSummary(now),
     view === "board"
@@ -48,7 +50,9 @@ export default async function Tasks({ searchParams }: PageProps<"/crm/tasks">) {
       : view === "list"
         ? listTasks({ ...base, statuses: listStatuses, take: 300 })
         : listTasks({ ...base, statuses: ACTIVE_STATUSES }),
+    highlight ? taskBrief(highlight) : null,
   ]);
+  const justCreated = created && now.getTime() - created.createdAt.getTime() < 10 * 60_000 ? created : null;
   const cards = tasks.map((t) => cardData(t, now));
   const filtersOn = !!(kind || priority || assignee || q || scope === "mine");
   const chip = (active: boolean) => `badge whitespace-nowrap ${active ? "border-ink bg-ink text-ivory" : "border-line bg-white hover:bg-sand"}`;
@@ -62,6 +66,11 @@ export default async function Tasks({ searchParams }: PageProps<"/crm/tasks">) {
       <div className="card p-4 md:p-5">
         <Eyebrow className="mb-3">Новая задача</Eyebrow>
         <QuickTaskForm staff={staffOptions(staff)} highlight layout="row" />
+        {justCreated && (
+          <p role="status" className="mt-2 text-xs text-success">
+            Задача «{justCreated.title}» создана → назначена {justCreated.assigneeId === user.id ? "вам" : staffName(justCreated.assignee)} · <Link href={`/crm/tasks/${justCreated.id}`} prefetch={false} className="underline underline-offset-4">открыть задачу</Link>
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
