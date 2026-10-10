@@ -27,6 +27,24 @@ export async function getIndexNowKey(): Promise<string | null> {
 }
 
 /**
+ * Один раз после включения — вся карта сайта: поисковики узнают обо всех страницах сразу, дальше уходят только
+ * изменённые. Отметка о рассылке хранится в настройках; вызывается из задачи «warm» после каждого обновления.
+ */
+export async function submitSitemapOnce(): Promise<{ sent: number; skipped?: string }> {
+  const key = await getIndexNowKey();
+  if (!key) return { sent: 0, skipped: "интеграция выключена" };
+  if (/localhost|127\.0\.0\.1/.test(siteUrl())) return { sent: 0, skipped: "стенд" };
+  const done = await db.setting.findUnique({ where: { key: "indexnowBulkAt" } });
+  if (done) return { sent: 0, skipped: `уже отправлялось ${String(done.value)}` };
+  const { default: sitemap } = await import("@/app/sitemap");
+  const urls = (await sitemap()).map((e) => e.url);
+  await pingIndexNow(urls);
+  const at = new Date().toISOString();
+  await db.setting.upsert({ where: { key: "indexnowBulkAt" }, update: { value: at }, create: { key: "indexnowBulkAt", value: at } });
+  return { sent: urls.length };
+}
+
+/**
  * Отправить адреса страниц (пути вида /journal/slug). Ошибка не мешает сохранению в CRM: она записывается в карточку
  * интеграции и видна там. Боевой адрес берётся из APP_URL — на стенде с localhost ничего не отправляется.
  */

@@ -155,6 +155,10 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
   const parsed = CheckoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  // курьер Яндекс Доставки деньги не принимает: наложенный платёж для этого способа закрыт и в форме, и здесь
+  if (d.deliveryMethod === "YANDEX" && d.paymentMethod === "CASH_ON_DELIVERY") {
+    return { error: "Курьер Яндекс Доставки не принимает оплату при получении: выберите оплату на сайте или перевод по реквизитам" };
+  }
   // форма, открытая до отключения кассы, не должна создать заказ, который нечем оплатить
   if ((ONLINE_PAYMENT_METHODS as readonly string[]).includes(d.paymentMethod) && !(await onlinePaymentsAvailable())) {
     return { error: "Оплата картой на сайте пока недоступна: выберите «При получении» или «Перевод по реквизитам»" };

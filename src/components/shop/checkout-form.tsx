@@ -23,11 +23,12 @@ const ONLINE: PaymentMethod[] = ["CARD", "SBP", "INSTALLMENT"];
 
 export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom, suggestions, online }: { profile: Profile | null; addresses: Address[]; initialQuote: QuoteView; guest: boolean; showroom: string | null; suggestions: boolean; online: boolean }) {
   // без подключённой кассы — только способы, которые работают: при получении и переводом по реквизитам
-  const methods = (Object.keys(PAYMENT_METHOD) as PaymentMethod[]).filter((m) => online || !ONLINE.includes(m));
   const [state, action, pending] = useActionState(checkoutAction, undefined);
   const [step, setStep] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
   const [delivery, setDelivery] = useState<DeliveryMethod>("COURIER");
+  // курьер Яндекс Доставки деньги не принимает — «при получении» для него не предлагается
+  const methods = (Object.keys(PAYMENT_METHOD) as PaymentMethod[]).filter((m) => (online || !ONLINE.includes(m)) && (m !== "CASH_ON_DELIVERY" || delivery !== "YANDEX"));
   const [moreDelivery, setMoreDelivery] = useState(false);
   const [payment, setPayment] = useState<PaymentMethod>(online ? "CARD" : "CASH_ON_DELIVERY");
   const [addressId, setAddressId] = useState(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? "");
@@ -49,6 +50,12 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   const needsAddress = delivery !== "PICKUP";
   const hasSlot = delivery === "COURIER" || delivery === "YANDEX";
   const canFit = delivery === "COURIER";
+
+  // курьер Яндекса деньги не берёт: при выборе этой доставки «при получении» заменяется на оплату на сайте или перевод
+  function chooseDelivery(m: DeliveryMethod) {
+    setDelivery(m);
+    if (m === "YANDEX" && payment === "CASH_ON_DELIVERY") setPayment(online ? "CARD" : "MANUAL");
+  }
 
   useEffect(() => {
     startQuote(async () => {
@@ -140,7 +147,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
             <div className="grid gap-2">
               {visibleDelivery.map((m) => (
                 <label key={m} className={`flex cursor-pointer items-start gap-3 border p-4 ${delivery === m ? "border-ink bg-white" : "border-line"}`}>
-                  <input type="radio" name="deliveryMethod" value={m} checked={delivery === m} onChange={() => setDelivery(m)} className="mt-1 h-4 w-4 shrink-0 accent-black" />
+                  <input type="radio" name="deliveryMethod" value={m} checked={delivery === m} onChange={() => chooseDelivery(m)} className="mt-1 h-4 w-4 shrink-0 accent-black" />
                   <span>
                     <span className="block text-sm">{DELIVERY_METHOD[m].label}</span>
                     <span className="block text-xs text-muted">{m === "PICKUP" && showroom ? showroom : DELIVERY_METHOD[m].hint}</span>

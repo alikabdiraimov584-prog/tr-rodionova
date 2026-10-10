@@ -9,6 +9,7 @@ import { activeIntegration } from "@/lib/integrations/store";
 import { sendTelegramMessage } from "@/lib/alerts";
 import type { Channel } from "@/generated/prisma/enums";
 import { publicPhone } from "@/lib/seo";
+import { yandexTrackingLink } from "@/lib/delivery";
 
 /**
  * Сервисные уведомления: статусы заказа и баллы. Это не рассылки, поэтому согласие на маркетинг
@@ -101,7 +102,7 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
         break;
       case "ORDER_SHIPPED":
         subject = `Заказ ${n} передан в доставку`;
-        text = `${hi}\n\nЗаказ ${n} передан в доставку (${DELIVERY_METHOD[order.deliveryMethod].label}).${order.deliverySlot ? `\nИнтервал доставки: ${order.deliverySlot}.` : ""}${order.fittingRequested ? "\nКурьер подождёт до 20 минут на примерку." : ""}${order.trackingNumber ? `\nТрек-номер: ${order.trackingNumber}` : ""}${due}\n\nСледить за статусом: ${link}`;
+        text = `${hi}\n\nЗаказ ${n} передан в доставку (${DELIVERY_METHOD[order.deliveryMethod].label}).${order.deliverySlot ? `\nИнтервал доставки: ${order.deliverySlot}.` : ""}${order.fittingRequested ? "\nКурьер подождёт до 20 минут на примерку." : ""}${order.trackingNumber ? `\nТрек-номер: ${order.trackingNumber}` : ""}${yandexTrackingLink(order.shipmentData) ? `\nСледить за курьером на карте: ${yandexTrackingLink(order.shipmentData)}` : ""}${due}\n\nСледить за статусом: ${link}`;
         sms = `T.Rodionova: заказ ${n} передан в доставку.${order.deliverySlot ? ` Интервал ${order.deliverySlot}.` : ""}${order.trackingNumber ? ` Трек ${order.trackingNumber}.` : ""}`;
         break;
       case "COURIER_SOON":

@@ -1,4 +1,5 @@
 import { syncAllCdekShipments } from "@/lib/delivery/cdek";
+import { syncActiveYandexClaims } from "@/lib/delivery/yandex";
 import "server-only";
 import { db } from "@/lib/db";
 import { addPoints, expirePoints } from "@/lib/loyalty";
@@ -117,9 +118,11 @@ export async function cancelUnpaidOrders(now = new Date()) {
 export async function runHourlyJobs() {
   const paymentReminders = await notifyUnpaidOrders();
   const unpaidCancelled = await cancelUnpaidOrders();
+  // запланированные рассылки уходят в ближайший час после назначенного времени, а не только ночью
+  const dueCampaigns = await runDueCampaigns(process.env.APP_URL ?? "https://tr-rodionova.ru").catch((e) => ({ error: e instanceof Error ? e.message : "campaigns" }));
   // письма ящика поддержки: основной опрос — каждые 5 минут (job=mail), здесь страховка на случай, если он не настроен
   const mail = await (await import("@/lib/support/mail-imap")).pollMailbox().catch((e) => ({ error: e instanceof Error ? e.message : "mail" }));
-  return { paymentReminders, unpaidCancelled, mail };
+  return { paymentReminders, unpaidCancelled, dueCampaigns, mail };
 }
 
 export async function runDailyJobs(actorId: string | null = null) {
@@ -144,7 +147,14 @@ export async function runDailyJobs(actorId: string | null = null) {
   const reviewRequests = await step("reviewRequests", notifyReviewRequests, 0);
   const purged = await step("purged", purgeRateLimits, 0);
   const guestCarts = await step("guestCarts", purgeGuestCarts, 0);
-  const shipments = await step("shipments", syncAllCdekShipments, { checked: 0, changed: 0 });
+  const shipments = await step(
+    "shipments",
+    async () => {
+      const [cdek, yandex] = [await syncAllCdekShipments(), await syncActiveYandexClaims()];
+      return { checked: cdek.checked + yandex.checked, changed: cdek.changed + yandex.changed };
+    },
+    { checked: 0, changed: 0 },
+  );
   // веб-аналитика старше 24 месяцев удаляется: срок хранения по политике ПДн
   const analyticsBorder = new Date(Date.now() - 730 * 86_400_000);
   const oldSessions = await step("oldSessions", async () => {

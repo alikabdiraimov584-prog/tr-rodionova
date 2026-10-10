@@ -13,7 +13,7 @@ import { cancelOwnOrderAction } from "@/app/actions/shop";
 import { PayButton } from "@/components/account/pay-button";
 import { syncOrderPayment, paymentsEnabled, onlinePaymentsAvailable } from "@/lib/payments/provider";
 import { getSettingOrDefault } from "@/lib/settings";
-import { trackingUrl } from "@/lib/delivery";
+import { trackingUrl, yandexTrackingLink } from "@/lib/delivery";
 
 const STEPS = ["NEW", "PAID", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
 
@@ -132,6 +132,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             {order.trackingNumber && (
               <div className="mt-1 text-ink">
                 Трек-номер: {trackingUrl(order.deliveryMethod, order.trackingNumber) ? <a href={trackingUrl(order.deliveryMethod, order.trackingNumber)!} target="_blank" rel="noopener" className="underline">{order.trackingNumber} ↗</a> : order.trackingNumber}
+              </div>
+            )}
+            {yandexTrackingLink(order.shipmentData) && ["PACKING", "SHIPPED"].includes(order.status) && (
+              <div className="mt-1 text-ink">
+                <a href={yandexTrackingLink(order.shipmentData)!} target="_blank" rel="noopener" className="underline">Следить за курьером на карте ↗</a>
               </div>
             )}
             {returnUntil && order.status === "DELIVERED" && returnUntil > new Date() && (

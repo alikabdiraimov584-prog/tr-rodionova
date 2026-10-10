@@ -15,3 +15,12 @@ export function trackingUrl(method: DeliveryMethod, trackingNumber: string | nul
       return null;
   }
 }
+
+/**
+ * Ссылка «следить за курьером» экспресс-доставки Яндекса из снимка заявки (Order.shipmentData): появляется после
+ * назначения курьера, по ней клиентка видит его на карте. Работает без импорта серверного модуля.
+ */
+export function yandexTrackingLink(shipmentData: unknown): string | null {
+  const s = shipmentData as { provider?: string; trackingLink?: string | null } | null | undefined;
+  return s?.provider === "yandex" && typeof s.trackingLink === "string" && /^https?:\/\//.test(s.trackingLink) ? s.trackingLink : null;
+}

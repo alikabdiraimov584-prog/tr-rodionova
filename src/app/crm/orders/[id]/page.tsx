@@ -11,8 +11,9 @@ import { SubmitButton } from "@/components/form";
 import { updateOrderInfoAction } from "@/app/actions/crm-orders";
 import { can } from "@/lib/permissions";
 import { cdekConfig, cdekStatusLabel } from "@/lib/delivery/cdek";
+import { YANDEX_TERMINAL, yandexConfig, yandexShipment, yandexStatusLabel } from "@/lib/delivery/yandex";
 import { trackingUrl } from "@/lib/delivery";
-import { CdekShipmentForm } from "@/components/crm/shipment-forms";
+import { CdekShipmentForm, YandexShipmentForm } from "@/components/crm/shipment-forms";
 
 export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">) {
   const me = await requireSection("orders");
@@ -35,6 +36,8 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
   const staff = await db.user.findMany({ where: { id: { in: order.history.map((h) => h.createdBy).filter((x): x is string => !!x) } }, select: { id: true, firstName: true } });
   const staffName = new Map(staff.map((s) => [s.id, s.firstName]));
   const cdek = order.deliveryMethod === "CDEK" ? await cdekConfig() : null;
+  const yandex = order.deliveryMethod === "YANDEX" ? await yandexConfig() : null;
+  const ys = yandexShipment(order.shipmentData);
   const track = trackingUrl(order.deliveryMethod, order.trackingNumber);
   const cogs = order.items.reduce((s, i) => s + (i.costPrice ?? 0) * (i.quantity - i.returnedQty), 0);
   const margin = order.total - order.deliveryCost - cogs;
@@ -143,6 +146,19 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               ) : (
                 <p className="text-sm">Статус СДЭК: {cdekStatusLabel(order.shipmentStatus)}</p>
               )}
+            </div>
+          </div>}
+
+          {order.deliveryMethod === "YANDEX" && (yandex || ys) && <div className="card p-5">
+            <Eyebrow>Яндекс Доставка{ys?.testMode ? " · тестовый контур" : ""}</Eyebrow>
+            <div className="mt-3">
+              <YandexShipmentForm
+                orderId={order.id}
+                canEdit={canEdit}
+                canCreate={!!yandex && ["PAID", "CONFIRMED", "PACKING"].includes(order.status)}
+                syncedAt={order.shipmentSyncedAt ? formatDate(order.shipmentSyncedAt, true) : null}
+                shipment={ys ? { claimId: ys.claimId, status: ys.status, label: yandexStatusLabel(ys.status), terminal: YANDEX_TERMINAL.has(ys.status), price: ys.price, finalPrice: ys.finalPrice, trackingLink: ys.trackingLink, eta: ys.eta ? formatDate(ys.eta, true) : null, performer: ys.performer, error: ys.error } : null}
+              />
             </div>
           </div>}
 

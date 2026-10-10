@@ -2,6 +2,7 @@
 // из переменных ADMIN_EMAIL / ADMIN_PASSWORD. Идемпотентно: существующего администратора не трогает.
 import "dotenv/config";
 import { execSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -36,6 +37,12 @@ async function main() {
     execSync("npx prisma db seed", { stdio: "inherit", env: { ...process.env, SEED_DEMO: "0" } });
   }
   await disableDemoAccounts(db);
+  // IndexNow не требует регистрации и ключей от владельца: включаем сразу, чтобы Яндекс и Bing узнавали о новых
+  // и изменённых страницах в момент сохранения. Выключить можно в CRM → Интеграции (запись больше не создаётся)
+  if (!(await db.integration.findUnique({ where: { key: "indexnow" } }))) {
+    await db.integration.create({ data: { key: "indexnow", enabled: true, config: { key: randomBytes(16).toString("hex") } } });
+    console.log("IndexNow включён по умолчанию");
+  }
   const admins = await db.user.count({ where: { role: "ADMIN", isActive: true } });
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
