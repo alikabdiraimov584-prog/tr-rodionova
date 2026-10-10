@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { adjustPointsAction, createTaskAction, updateCustomerAction } from "@/app/actions/crm-customers";
+import { adjustPointsAction, updateCustomerAction } from "@/app/actions/crm-customers";
 
 function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
   if (s?.error) return <p className="text-xs text-danger">{s.error}</p>;
@@ -24,24 +24,7 @@ export function PointsForm({ userId }: { userId: string }) {
   );
 }
 
-export function TaskForm({ customerId, staff }: { customerId?: string; staff: { id: string; name: string }[] }) {
-  const [state, action, pending] = useActionState(createTaskAction, undefined);
-  return (
-    <form action={action} className="space-y-2">
-      {customerId && <input type="hidden" name="customerId" value={customerId} />}
-      <input name="title" placeholder="Что сделать" className="input py-2" required />
-      <div className="grid grid-cols-2 gap-2">
-        <input aria-label="Срок" name="dueAt" type="date" className="input py-2" />
-        <select aria-label="Ответственный" name="assigneeId" className="input py-2" defaultValue="">
-          <option value="">Мне</option>
-          {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-      </div>
-      <button className="btn-outline btn-sm" disabled={pending}>Создать задачу</button>
-      <Msg s={state} />
-    </form>
-  );
-}
+// Форма задачи — TaskQuickForm в task-forms.tsx (срок со временем, приоритет, тип, подтверждение с именем ответственного)
 
 export function CustomerEditForm({ c }: { c: { id: string; tags: string[]; source: string | null; preferredSize: string | null; phone: string | null; birthday: string | null } }) {
   const [state, action, pending] = useActionState(updateCustomerAction, undefined);

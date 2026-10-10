@@ -15,7 +15,8 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
   const [openChats, newOrders, openTasks, pendingReviews, lowStock] = await Promise.all([
     db.conversation.count({ where: { status: "OPEN", OR: [{ assigneeId: user.id }, { assigneeId: null }] } }),
     db.order.count({ where: { status: { in: ["NEW", "PAID"] } } }),
-    db.crmTask.count({ where: { status: "OPEN", OR: [{ assigneeId: user.id }, { assigneeId: null }] } }),
+    // мои и неназначенные задачи на любом открытом этапе (новая, в работе, на проверке)
+    db.crmTask.count({ where: { status: { notIn: ["DONE", "CANCELLED"] }, OR: [{ assigneeId: user.id }, { assigneeId: null }] } }),
     db.review.count({ where: { isPublic: false } }),
     db.$queryRaw<{ n: bigint }[]>`SELECT count(*)::bigint AS n FROM "ProductVariant" v JOIN "Product" p ON p.id = v."productId" WHERE p.status = 'ACTIVE' AND v.stock - v.reserved <= 1`.then((r) => Number(r[0]?.n ?? 0)),
   ]);

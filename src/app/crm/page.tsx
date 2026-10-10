@@ -4,9 +4,10 @@ import { requireSection } from "@/lib/auth";
 import { kpis, revenueByMonth, topProducts, repeatRate, customerStats } from "@/lib/analytics";
 import { rfmSegment, SEGMENTS } from "@/lib/rfm";
 import { formatDate, formatMoney, pct } from "@/lib/money";
-import { ORDER_STATUS } from "@/lib/labels";
+import { ORDER_STATUS, TASK_STATUS } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
 import { BarChart, HBar } from "@/components/crm/charts";
+import { PriorityDot } from "@/components/crm/task-card";
 import { brandIssues } from "@/lib/brand-health";
 
 export default async function Dashboard() {
@@ -21,7 +22,13 @@ export default async function Dashboard() {
     topProducts(new Date(now.getTime() - 90 * 86_400_000)),
     repeatRate(),
     db.order.findMany({ where: { status: { in: ["NEW", "PAID", "CONFIRMED", "PACKING"] } }, orderBy: { createdAt: "asc" }, take: 8 }),
-    db.crmTask.findMany({ where: { status: "OPEN", OR: [{ assigneeId: user.id }, { assigneeId: null }] }, include: { customer: true }, orderBy: { dueAt: "asc" }, take: 6 }),
+    // мои и неназначенные открытые задачи: просроченные и ближайшие первыми, без срока — по приоритету
+    db.crmTask.findMany({
+      where: { status: { in: ["OPEN", "IN_PROGRESS", "REVIEW"] }, OR: [{ assigneeId: user.id }, { assigneeId: null }] },
+      include: { customer: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { priority: "desc" }],
+      take: 6,
+    }),
     db.productVariant.findMany({ where: { product: { status: "ACTIVE" } }, include: { product: true, _count: { select: { alerts: { where: { notifiedAt: null } } } } }, orderBy: { stock: "asc" }, take: 40 }),
     customerStats(),
     db.user.findMany({ where: { role: "CUSTOMER" }, select: { id: true, lifetimeSpent: true, createdAt: true, loyaltyTierId: true } }),
@@ -92,14 +99,22 @@ export default async function Dashboard() {
         <div className="card p-5">
           <div className="flex justify-between"><Eyebrow>Мои задачи</Eyebrow><Link href="/crm/tasks" className="text-xs underline">Все</Link></div>
           <ul className="mt-3 divide-y divide-line text-sm">
-            {tasks.map((t) => (
-              <li key={t.id} className="py-2">
-                <div>{t.title}</div>
-                <div className={`text-xs ${t.dueAt && t.dueAt < now ? "text-danger" : "text-muted"}`}>
-                  {t.customer && <Link href={`/crm/customers/${t.customer.id}`} className="underline">{t.customer.firstName} {t.customer.lastName}</Link>} {t.dueAt && `· до ${formatDate(t.dueAt)}`}
-                </div>
-              </li>
-            ))}
+            {tasks.map((t) => {
+              const overdue = !!t.dueAt && t.dueAt < now;
+              return (
+                <li key={t.id} className="py-2">
+                  <div className="flex items-center gap-2">
+                    <PriorityDot priority={t.priority} />
+                    <Link href={`/crm/tasks/${t.id}`} prefetch={false} className="min-w-0 truncate hover:underline">{t.title}</Link>
+                  </div>
+                  <div className={`pl-4 text-xs ${overdue ? "text-danger" : "text-muted"}`}>
+                    {t.customer && <Link href={`/crm/customers/${t.customer.id}`} prefetch={false} className="underline">{t.customer.firstName} {t.customer.lastName}</Link>}
+                    {t.dueAt && ` ${t.customer ? "· " : ""}${overdue ? "просрочена" : "до"} ${formatDate(t.dueAt)}`}
+                    {t.status !== "OPEN" && ` · ${TASK_STATUS[t.status].label.toLowerCase()}`}
+                  </div>
+                </li>
+              );
+            })}
             {tasks.length === 0 && <li className="py-2 text-muted">Открытых задач нет</li>}
           </ul>
         </div>

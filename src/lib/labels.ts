@@ -7,6 +7,8 @@ import type {
   PointsType,
   LedgerType,
   TaskStatus,
+  TaskPriority,
+  TaskKind,
   Role,
   PromoType,
   ProductStatus,
@@ -107,10 +109,32 @@ export function isSystemLedgerEntry(e: { type: LedgerType; orderId: string | nul
   return e.category === GIFT_LEDGER_CATEGORY && /сертификат/i.test(e.comment ?? "");
 }
 
+// Этапы задачи: четыре колонки доски (OPEN → IN_PROGRESS → REVIEW → DONE) и отмена вне доски
 export const TASK_STATUS: Record<TaskStatus, { label: string; tone: Tone }> = {
-  OPEN: { label: "Открыта", tone: "warning" },
+  OPEN: { label: "Новая", tone: "warning" },
+  IN_PROGRESS: { label: "В работе", tone: "info" },
+  REVIEW: { label: "На проверке", tone: "gold" },
   DONE: { label: "Выполнена", tone: "success" },
   CANCELLED: { label: "Отменена", tone: "neutral" },
+};
+
+// Приоритет: «срочно» — редкость, по умолчанию обычный; bar — цвет полосы слева на карточке доски
+export const TASK_PRIORITY: Record<TaskPriority, { label: string; tone: Tone; bar: string }> = {
+  LOW: { label: "Низкий", tone: "neutral", bar: "bg-line" },
+  NORMAL: { label: "Обычный", tone: "info", bar: "bg-info/60" },
+  HIGH: { label: "Высокий", tone: "warning", bar: "bg-warning" },
+  URGENT: { label: "Срочно", tone: "danger", bar: "bg-danger" },
+};
+
+export const TASK_KIND: Record<TaskKind, { label: string; tone: Tone }> = {
+  CALL: { label: "Звонок", tone: "info" },
+  ORDER: { label: "Заказ", tone: "neutral" },
+  DELIVERY: { label: "Доставка", tone: "info" },
+  RETURN: { label: "Возврат", tone: "warning" },
+  CONTENT: { label: "Контент", tone: "gold" },
+  PRODUCTION: { label: "Производство", tone: "neutral" },
+  FINANCE: { label: "Финансы", tone: "success" },
+  OTHER: { label: "Другое", tone: "neutral" },
 };
 
 export const ROLE: Record<Role, string> = {

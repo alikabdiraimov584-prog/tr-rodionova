@@ -7,10 +7,13 @@ import { rfmSegment, daysSince } from "@/lib/rfm";
 import { formatDate, formatMoney } from "@/lib/money";
 import { ORDER_STATUS, POINTS_TYPE, TASK_STATUS, TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
-import { CustomerEditForm, PointsForm, TaskForm } from "@/components/crm/customer-forms";
+import { CustomerEditForm, PointsForm } from "@/components/crm/customer-forms";
+import { TaskQuickForm } from "@/components/crm/task-forms";
+import { PriorityDot } from "@/components/crm/task-card";
 import { SubmitButton } from "@/components/form";
 import { can } from "@/lib/permissions";
-import { addNoteAction, anonymizeCustomerAction, deleteNoteAction, recalcCustomerTierAction, setTaskStatusAction } from "@/app/actions/crm-customers";
+import { addNoteAction, anonymizeCustomerAction, deleteNoteAction, recalcCustomerTierAction } from "@/app/actions/crm-customers";
+import { setTaskStatusAction } from "@/app/actions/crm-tasks";
 import { ConfirmButton } from "@/components/form";
 
 export default async function CustomerCard({ params }: PageProps<"/crm/customers/[id]">) {
@@ -153,20 +156,35 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
             </ul>
           </div>
           <div className="card space-y-3 p-5">
-            <Eyebrow>Задачи</Eyebrow>
-            <TaskForm customerId={c.id} staff={staff.map((s) => ({ id: s.id, name: s.firstName }))} />
+            <div className="flex items-baseline justify-between gap-2">
+              <Eyebrow>Задачи</Eyebrow>
+              <Link href="/crm/tasks" prefetch={false} className="text-xs underline">Доска</Link>
+            </div>
+            <TaskQuickForm customerId={c.id} />
             <ul className="space-y-2 text-sm">
-              {c.tasks.map((t) => (
-                <li key={t.id} className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className={t.status !== "OPEN" ? "text-muted line-through" : ""}>{t.title}</div>
-                    <div className="text-xs text-muted">{t.dueAt ? formatDate(t.dueAt) : "без срока"} · {t.assignee?.firstName ?? "—"} · {TASK_STATUS[t.status].label}</div>
-                  </div>
-                  {t.status === "OPEN" && (
-                    <form action={setTaskStatusAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="status" value="DONE" /><button className="text-xs text-success">готово</button></form>
-                  )}
-                </li>
-              ))}
+              {c.tasks.map((t) => {
+                const closed = t.status === "DONE" || t.status === "CANCELLED";
+                const overdue = !closed && !!t.dueAt && t.dueAt < new Date();
+                return (
+                  <li key={t.id} className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <PriorityDot priority={t.priority} />
+                        <Link href={`/crm/tasks/${t.id}`} prefetch={false} className={`hover:underline ${closed ? "text-muted line-through" : ""}`}>{t.title}</Link>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-1.5 pl-4 text-xs text-muted">
+                        <span className={overdue ? "text-danger" : ""}>{t.dueAt ? `${overdue ? "просрочена · " : ""}${formatDate(t.dueAt, true)}` : "без срока"}</span>
+                        <span>· {t.assignee?.firstName ?? "не назначена"} ·</span>
+                        <Badge tone={TASK_STATUS[t.status].tone}>{TASK_STATUS[t.status].label}</Badge>
+                      </div>
+                    </div>
+                    {!closed && (
+                      <form action={setTaskStatusAction}><input type="hidden" name="id" value={t.id} /><input type="hidden" name="status" value="DONE" /><button className="whitespace-nowrap text-xs text-success">готово</button></form>
+                    )}
+                  </li>
+                );
+              })}
+              {c.tasks.length === 0 && <li className="text-xs text-muted">Задач по клиентке пока нет</li>}
             </ul>
           </div>
           {can(me.role, "points") && <div className="card space-y-3 p-5">

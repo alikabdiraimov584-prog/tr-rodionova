@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { addPoints, recalcTier } from "@/lib/loyalty";
@@ -24,39 +23,7 @@ export async function deleteNoteAction(formData: FormData) {
   revalidatePath(`/crm/customers/${note.userId}`);
 }
 
-const TaskSchema = z.object({
-  title: z.string().trim().min(1, "Введите задачу"),
-  details: z.string().trim().optional(),
-  dueAt: z.string().optional(),
-  customerId: z.string().optional(),
-  assigneeId: z.string().optional(),
-});
-
-export async function createTaskAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  const staff = await requireSection("tasks");
-  const parsed = TaskSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const d = parsed.data;
-  await db.crmTask.create({
-    data: {
-      title: d.title,
-      details: d.details || null,
-      dueAt: d.dueAt ? new Date(d.dueAt) : null,
-      customerId: d.customerId || null,
-      assigneeId: d.assigneeId || staff.id,
-    },
-  });
-  revalidatePath("/crm", "layout");
-  return { ok: true, message: "Задача создана" };
-}
-
-export async function setTaskStatusAction(formData: FormData) {
-  await requireSection("tasks");
-  const id = String(formData.get("id"));
-  const status = String(formData.get("status")) as "OPEN" | "DONE" | "CANCELLED";
-  await db.crmTask.update({ where: { id }, data: { status } });
-  revalidatePath("/crm", "layout");
-}
+// Действия с задачами переехали в crm-tasks.ts (доска, этапы, чеклист, комментарии)
 
 export async function adjustPointsAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireSection("points");

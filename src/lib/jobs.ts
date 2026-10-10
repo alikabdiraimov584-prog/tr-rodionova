@@ -122,7 +122,9 @@ export async function runHourlyJobs() {
   const dueCampaigns = await runDueCampaigns(process.env.APP_URL ?? "https://tr-rodionova.ru").catch((e) => ({ error: e instanceof Error ? e.message : "campaigns" }));
   // письма ящика поддержки: основной опрос — каждые 5 минут (job=mail), здесь страховка на случай, если он не настроен
   const mail = await (await import("@/lib/support/mail-imap")).pollMailbox().catch((e) => ({ error: e instanceof Error ? e.message : "mail" }));
-  return { paymentReminders, unpaidCancelled, dueCampaigns, mail };
+  // утренняя сводка задач в Telegram: сама решает, что сейчас 09:00 по Москве и что сводка за день ещё не уходила
+  const taskDigest = await (await import("@/lib/tasks")).remindOverdueTasks().catch((e) => ({ sent: false, error: e instanceof Error ? e.message : "tasks" }));
+  return { paymentReminders, unpaidCancelled, dueCampaigns, mail, taskDigest };
 }
 
 export async function runDailyJobs(actorId: string | null = null) {

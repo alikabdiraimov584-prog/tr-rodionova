@@ -14,6 +14,7 @@ import { cdekConfig, cdekStatusLabel } from "@/lib/delivery/cdek";
 import { YANDEX_TERMINAL, yandexConfig, yandexShipment, yandexStatusLabel } from "@/lib/delivery/yandex";
 import { trackingUrl } from "@/lib/delivery";
 import { CdekShipmentForm, YandexShipmentForm } from "@/components/crm/shipment-forms";
+import { TaskQuickForm } from "@/components/crm/task-forms";
 
 export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">) {
   const me = await requireSection("orders");
@@ -160,6 +161,12 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
                 shipment={ys ? { claimId: ys.claimId, status: ys.status, label: yandexStatusLabel(ys.status), terminal: YANDEX_TERMINAL.has(ys.status), price: ys.price, finalPrice: ys.finalPrice, trackingLink: ys.trackingLink, eta: ys.eta ? formatDate(ys.eta, true) : null, performer: ys.performer, error: ys.error } : null}
               />
             </div>
+          </div>}
+
+          {canEdit && <div className="card p-5">
+            <Eyebrow>Задача по заказу</Eyebrow>
+            <p className="mt-1 text-xs text-muted">Дозвониться, уточнить размер, собрать к сроку — задача появится на доске со ссылкой на этот заказ и клиентку.</p>
+            <div className="mt-3"><TaskQuickForm orderId={order.id} customerId={order.userId ?? undefined} /></div>
           </div>}
 
           {canEdit && <div className="card p-5">

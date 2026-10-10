@@ -22,7 +22,8 @@ export async function notifyWaitlist(variantId: string) {
     await db.message.create({ data: { conversationId: conv.id, direction: "OUT", text, status: "SENT" } });
     await db.conversation.update({ where: { id: conv.id }, data: { lastMessageAt: new Date(), status: conv.status === "OPEN" ? "OPEN" : "PENDING", closedAt: null } });
     if (s.user.loyaltyTier?.code !== "ATELIER") {
-      await db.crmTask.create({ data: { title: `Позвонить: поступил ${v.product.name} ${v.size}`, details: `Клиентка ждала поступления с ${s.createdAt.toLocaleDateString("ru-RU")}`, customerId: s.userId, dueAt: new Date(Date.now() + 86_400_000) } });
+      // автозадача на доске: тип «звонок», высокий приоритет — клиентка ждёт, товар разберут
+      await db.crmTask.create({ data: { title: `Позвонить: поступил ${v.product.name} ${v.size}`, details: `Клиентка ждала поступления с ${s.createdAt.toLocaleDateString("ru-RU")}`, customerId: s.userId, dueAt: new Date(Date.now() + 86_400_000), kind: "CALL", priority: "HIGH" } });
     }
     await db.stockSubscription.update({ where: { id: s.id }, data: { notifiedAt: new Date() } });
     // клиентка сама просила сообщить о поступлении: письмо уходит сразу, не дожидаясь, пока она зайдёт в кабинет
