@@ -334,8 +334,13 @@ const email = {
 
 /** Понятная причина сбоя SMTP вместо кода библиотеки. */
 export function smtpError(e: unknown) {
-  const err = e as { code?: string; responseCode?: number; message?: string };
-  if (err.responseCode === 535 || /auth/i.test(err.code ?? "")) return "SMTP не принял логин или пароль: нужен пароль приложения из Яндекс ID, а не пароль от ящика";
+  const err = e as { code?: string; responseCode?: number; response?: string; message?: string };
+  // ответ сервера (например, «535 5.7.8 … Invalid user or password») нужен, чтобы отличить неверный пароль
+  // от запрета доступа почтовых программ или пароля, созданного в другом аккаунте
+  const reply = (err.response ?? "").replace(/\s+/g, " ").trim();
+  if (err.responseCode === 535 || /auth/i.test(err.code ?? "")) {
+    return `SMTP не принял логин или пароль${reply ? ` (ответ сервера: ${reply.slice(0, 160)})` : ""}: нужен пароль приложения из Яндекс ID, созданный в том же аккаунте, что и логин; если адрес — алиас другого ящика, логином должен быть основной адрес аккаунта`;
+  }
   if (err.code === "ESOCKET" || err.code === "ECONNECTION" || err.code === "ETIMEDOUT") return `Нет соединения с SMTP-сервером (${err.message ?? err.code})`;
   if (err.code === "EENVELOPE") return `Сервер отклонил адрес: ${err.message ?? ""}`.trim();
   return err.message ?? "Ошибка отправки";
