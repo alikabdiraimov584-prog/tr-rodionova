@@ -7,6 +7,7 @@ import { formatDate, formatMoney } from "@/lib/money";
 import { ORDER_STATUS } from "@/lib/labels";
 import { TierCard } from "@/components/account/tier-card";
 import { Alert, Badge, Empty, Eyebrow } from "@/components/ui";
+import { MetrikaGoal } from "@/components/metrika-goal";
 
 export const metadata: Metadata = { title: "Личный кабинет" };
 
@@ -30,6 +31,7 @@ export default async function AccountHome({ searchParams }: PageProps<"/account"
     <div className="space-y-10">
       <h1 className="sr-only">Личный кабинет</h1>
       {sp.welcome && <Alert tone="gold">Добро пожаловать в T.Rodionova Circle! На ваш счёт начислено 2 000 приветственных баллов.</Alert>}
+      {sp.welcome && <MetrikaGoal goal="register" dedupe="welcome" />}
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
         <TierCard
           name={user.loyaltyTier?.name ?? "Atelier"}

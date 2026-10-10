@@ -30,6 +30,17 @@ export function Analytics() {
   const consent = useSyncExternalStore(subscribe, readConsent, () => "pending");
   const banner = useRef<HTMLDivElement>(null);
 
+  // Метрика сама считает только первую загрузку: переходы между страницами Next.js (без перезагрузки) сообщаем ей
+  // вызовом hit, иначе в отчётах и Вебвизоре был бы один просмотр на визит
+  const prevUrl = useRef<string | null>(null);
+  useEffect(() => {
+    const url = window.location.href;
+    const prev = prevUrl.current;
+    prevUrl.current = url;
+    if (!prev || prev === url) return;
+    if (window.__trMetrika && typeof window.ym === "function") window.ym(window.__trMetrika, "hit", url, { referer: prev, title: document.title });
+  }, [path, params]);
+
   // высота, которую баннер закрывает снизу, — в переменную --consent-h: на неё поднимаются кнопка первого экрана
   // и панель покупки, и на неё же растёт отступ внизу страницы. После ответа переменная убирается.
   const visible = consent === null;

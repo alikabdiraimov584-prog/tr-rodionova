@@ -38,6 +38,7 @@ jobs:
           echo "== версия"; curl -sS -m 30 "https://$D/api/health" || true; echo
           echo "== robots.txt"; curl -sS -m 30 "https://$D/robots.txt" | grep -iE "^(sitemap|host):|localhost" || true
           echo "== llms.txt"; curl -sS -m 30 "https://$D/llms.txt" | head -3
+          echo "== Метрика (запрос с согласием на cookie)"; curl -sS -m 30 -H "Cookie: tr_consent=all" "https://$D/" | grep -oE 'ym\([0-9]+,"init",\{[^}]*\}' || echo "счётчик Метрики не подключён: CRM → Интеграции → Аналитика → Яндекс Метрика"
           echo "== title"; curl -sS -m 30 "https://$D/" | grep -oE "<title>[^<]*" | head -1
           echo "== http→https"; curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}\n' "http://$D/" || true
       - name: Итог

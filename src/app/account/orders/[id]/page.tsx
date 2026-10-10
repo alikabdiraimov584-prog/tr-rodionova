@@ -14,6 +14,7 @@ import { PayButton } from "@/components/account/pay-button";
 import { syncOrderPayment, paymentsEnabled, onlinePaymentsAvailable } from "@/lib/payments/provider";
 import { getSettingOrDefault } from "@/lib/settings";
 import { trackingUrl, yandexTrackingLink } from "@/lib/delivery";
+import { MetrikaGoal } from "@/components/metrika-goal";
 
 const STEPS = ["NEW", "PAID", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
 
@@ -39,6 +40,13 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
     <div className="space-y-8">
       <PageTitle eyebrow={formatDate(order.createdAt, true)} title={`Заказ №${order.number}`} actions={<Badge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</Badge>} />
       {sp.created && <Alert tone="success">Спасибо! Заказ оформлен, товары зарезервированы за вами.</Alert>}
+      {sp.created && (
+        <MetrikaGoal
+          goal="order"
+          dedupe={order.id}
+          purchase={{ id: String(order.number), revenue: order.total / 100, products: order.items.map((i) => ({ id: i.variant.sku, name: i.productName, price: i.price / 100, quantity: i.quantity, variant: `${i.color} · ${i.size}` })) }}
+        />
+      )}
       {sp.paid && order.status !== "NEW" && order.status !== "CANCELLED" && <Alert tone="success">Оплата получена, спасибо! Мы начали собирать заказ.</Alert>}
       {sp.paid && order.status === "NEW" && (() => {
         // вернулись с платёжной страницы, а оплата не подтверждена: говорим, что ответила касса
@@ -157,7 +165,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
           ))}
         </ul>
       </section>
-      <p className="text-xs text-muted">Вопрос по заказу? <Link href={`/account/support?order=${order.number}`} className="underline">Напишите в службу заботы</Link> или позвоните +7 (495) 000-00-00.</p>
+      <p className="text-xs text-muted">Вопрос по заказу? <Link href={`/account/support?order=${order.number}`} className="underline">Напишите в службу заботы</Link>.</p>
     </div>
   );
 }
