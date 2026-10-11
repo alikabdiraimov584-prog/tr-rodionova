@@ -86,7 +86,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/webhooks/[c
     for (const m of messages) await ingestInbound(r.channel, m);
     await db.channelIntegration.update({ where: { id: r.integration.id }, data: { lastEventAt: new Date(), ...(messages.length ? { lastError: null } : {}) } });
     return response ?? new Response("ok");
-  } catch (e) {
+  } catch {
     // Third-party parsers may include payload fragments or credentials in exception messages.
     // Keep a generic diagnostic in the CRM rather than persisting untrusted request data.
     await db.channelIntegration.update({ where: { id: r.integration.id }, data: { lastError: "Webhook processing failed; inspect provider configuration and retry" } });
