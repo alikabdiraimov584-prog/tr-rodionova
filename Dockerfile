@@ -30,6 +30,7 @@ COPY --from=build --chown=app:app /app ./
 # and all other dev dependencies from the web-serving image. Suppress lifecycle scripts because
 # the generated Prisma client already exists and Prisma CLI is intentionally absent here.
 RUN npm_config_ignore_scripts=true npm prune --omit=dev \
+ && npm_config_ignore_scripts=true npm uninstall --no-save --ignore-scripts prisma typescript \
  && mkdir -p /app/public/uploads /app/.next/cache/images \
  && chown -R app:app /app/public/uploads /app/.next/cache
 ARG GIT_SHA=unknown
