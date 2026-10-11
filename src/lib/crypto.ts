@@ -56,9 +56,9 @@ function open(value: string, prefix: string, key: Buffer) {
 }
 
 export function encryptSecret(plain: string) {
-  // Backwards-compatible rollout: existing deployments need not set ENCRYPTION_KEY until
-  // the explicit migration window. New v2 writes never depend on AUTH_SECRET.
-  if (process.env.ENCRYPTION_KEY) return seal(plain, currentKey(), PREFIX);
+  // Keep writing v1 during rolling deploys. Activate v2 only after every running
+  // instance understands v2 and the operator deliberately enables the migration.
+  if (process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY_ACTIVE === "1") return seal(plain, currentKey(), PREFIX);
   return seal(plain, legacyKey(), LEGACY_PREFIX);
 }
 
