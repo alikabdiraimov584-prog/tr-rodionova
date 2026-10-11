@@ -16,7 +16,7 @@ import { homeFor } from "@/lib/permissions";
 import { recordConsent } from "@/lib/consent";
 import { trackEvent } from "@/lib/web-analytics";
 import { sendVia } from "@/lib/notifications";
-import { createHash, randomInt } from "node:crypto";
+import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { notifyWelcome } from "@/lib/notifications";
 import { safeNext } from "@/lib/safe-redirect";
 
@@ -135,18 +135,57 @@ export async function requestLoginCodeAction(_: ActionState, formData: FormData)
 /** Шаг 2: проверка кода, не более 5 попыток на код. */
 export async function verifyLoginCodeAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const code = String(formData.get("code") ?? "").replace(/\D/g, "");
-  if (code.length !== 6) return { error: "Введите 6 цифр из письма" };
-  const rec = await db.loginCode.findFirst({ where: { email, usedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: "desc" } });
-  if (!rec || rec.attempts >= 5) return { error: "Код устарел. Запросите новый." };
-  if (rec.codeHash !== codeHash(email, code)) {
-    await db.loginCode.update({ where: { id: rec.id }, data: { attempts: { increment: 1 } } });
-    return { error: "Неверный код" };
+  const code = String(formData.get("code") ?? "").replace(/\\D/g, "");
+  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || code.length !== 6) {
+    return { error: "Введите корректный email и 6 цифр из письма" };
   }
-  const user = await db.user.findUnique({ where: { email } });
-  if (!user || !user.isActive) return { error: "Аккаунт не найден" };
-  await db.loginCode.update({ where: { id: rec.id }, data: { usedAt: new Date() } });
-  if (isStaff(user.role)) return { error: "Сотрудники входят по паролю и коду из приложения" };
+
+  // Serialize attempts and consumption per email in PostgreSQL. A row lock alone is not
+  // sufficient because two requests can both observe "unused" before either updates it.
+  const result = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`login-code:${email}`}))`;
+    const now = new Date();
+    const rec = await tx.loginCode.findFirst({
+      where: { email, usedAt: null, expiresAt: { gt: now } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!rec || rec.attempts >= 5) return { status: "expired" as const };
+
+    const suppliedHash = Buffer.from(codeHash(email, code), "hex");
+    const storedHash = Buffer.from(rec.codeHash, "hex");
+    const matches = suppliedHash.length === storedHash.length && timingSafeEqual(suppliedHash, storedHash);
+    if (!matches) {
+      await tx.loginCode.updateMany({
+        where: { id: rec.id, usedAt: null, attempts: { lt: 5 }, expiresAt: { gt: now } },
+        data: { attempts: { increment: 1 } },
+      });
+      return { status: "invalid" as const };
+    }
+
+    const user = await tx.user.findUnique({ where: { email } });
+    if (!user || !user.isActive) {
+      await tx.loginCode.updateMany({ where: { id: rec.id, usedAt: null }, data: { usedAt: now } });
+      return { status: "account" as const };
+    }
+    if (isStaff(user.role)) {
+      await tx.loginCode.updateMany({ where: { id: rec.id, usedAt: null }, data: { usedAt: now } });
+      return { status: "staff" as const };
+    }
+
+    const claimed = await tx.loginCode.updateMany({
+      where: { id: rec.id, usedAt: null, expiresAt: { gt: now }, attempts: { lt: 5 } },
+      data: { usedAt: now },
+    });
+    if (claimed.count !== 1) return { status: "expired" as const };
+    return { status: "ok" as const, user };
+  });
+
+  if (result.status === "expired") return { error: "Код устарел. Запросите новый." };
+  if (result.status === "invalid") return { error: "Неверный код" };
+  if (result.status === "staff") return { error: "Сотрудники входят по паролю и коду из приложения" };
+  if (result.status === "account") return { error: "Аккаунт не найден" };
+
+  const user = result.user;
   await loginAs(user.id, user.role, user.sessionVersion);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login", "User", user.id, { via: "code" });
