@@ -26,26 +26,8 @@ main() {
 
   local old new count status encryption_active
   old=$(docker compose ps -q web || true)
-  encryption_active=0
-  if grep -Eq '^ENCRYPTION_KEY_ACTIVE=[\"'"'"']?1[\"'"'"']?
-
-  # После остановки старых контейнеров шифруем ранее сохранённые TOTP-секреты.
-  # Скрипт идемпотентен; новая версия поддерживает и старые, и зашифрованные записи.
-  docker compose run --rm --no-deps init node --conditions=react-server --import tsx scripts/encrypt-totp-secrets.ts
-
-  # Caddy: конфиг перечитывается без разрыва соединений, если он менялся
-  if ! git diff --quiet "$prev" HEAD -- deploy/Caddyfile; then
-    docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || docker compose restart caddy
-  fi
-
-  docker image prune -f >/dev/null
-  # прогрев кэша картинок в фоне: новые кадры собираются в AVIF/WebP до первой покупательницы
-  (docker compose exec -T web node -e "fetch('http://127.0.0.1:3000/api/cron?job=warm',{headers:{authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(j=>console.log('warm',JSON.stringify(j))).catch(e=>console.log('warm failed',e.message))" >> /home/deploy/warm.log 2>&1 &)
-  echo "Обновлено: $(git log --oneline -1)"
-}
-
-main "$@"
- .env; then encryption_active=1; fi
+  encryption_active=$(sed -n 's/^ENCRYPTION_KEY_ACTIVE=//p' .env | tr -d '"\r' | head -n 1)
+  [ "$encryption_active" = "1" ] || encryption_active=0
 
   if [ "$encryption_active" = "1" ]; then
     # enc:v2 writes are NOT safe during a blue/green overlap: an older live instance may
