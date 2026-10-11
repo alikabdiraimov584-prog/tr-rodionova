@@ -20,7 +20,7 @@ async function migrateUserTotp() {
   let migrated = 0;
   for (const user of users) {
     const value = user.totpSecret;
-    if (!value || isCurrentEncryption(value) || (!process.env.ENCRYPTION_KEY && value.startsWith("enc:v1:"))) continue;
+    if (!value || isCurrentEncryption(value) || (process.env.ENCRYPTION_KEY_ACTIVE !== "1" && value.startsWith("enc:v1:"))) continue;
     const result = await db.user.updateMany({
       where: { id: user.id, totpSecret: value },
       data: { totpSecret: encryptSecret(decryptSecret(value)) },
@@ -70,7 +70,7 @@ async function migrateChannelSecrets() {
     for (const key of secretKeys) {
       const value = config[key];
       if (typeof value !== "string" || isCurrentEncryption(value)) continue;
-      if (!process.env.ENCRYPTION_KEY && value.startsWith("enc:v1:")) continue;
+      if (process.env.ENCRYPTION_KEY_ACTIVE !== "1" && value.startsWith("enc:v1:")) continue;
       next[key] = encryptSecret(decryptSecret(value));
       changed = true;
     }
