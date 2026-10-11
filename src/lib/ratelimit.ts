@@ -1,5 +1,6 @@
 import "server-only";
 import { headers } from "next/headers";
+import { isIP } from "node:net";
 import { db } from "@/lib/db";
 
 /**
@@ -46,9 +47,11 @@ export async function clientIp() {
   const xff = h.get("x-forwarded-for");
   if (xff) {
     const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
-    return parts[parts.length - 1] ?? null;
+    const candidate = parts[parts.length - 1] ?? "";
+    return isIP(candidate) ? candidate : null;
   }
-  return h.get("x-real-ip") ?? null;
+  const realIp = h.get("x-real-ip")?.trim() ?? "";
+  return isIP(realIp) ? realIp : null;
 }
 
 /** Удалить устаревшие счётчики (вызывается ежедневной задачей). */
