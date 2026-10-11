@@ -65,6 +65,9 @@ const ResetSchema = z.object({
 export async function resetPasswordAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = ResetSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const ip = await clientIp();
+  const rate = await checkRate(`reset-submit:ip:${ip ?? "unknown"}`, { limit: 20, windowSec: 600, lockSec: 600 });
+  if (!rate.ok) return { error: "Слишком много попыток. Запросите новую ссылку позже." };
   const row = await db.passwordResetToken.findUnique({ where: { tokenHash: hash(parsed.data.token) }});
   if (!row || row.usedAt || row.expiresAt < new Date()) return { error: "Ссылка недействительна или устарела. Запросите новую." };
   const user = await db.user.findUnique({ where: { id: row.userId } });
