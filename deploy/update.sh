@@ -22,7 +22,9 @@ main() {
   fi
   export NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
   NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(sed -n 's/^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=//p' .env | tr -d '"\r' | head -1)
-  docker compose build web
+  docker compose build web init
+  # Run migrations/seeds in the isolated tooling image; if this fails, the old web container stays up.
+  docker compose up --no-deps init
 
   local old new count status
   old=$(docker compose ps -q web || true)
@@ -58,7 +60,7 @@ main() {
 
   # После остановки старых контейнеров шифруем ранее сохранённые TOTP-секреты.
   # Скрипт идемпотентен; новая версия поддерживает и старые, и зашифрованные записи.
-  docker compose exec -T web node --conditions=react-server --import tsx scripts/encrypt-totp-secrets.ts
+  docker compose run --rm --no-deps init node --conditions=react-server --import tsx scripts/encrypt-totp-secrets.ts
 
   # Caddy: конфиг перечитывается без разрыва соединений, если он менялся
   if ! git diff --quiet "$prev" HEAD -- deploy/Caddyfile; then
