@@ -69,12 +69,19 @@ export async function resetPasswordAction(_: ActionState, formData: FormData): P
   if (!row || row.usedAt || row.expiresAt < new Date()) return { error: "Ссылка недействительна или устарела. Запросите новую." };
   const user = await db.user.findUnique({ where: { id: row.userId } });
   if (!user || !user.isActive) return { error: "Аккаунт недоступен" };
+  const passwordHash = await hashPassword(parsed.data.password);
   const updated = await db.$transaction(async (tx) => {
-    await tx.passwordResetToken.update({ where: { id: row.id }, data: { usedAt: new Date() } });
+    // Атомарно захватываем токен: два параллельных запроса не смогут использовать его оба.
+    const claimed = await tx.passwordResetToken.updateMany({
+      where: { id: row.id, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+    if (claimed.count !== 1) return null;
     await tx.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
-    // все старые сессии завершаются
-    return tx.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.password), sessionVersion: { increment: 1 } } });
+    // Все старые сессии завершаются в той же транзакции.
+    return tx.user.update({ where: { id: user.id }, data: { passwordHash, sessionVersion: { increment: 1 } } });
   });
+  if (!updated) return { error: "Ссылка недействительна или уже использована. Запросите новую." };
   await audit(user.id, "auth.passwordReset", "User", user.id);
   // сотрудник с включённой 2FA: доступ к почте не должен обходить второй фактор — как при обычном входе
   if (isStaff(user.role) && user.totpSecret && user.totpEnabledAt) {
