@@ -76,12 +76,19 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Build production runtime image
         run: docker build --target runner -t tr-rodionova-runtime:ci .
+      - name: Verify development tooling is absent from runtime image
+        run: |
+          docker run --rm tr-rodionova-runtime:ci node -e '
+            const fs = require("node:fs");
+            const forbidden = ["prisma", "eslint", "eslint-config-next", "typescript", "tailwindcss"];
+            const present = forbidden.filter((name) => fs.existsSync("node_modules/" + name));
+            if (present.length) {
+              console.error("Unexpected development packages in runtime image:", present.join(", "));
+              process.exit(1);
+            }
+            console.log("Development tooling is absent from runtime image.");
+          '
       - name: Audit the actual runtime image
-        run: >-
-          docker run --rm tr-rodionova-runtime:ci sh -ec
-          'test ! -d node_modules/prisma &&
-           test ! -d node_modules/eslint &&
-           test ! -d node_modules/eslint-config-next &&
-           npm audit --omit=dev --audit-level=high'
+        run: docker run --rm tr-rodionova-runtime:ci npm audit --omit=dev --audit-level=high
       - name: Build isolated migration/seed image
         run: docker build --target init -t tr-rodionova-init:ci .
