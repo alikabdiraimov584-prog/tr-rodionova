@@ -30,7 +30,7 @@ COPY --from=build --chown=app:app /app ./
 # and all other dev dependencies from the web-serving image. Suppress lifecycle scripts because
 # the generated Prisma client already exists and Prisma CLI is intentionally absent here.
 RUN npm_config_ignore_scripts=true npm prune --omit=dev \
- && node -e 'const fs = require("node:fs"); for (const name of ["prisma", "typescript"]) fs.rmSync("/app/node_modules/" + name, { recursive: true, force: true });' \
+ && node -e 'const fs = require("node:fs"); const pkg = require("/app/package.json"); const remove = new Set([...Object.keys(pkg.devDependencies || {}), "tsx", "@prisma/config", "@prisma/dev", "@prisma/engines", "@prisma/studio-core", "deepmerge-ts", "mysql2", "postgres", "braces"]); for (const name of remove) fs.rmSync("/app/node_modules/" + name, { recursive: true, force: true });' \
  && mkdir -p /app/public/uploads /app/.next/cache/images \
  && chown -R app:app /app/public/uploads /app/.next/cache
 ARG GIT_SHA=unknown
