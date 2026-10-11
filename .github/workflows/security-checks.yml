@@ -48,12 +48,13 @@ jobs:
         run: npm ci
       - name: Apply database migrations
         run: npx prisma migrate deploy
+      # Next.js generates global PageProps/RouteContext types during the build.
+      - name: Production build
+        run: npm run build
       - name: TypeScript
         run: npx tsc --noEmit
       - name: ESLint
         run: npm run lint
-      - name: Production build
-        run: npm run build
       - name: Dependency vulnerability audit
         run: npm audit --audit-level=high
       - name: Validate Caddy configuration
