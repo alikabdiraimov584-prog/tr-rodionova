@@ -18,11 +18,7 @@ import { trackEvent } from "@/lib/web-analytics";
 import { sendVia } from "@/lib/notifications";
 import { createHash, randomInt } from "node:crypto";
 import { notifyWelcome } from "@/lib/notifications";
-
-function safeNext(next: FormDataEntryValue | null, fallback: string) {
-  const n = typeof next === "string" ? next : "";
-  return n.startsWith("/") && !n.startsWith("//") ? n : fallback;
-}
+import { safeNext } from "@/lib/safe-redirect";
 
 const LoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Неверный email"),
