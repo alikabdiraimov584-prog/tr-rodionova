@@ -7,7 +7,7 @@ set -euo pipefail
 
 main() {
   cd "$(dirname "$0")/.."
-  local prev
+  local prev old new count status encryption_active encryption_key auth_secret
   prev=$(git rev-parse HEAD)
   git fetch origin main && git reset --hard origin/main
   export GIT_SHA BUILD_AT
@@ -22,12 +22,27 @@ main() {
   fi
   export NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
   NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(sed -n 's/^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=//p' .env | tr -d '"\r' | head -1)
-  docker compose build web init
-
-  local old new count status encryption_active
-  old=$(docker compose ps -q web || true)
   encryption_active=$(sed -n 's/^ENCRYPTION_KEY_ACTIVE=//p' .env | tr -d '"\r' | head -n 1)
   [ "$encryption_active" = "1" ] || encryption_active=0
+  if [ "$encryption_active" = "1" ]; then
+    encryption_key=$(sed -n 's/^ENCRYPTION_KEY=//p' .env | tr -d '"\r' | head -n 1)
+    auth_secret=$(sed -n 's/^AUTH_SECRET=//p' .env | tr -d '"\r' | head -n 1)
+    if [ "${#encryption_key}" -lt 32 ]; then
+      echo "ENCRYPTION_KEY_ACTIVE=1 requires ENCRYPTION_KEY of at least 32 characters; refusing rollout before stopping web."
+      exit 1
+    fi
+    if [ "${#auth_secret}" -lt 32 ]; then
+      echo "ENCRYPTION_KEY_ACTIVE=1 requires a valid AUTH_SECRET; refusing rollout before stopping web."
+      exit 1
+    fi
+    if [ "$encryption_key" = "$auth_secret" ]; then
+      echo "ENCRYPTION_KEY must be independent from AUTH_SECRET; refusing rollout before stopping web."
+      exit 1
+    fi
+  fi
+  docker compose build web init
+
+  old=$(docker compose ps -q web || true)
 
   if [ "$encryption_active" = "1" ]; then
     # enc:v2 writes are NOT safe during a blue/green overlap: an older live instance may
