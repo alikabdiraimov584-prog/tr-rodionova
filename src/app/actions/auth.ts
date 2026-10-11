@@ -156,10 +156,9 @@ export async function verifyLoginCodeAction(_: ActionState, formData: FormData):
   if (result.status === "account") return { error: "Аккаунт не найден" };
 
   const user = result.user;
-  await Promise.all([
-    clearRate(`verify-code:ip:${ip ?? "unknown"}`),
-    clearRate(`verify-code:email:${email}`),
-  ]);
+  // Clear the successful account's counter, but keep the shared IP counter to
+  // prevent successful logins for one account from resetting limits for other accounts.
+  await clearRate(`verify-code:email:${email}`);
   await loginAs(user.id, user.role, user.sessionVersion);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login", "User", user.id, { via: "code" });
