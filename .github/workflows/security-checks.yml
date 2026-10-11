@@ -65,6 +65,8 @@ jobs:
       - name: Full dependency audit report (including development tools)
         continue-on-error: true
         run: npm audit --audit-level=high
+      - name: Validate Docker Compose configuration
+        run: touch .env && docker compose config --quiet
       - name: Validate Caddy configuration
         run: docker run --rm -e DOMAIN=example.com -v "${{ github.workspace }}/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       # This is the blocking security gate for packages installed as runtime dependencies.
