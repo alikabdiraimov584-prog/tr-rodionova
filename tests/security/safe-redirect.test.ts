@@ -15,7 +15,7 @@ test("rejects absolute and protocol-relative URLs", () => {
 test("rejects backslash-based redirects and control characters", () => {
   assert.equal(safeNext("/\\\\evil.example", "/account"), "/account");
   assert.equal(safeNext("/\\evil.example", "/account"), "/account");
-  assert.equal(safeNext("/catalog\\r\\nLocation:https://evil.example", "/account"), "/account");
+  assert.equal(safeNext("/catalog\r\nLocation:https://evil.example", "/account"), "/account");
 });
 
 test("rejects non-string and relative values", () => {
