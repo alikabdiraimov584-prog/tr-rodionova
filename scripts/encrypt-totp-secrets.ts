@@ -8,8 +8,8 @@ import type { Channel } from "@/generated/prisma/enums";
  * Idempotent encryption-key migration.
  *
  * Without ENCRYPTION_KEY this leaves already-encrypted v1 values unchanged and keeps
- * legacy behavior. With ENCRYPTION_KEY configured, it re-encrypts TOTP, integration,
- * and support-channel secrets to enc:v2. Run only after all active app instances understand
+ * legacy behavior. With ENCRYPTION_KEY configured and ENCRYPTION_KEY_ACTIVE=1, it re-encrypts TOTP,
+ * integration, and support-channel secrets to enc:v2. Run only after all active app instances understand
  * enc:v2; keep AUTH_SECRET unchanged until the migration completes successfully.
  */
 async function migrateUserTotp() {
@@ -43,7 +43,7 @@ async function migrateIntegrationSecrets() {
       if (!field.secret) continue;
       const value = config[field.key];
       if (typeof value !== "string" || isCurrentEncryption(value)) continue;
-      if (!process.env.ENCRYPTION_KEY && value.startsWith("enc:v1:")) continue;
+      if (process.env.ENCRYPTION_KEY_ACTIVE !== "1" && value.startsWith("enc:v1:")) continue;
       next[field.key] = encryptSecret(decryptSecret(value));
       changed = true;
     }
@@ -88,6 +88,9 @@ async function migrateChannelSecrets() {
 async function main() {
   if (process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY.length < 32) {
     throw new Error("ENCRYPTION_KEY must contain at least 32 characters");
+  }
+  if (process.env.ENCRYPTION_KEY_ACTIVE === "1" && !process.env.ENCRYPTION_KEY) {
+    throw new Error("ENCRYPTION_KEY is required when ENCRYPTION_KEY_ACTIVE=1");
   }
   const [totp, integrations, channels] = await Promise.all([
     migrateUserTotp(),
