@@ -87,8 +87,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/webhooks/[c
     await db.channelIntegration.update({ where: { id: r.integration.id }, data: { lastEventAt: new Date(), ...(messages.length ? { lastError: null } : {}) } });
     return response ?? new Response("ok");
   } catch (e) {
-    const error = e instanceof Error ? e.message : "parse error";
-    await db.channelIntegration.update({ where: { id: r.integration.id }, data: { lastError: error } });
+    // Third-party parsers may include payload fragments or credentials in exception messages.
+    // Keep a generic diagnostic in the CRM rather than persisting untrusted request data.
+    await db.channelIntegration.update({ where: { id: r.integration.id }, data: { lastError: "Webhook processing failed; inspect provider configuration and retry" } });
     // 200, чтобы провайдер не заваливал повторами битым запросом; ошибка видна в админке
     return new Response("ok");
   }
