@@ -9,7 +9,8 @@ FROM base AS deps
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
 # Prisma client is generated here; development tooling is needed only for build/init.
-RUN npm ci --include=dev
+RUN npm ci --include=dev --include=optional \
+ && npm install --no-save --package-lock=false --ignore-scripts "@next/swc-linux-x64-gnu@$(node -p 'require(\"./node_modules/next/package.json\").version')"
 
 FROM deps AS build
 ARG GIT_SHA=unknown
