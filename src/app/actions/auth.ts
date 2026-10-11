@@ -135,10 +135,18 @@ export async function requestLoginCodeAction(_: ActionState, formData: FormData)
 /** Шаг 2: проверка кода, не более 5 попыток на код. */
 export async function verifyLoginCodeAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const code = String(formData.get("code") ?? "").replace(/\\D/g, "");
-  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || code.length !== 6) {
-    return { error: "Введите корректный email и 6 цифр из письма" };
-  }
+  const code = String(formData.get("code") ?? "").replace(/\D/g, "");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "Неверный email" };
+
+  // Rate-limit verification separately from code issuance: otherwise an attacker can
+  // request several codes and get five guesses against every code.
+  const ip = await clientIp();
+  const [byIp, byEmail] = await Promise.all([
+    checkRate(`verify-code:ip:${ip ?? "unknown"}`, { limit: 30, windowSec: 600, lockSec: 900 }),
+    checkRate(`verify-code:email:${email}`, { limit: 10, windowSec: 600, lockSec: 900 }),
+  ]);
+  if (!byIp.ok || !byEmail.ok) return { error: "Слишком много попыток. Попробуйте через 15 минут." };
+  if (code.length !== 6) return { error: "Введите 6 цифр из письма" };
 
   // Serialize attempts and consumption per email in PostgreSQL. A row lock alone is not
   // sufficient because two requests can both observe "unused" before either updates it.
@@ -186,6 +194,10 @@ export async function verifyLoginCodeAction(_: ActionState, formData: FormData):
   if (result.status === "account") return { error: "Аккаунт не найден" };
 
   const user = result.user;
+  await Promise.all([
+    clearRate(`verify-code:ip:${ip ?? "unknown"}`),
+    clearRate(`verify-code:email:${email}`),
+  ]);
   await loginAs(user.id, user.role, user.sessionVersion);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login", "User", user.id, { via: "code" });
