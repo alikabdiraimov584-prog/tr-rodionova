@@ -3,14 +3,20 @@ import { getSession } from "@/lib/session";
 import { recordHit, VISITOR_COOKIE, SESSION_COOKIE_A, CONSENT_COOKIE } from "@/lib/web-analytics";
 
 const YEAR = 365 * 24 * 3600;
+const MAX_BODY_BYTES = 16 * 1024;
 
 export async function POST(req: NextRequest) {
   // Собственная обезличенная статистика ведётся всегда (законный интерес, IP не хранится).
   // Согласие «all» включает только долгоживущий cookie посетителя (повторные визиты) и внешние счётчики.
   const consentAll = req.cookies.get(CONSENT_COOKIE)?.value === "all";
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) return new NextResponse(null, { status: 413, headers: { "Cache-Control": "no-store" } });
   let body: { path?: string; referrer?: string; utm?: Record<string, string> };
   try {
-    body = await req.json();
+    const raw = await req.text();
+    if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) return new NextResponse(null, { status: 413, headers: { "Cache-Control": "no-store" } });
+    body = JSON.parse(raw);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return new NextResponse(null, { status: 400 });
   } catch {
     return new NextResponse(null, { status: 400 });
   }
