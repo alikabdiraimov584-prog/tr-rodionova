@@ -56,6 +56,10 @@ main() {
     docker compose up -d --no-deps cron backup
   fi
 
+  # После остановки старых контейнеров шифруем ранее сохранённые TOTP-секреты.
+  # Скрипт идемпотентен; новая версия поддерживает и старые, и зашифрованные записи.
+  docker compose exec -T web node --conditions=react-server --import tsx scripts/encrypt-totp-secrets.ts
+
   # Caddy: конфиг перечитывается без разрыва соединений, если он менялся
   if ! git diff --quiet "$prev" HEAD -- deploy/Caddyfile; then
     docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || docker compose restart caddy
