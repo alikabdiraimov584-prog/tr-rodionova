@@ -53,6 +53,8 @@ jobs:
         run: npm run build
       - name: TypeScript
         run: npx tsc --noEmit
+      - name: Security unit tests
+        run: npm run test:security
       - name: ESLint
         run: npm run lint
       # Report the complete tree too. Current npm advisory data flags dev-only braces (no patched npm release)
