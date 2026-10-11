@@ -13,6 +13,7 @@ import { encryptSecret } from "@/lib/crypto";
 import { homeFor } from "@/lib/permissions";
 import type { ActionState } from "@/lib/action-result";
 import { PENDING_2FA_COOKIE as PENDING_COOKIE } from "@/lib/two-factor";
+import { safeNext } from "@/lib/safe-redirect";
 
 function secret() {
   return new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
@@ -37,7 +38,7 @@ export async function verifyTwoFactorAction(_: ActionState, formData: FormData):
   await loginAs(user.id, user.role, user.sessionVersion, true);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login2fa", "User", user.id);
-  const next = payload.next && payload.next.startsWith("/") && !payload.next.startsWith("//") ? payload.next : homeFor(user.role);
+  const next = safeNext(payload.next, homeFor(user.role));
   redirect(next);
 }
 
