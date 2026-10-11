@@ -90,6 +90,20 @@ jobs:
             console.log("Development tooling is absent from runtime image.");
           '
       - name: Audit the actual runtime image
-        run: docker run --rm tr-rodionova-runtime:ci npm audit --omit=dev --omit=peer --audit-level=high
+        run: docker run --rm tr-rodionova-runtime:ci npm audit --omit=dev --audit-level=high
       - name: Build isolated migration/seed image
         run: docker build --target init -t tr-rodionova-init:ci .
+      - name: Verify migration image excludes unrelated development tooling
+        run: |
+          docker run --rm tr-rodionova-init:ci node -e '
+            const fs = require("node:fs");
+            const pkg = require("./package.json");
+            const keep = new Set(["prisma", "tsx", "typescript"]);
+            const forbidden = [...Object.keys(pkg.devDependencies || {}).filter((name) => !keep.has(name)), "braces"];
+            const present = [...new Set(forbidden)].filter((name) => fs.existsSync("node_modules/" + name));
+            if (present.length) {
+              console.error("Unexpected development packages in migration image:", present.join(", "));
+              process.exit(1);
+            }
+            console.log("Migration image contains only the required Prisma/TypeScript toolchain.");
+          '
