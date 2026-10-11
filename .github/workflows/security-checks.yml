@@ -16,7 +16,26 @@ concurrency:
 jobs:
   quality-and-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tr
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: tr_rodionova
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tr -d tr_rodionova"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tr:ci-password@localhost:5432/tr_rodionova?schema=public
+      AUTH_SECRET: ci-only-secret-that-is-at-least-32-characters-long
+      CRON_SECRET: ci-cron-secret-for-tests-only
+      HEALTHCHECK_TOKEN: ci-healthcheck-token-for-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,10 +46,14 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
       - name: TypeScript
         run: npx tsc --noEmit
       - name: ESLint
         run: npm run lint
+      - name: Production build
+        run: npm run build
       - name: Dependency vulnerability audit
         run: npm audit --audit-level=high
       - name: Validate Caddy configuration
