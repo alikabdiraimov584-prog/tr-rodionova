@@ -4,25 +4,35 @@ import { db } from "@/lib/db";
 
 /**
  * Защита от перебора на базе таблицы RateLimit (работает при нескольких инстансах).
- * limit попыток за window секунд; при превышении ключ блокируется на lock секунд.
+ * Advisory lock сериализует конкурентные проверки одного ключа до конца транзакции.
  */
 export async function checkRate(key: string, opts: { limit: number; windowSec: number; lockSec?: number }) {
-  const now = new Date();
   const lockSec = opts.lockSec ?? opts.windowSec;
-  const row = await db.rateLimit.findUnique({ where: { key } });
-  if (row?.lockedUntil && row.lockedUntil > now) return { ok: false as const, retryAfterSec: Math.ceil((row.lockedUntil.getTime() - now.getTime()) / 1000) };
-  const inWindow = row && now.getTime() - row.windowStart.getTime() < opts.windowSec * 1000;
-  const count = (inWindow ? row.count : 0) + 1;
-  if (count > opts.limit) {
-    await db.rateLimit.upsert({ where: { key }, update: { count, lockedUntil: new Date(now.getTime() + lockSec * 1000) }, create: { key, count, lockedUntil: new Date(now.getTime() + lockSec * 1000) } });
-    return { ok: false as const, retryAfterSec: lockSec };
-  }
-  await db.rateLimit.upsert({
-    where: { key },
-    update: inWindow ? { count } : { count: 1, windowStart: now, lockedUntil: null },
-    create: { key, count: 1, windowStart: now },
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+    const now = new Date();
+    const row = await tx.rateLimit.findUnique({ where: { key } });
+    if (row?.lockedUntil && row.lockedUntil > now) {
+      return { ok: false as const, retryAfterSec: Math.ceil((row.lockedUntil.getTime() - now.getTime()) / 1000) };
+    }
+    const inWindow = !!row && now.getTime() - row.windowStart.getTime() < opts.windowSec * 1000;
+    const count = (inWindow ? row!.count : 0) + 1;
+    if (count > opts.limit) {
+      const lockedUntil = new Date(now.getTime() + lockSec * 1000);
+      await tx.rateLimit.upsert({
+        where: { key },
+        update: { count, lockedUntil, ...(inWindow ? {} : { windowStart: now }) },
+        create: { key, count, windowStart: now, lockedUntil },
+      });
+      return { ok: false as const, retryAfterSec: lockSec };
+    }
+    await tx.rateLimit.upsert({
+      where: { key },
+      update: inWindow ? { count } : { count, windowStart: now, lockedUntil: null },
+      create: { key, count, windowStart: now },
+    });
+    return { ok: true as const };
   });
-  return { ok: true as const };
 }
 
 /** Сбросить счётчик после успешного входа. */
