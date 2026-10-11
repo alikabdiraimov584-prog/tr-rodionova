@@ -56,10 +56,12 @@ jobs:
             echo "HEALTHCHECK_TOKEN не задан: подробная проверка бэкапов и задач пропущена"
           fi
           echo "$health" | grep -q '"ok":true' || fail="$fail база или приложение не отвечают;"
+          if [ -n "$HEALTHCHECK_TOKEN" ]; then
           # фото из CRM пишутся на том uploads: без права записи кнопка «Загрузить фото» не работает
           if echo "$health" | grep -q '"uploads":{"writable":false'; then
             code=$(echo "$health" | sed -n 's/.*"uploads":{"writable":false,"error":"\([^"]*\)".*/\1/p')
             fail="$fail папка загрузок фото недоступна для записи (${code:-нет данных});"
+          fi
           fi
           # robots.txt и llms.txt должны ссылаться на боевой домен, а не на адрес сборки
           robots=$(curl -sS -m 30 "https://$DOMAIN/robots.txt" 2>/dev/null || true)
@@ -67,6 +69,7 @@ jobs:
           echo "$robots" | grep -qi "localhost" && fail="$fail robots.txt ссылается на localhost;"
           curl -sS -m 30 "https://$DOMAIN/llms.txt" 2>/dev/null | grep -q "https://$DOMAIN" || fail="$fail llms.txt не отдаётся или без боевого адреса;"
           now=$(date -u +%s)
+          if [ -n "$HEALTHCHECK_TOKEN" ]; then
           # ночной дамп должен быть не старше двух суток
           localAt=$(echo "$health" | sed -n 's/.*"localAt":"\([^"]*\)".*/\1/p')
           if [ -n "$localAt" ]; then
@@ -106,12 +109,15 @@ jobs:
               echo "Планировщик, ночные задачи: ещё не отмечались"; [ "$up" -lt 26 ] || fail="$fail планировщик не запускает ночные задачи (контейнер cron);"
             fi
           fi
+          fi
           # что подключено (без ключей): оплата, касса, доставка, копии в S3, каналы — для сводки, без тревоги
+          if [ -n "$HEALTHCHECK_TOKEN" ]; then
           ints=$(echo "$health" | sed -n 's/.*"integrations":{"enabled":\[\([^]]*\)\].*/\1/p' | tr -d '"')
           chans=$(echo "$health" | sed -n 's/.*"channels":\[\([^]]*\)\].*/\1/p' | tr -d '"')
           echo "Интеграции: ${ints:-не включены}; каналы сообщений: ${chans:-не включены}"
           failing=$(echo "$health" | sed -n 's/.*"failing":\[\([^]]*\)\].*/\1/p' | tr -d '"')
           [ -z "$failing" ] || echo "Последняя проверка из CRM не прошла: $failing"
+          fi
           echo "fail=$fail" >> "$GITHUB_OUTPUT"
           [ -z "$fail" ] || { echo "ПРОБЛЕМЫ:$fail"; exit 1; }
       # Тревога в Telegram: секреты TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID в настройках репозитория (Settings → Secrets).
