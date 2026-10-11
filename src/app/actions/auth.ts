@@ -16,9 +16,10 @@ import { homeFor } from "@/lib/permissions";
 import { recordConsent } from "@/lib/consent";
 import { trackEvent } from "@/lib/web-analytics";
 import { sendVia } from "@/lib/notifications";
-import { createHash, randomInt, timingSafeEqual } from "node:crypto";
+import { randomInt } from "node:crypto";
 import { notifyWelcome } from "@/lib/notifications";
 import { safeNext } from "@/lib/safe-redirect";
+import { consumeLoginCode, hashLoginCode } from "@/lib/login-code";
 
 const LoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Неверный email"),
@@ -111,7 +112,6 @@ export async function logoutAction() {
 
 
 const CODE_TTL_MIN = 10;
-const codeHash = (email: string, code: string) => createHash("sha256").update(`${email}:${code}:${process.env.AUTH_SECRET ?? ""}`).digest("hex");
 
 /** Шаг 1 входа по коду: письмо с 6-значным кодом. Ответ одинаковый, есть аккаунт или нет. */
 export async function requestLoginCodeAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -125,7 +125,7 @@ export async function requestLoginCodeAction(_: ActionState, formData: FormData)
   const user = await db.user.findUnique({ where: { email }, select: { id: true, isActive: true, firstName: true } });
   if (user?.isActive) {
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-    await db.loginCode.create({ data: { email, codeHash: codeHash(email, code), expiresAt: new Date(Date.now() + CODE_TTL_MIN * 60_000) } });
+    await db.loginCode.create({ data: { email, codeHash: hashLoginCode(email, code), expiresAt: new Date(Date.now() + CODE_TTL_MIN * 60_000) } });
     const brand = await getSetting("brand");
     await sendVia("EMAIL", email, `${user.firstName}, здравствуйте.\n\nКод для входа на сайт ${brand.name}: ${code}\nДействует ${CODE_TTL_MIN} минут. Если вы не запрашивали вход, просто не используйте код.`, `Код входа: ${code}`);
   }
@@ -148,45 +148,7 @@ export async function verifyLoginCodeAction(_: ActionState, formData: FormData):
   if (!byIp.ok || !byEmail.ok) return { error: "Слишком много попыток. Попробуйте через 15 минут." };
   if (code.length !== 6) return { error: "Введите 6 цифр из письма" };
 
-  // Serialize attempts and consumption per email in PostgreSQL. A row lock alone is not
-  // sufficient because two requests can both observe "unused" before either updates it.
-  const result = await db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`login-code:${email}`}))`;
-    const now = new Date();
-    const rec = await tx.loginCode.findFirst({
-      where: { email, usedAt: null, expiresAt: { gt: now } },
-      orderBy: { createdAt: "desc" },
-    });
-    if (!rec || rec.attempts >= 5) return { status: "expired" as const };
-
-    const suppliedHash = Buffer.from(codeHash(email, code), "hex");
-    const storedHash = Buffer.from(rec.codeHash, "hex");
-    const matches = suppliedHash.length === storedHash.length && timingSafeEqual(suppliedHash, storedHash);
-    if (!matches) {
-      await tx.loginCode.updateMany({
-        where: { id: rec.id, usedAt: null, attempts: { lt: 5 }, expiresAt: { gt: now } },
-        data: { attempts: { increment: 1 } },
-      });
-      return { status: "invalid" as const };
-    }
-
-    const user = await tx.user.findUnique({ where: { email } });
-    if (!user || !user.isActive) {
-      await tx.loginCode.updateMany({ where: { id: rec.id, usedAt: null }, data: { usedAt: now } });
-      return { status: "account" as const };
-    }
-    if (isStaff(user.role)) {
-      await tx.loginCode.updateMany({ where: { id: rec.id, usedAt: null }, data: { usedAt: now } });
-      return { status: "staff" as const };
-    }
-
-    const claimed = await tx.loginCode.updateMany({
-      where: { id: rec.id, usedAt: null, expiresAt: { gt: now }, attempts: { lt: 5 } },
-      data: { usedAt: now },
-    });
-    if (claimed.count !== 1) return { status: "expired" as const };
-    return { status: "ok" as const, user };
-  });
+  const result = await consumeLoginCode(email, code);
 
   if (result.status === "expired") return { error: "Код устарел. Запросите новый." };
   if (result.status === "invalid") return { error: "Неверный код" };
