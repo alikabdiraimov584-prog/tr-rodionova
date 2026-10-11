@@ -7,7 +7,7 @@ import type { Channel } from "@/generated/prisma/enums";
 /**
  * Idempotent encryption-key migration.
  *
- * Without ENCRYPTION_KEY this leaves already-encrypted v1 values unchanged and keeps
+ * Without ENCRYPTION_KEY_ACTIVE=1 this leaves already-encrypted v1 values unchanged and keeps
  * legacy behavior. With ENCRYPTION_KEY configured and ENCRYPTION_KEY_ACTIVE=1, it re-encrypts TOTP,
  * integration, and support-channel secrets to enc:v2. Run only after all active app instances understand
  * enc:v2; keep AUTH_SECRET unchanged until the migration completes successfully.
