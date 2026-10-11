@@ -13,6 +13,39 @@ import type { Channel } from "@/generated/prisma/enums";
 
 const CHANNELS: Record<string, Channel> = { telegram: "TELEGRAM", whatsapp: "WHATSAPP", instagram: "INSTAGRAM", vk: "VK", email: "EMAIL" };
 
+/** Читаем поток с жёстким пределом памяти; content-length не обязателен и может быть подделан. */
+async function readBoundedBody(request: Request, maxBytes: number): Promise<string | null> {
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(body);
+  } catch {
+    return null;
+  }
+}
+
 async function resolve(params: Promise<{ channel: string; secret: string }>) {
   const { channel: slug, secret } = await params;
   const channel = CHANNELS[slug];
@@ -44,9 +77,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/webhooks/[c
   if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
     return new Response("payload too large", { status: 413, headers: { "Cache-Control": "no-store" } });
   }
-  const rawBody = await request.text();
-  if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
-    return new Response("payload too large", { status: 413, headers: { "Cache-Control": "no-store" } });
+  const rawBody = await readBoundedBody(request, MAX_BODY_BYTES);
+  if (rawBody === null) {
+    return new Response("payload too large or invalid UTF-8", { status: 413, headers: { "Cache-Control": "no-store" } });
   }
   try {
     const { messages, response } = await adapter.parse({ config: decodeChannelConfig(r.channel, r.integration.config), secret: r.integration.webhookSecret, rawBody, headers: request.headers, url: new URL(request.url) });
