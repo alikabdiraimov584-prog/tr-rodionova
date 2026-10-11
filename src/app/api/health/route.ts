@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
@@ -51,12 +52,20 @@ async function integrationsStatus() {
 }
 
 /** Проверка живости: версия сборки (коммит) и доступность базы. Используется мониторингом и аудитом. */
-export async function GET() {
+export async function GET(request: Request) {
   let dbOk = true;
   try {
     await db.$queryRaw`SELECT 1`;
   } catch {
     dbOk = false;
+  }
+  // Public monitoring gets only liveness. Detailed diagnostics require a dedicated bearer token.
+  const configuredToken = process.env.HEALTHCHECK_TOKEN;
+  const authorization = request.headers.get("authorization") ?? "";
+  const suppliedToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const authorized = !!configuredToken && suppliedToken.length === configuredToken.length && timingSafeEqual(Buffer.from(suppliedToken), Buffer.from(configuredToken));
+  if (!authorized) {
+    return NextResponse.json({ ok: dbOk }, { status: dbOk ? 200 : 503, headers: { "cache-control": "no-store" } });
   }
   const uploads = await uploadsStatus();
   const backup = dbOk ? await backupStatus().catch(() => null) : null;
