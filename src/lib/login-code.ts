@@ -18,7 +18,7 @@ export async function consumeLoginCode(email: string, code: string) {
   if (!/^\d{6}$/.test(code)) return { status: "invalid" as const };
 
   return db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`login-code:${email}`}))::text AS lock_acquired`;
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`login-code:${email}`})) IS NULL AS lock_acquired`;
     const now = new Date();
     const rec = await tx.loginCode.findFirst({
       where: { email, usedAt: null, expiresAt: { gt: now } },
