@@ -32,6 +32,22 @@ jobs:
           def text(html):
               html = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S)
               return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+          def imgsize(url):
+              # размер первого кадра: по заголовку JPEG (SOF) или PNG (IHDR), скачивается не больше 200 КБ
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(url if url.startswith("http") else B + url, headers=UA), timeout=40)
+                  b = r.read(200_000)
+              except Exception as e:
+                  return f"нет ({getattr(e, 'code', e)})"
+              if b[:8] == b"\x89PNG\r\n\x1a\n" and len(b) > 24:
+                  return f"{int.from_bytes(b[16:20], 'big')}x{int.from_bytes(b[20:24], 'big')}"
+              i = 2
+              while b[:2] == b"\xff\xd8" and i + 9 < len(b):
+                  if b[i] != 0xFF: i += 1; continue
+                  m = b[i + 1]; ln = int.from_bytes(b[i + 2:i + 4], "big")
+                  if m in (0xC0, 0xC1, 0xC2): return f"{int.from_bytes(b[i + 7:i + 9], 'big')}x{int.from_bytes(b[i + 5:i + 7], 'big')}"
+                  i += 2 + ln
+              return "не разобран"
           def ld(html):
               out = []
               for m in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', html, re.S):
@@ -69,12 +85,13 @@ jobs:
               groups = {}
               for o in offers:
                   g = o.get("group_id"); n = o.findtext("name"); url = o.findtext("url")
-                  grp = groups.setdefault(g, {"url": url, "name": n.split(",")[0], "price": set(), "sizes": 0, "avail": 0, "pics": len(o.findall("picture")), "cat": cats.get(o.findtext("categoryId"), "—")})
+                  grp = groups.setdefault(g, {"url": url, "name": n.split(",")[0], "price": set(), "sizes": 0, "avail": 0, "pics": len(o.findall("picture")), "pic": (o.findtext("picture") or ""), "cat": cats.get(o.findtext("categoryId"), "—")})
                   grp["price"].add(int(o.findtext("price") or 0)); grp["sizes"] += 1; grp["avail"] += o.get("available") == "true"
               print(f"категорий {len(cats)}: {', '.join(cats.values())}")
               print(f"моделей {len(groups)}, вариантов {len(offers)}, в наличии вариантов {sum(o.get('available') == 'true' for o in offers)}")
               for g, v in sorted(groups.items(), key=lambda kv: kv[1]["cat"]):
-                  print(f"  {v['name'][:34]:34} | {v['cat'][:12]:12} | {'/'.join(str(p) for p in sorted(v['price']))} ₽ | вариантов {v['sizes']}, в наличии {v['avail']} | фото {v['pics']} | {v['url'].split('/')[-1]}")
+                  pic = v["pic"]; src = "CRM" if "/uploads/" in pic else "папка" if "/images/brand/" in pic else "заглушка" if "placeholder" in pic else "—"
+                  print(f"  {v['name'][:34]:34} | {v['cat'][:12]:12} | {'/'.join(str(p) for p in sorted(v['price']))} ₽ | вариантов {v['sizes']}, в наличии {v['avail']} | фото {v['pics']}, первое {src} {imgsize(pic) if pic else ''} | {v['url'].split('/')[-1]}")
           except Exception as e:
               print("не разобран:", e, y[:300]); groups = {}
           print("\n== карточки вещей")
