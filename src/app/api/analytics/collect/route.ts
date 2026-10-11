@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { checkRate, clientIp } from "@/lib/ratelimit";
 import { recordHit, VISITOR_COOKIE, SESSION_COOKIE_A, CONSENT_COOKIE } from "@/lib/web-analytics";
 
 const YEAR = 365 * 24 * 3600;
 const MAX_BODY_BYTES = 16 * 1024;
 
 export async function POST(req: NextRequest) {
+  const ip = await clientIp();
+  const rate = await checkRate(`analytics:${ip ?? "unknown"}`, { limit: 120, windowSec: 60, lockSec: 60 });
+  if (!rate.ok) return new NextResponse(null, { status: 429, headers: { "Retry-After": String(rate.retryAfterSec), "Cache-Control": "no-store" } });
   // Собственная обезличенная статистика ведётся всегда (законный интерес, IP не хранится).
   // Согласие «all» включает только долгоживущий cookie посетителя (повторные визиты) и внешние счётчики.
   const consentAll = req.cookies.get(CONSENT_COOKIE)?.value === "all";
