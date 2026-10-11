@@ -9,6 +9,7 @@ import { requireStaff, requireSection, loginAs } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { checkRate } from "@/lib/ratelimit";
 import { generateTotpSecret, verifyTotp } from "@/lib/totp";
+import { encryptSecret } from "@/lib/crypto";
 import { homeFor } from "@/lib/permissions";
 import type { ActionState } from "@/lib/action-result";
 import { PENDING_2FA_COOKIE as PENDING_COOKIE } from "@/lib/two-factor";
@@ -45,7 +46,7 @@ export async function beginTotpSetupAction(): Promise<ActionState> {
   const me = await requireStaff();
   if (me.totpEnabledAt) return { error: "Двухфакторная защита уже включена" };
   const s = generateTotpSecret();
-  await db.user.update({ where: { id: me.id }, data: { totpSecret: s, totpEnabledAt: null } });
+  await db.user.update({ where: { id: me.id }, data: { totpSecret: encryptSecret(s), totpEnabledAt: null } });
   revalidatePath("/crm/security");
   return { ok: true, message: "Секрет создан — отсканируйте или введите его в приложении и подтвердите кодом" };
 }
