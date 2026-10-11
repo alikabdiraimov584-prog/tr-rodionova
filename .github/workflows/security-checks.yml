@@ -70,3 +70,14 @@ jobs:
       # This is the blocking security gate for packages installed as runtime dependencies.
       - name: Production dependency vulnerability audit
         run: npm audit --omit=dev --audit-level=high
+      - name: Build production runtime image
+        run: docker build --target runner -t tr-rodionova-runtime:ci .
+      - name: Audit the actual runtime image
+        run: >-
+          docker run --rm tr-rodionova-runtime:ci sh -ec
+          'test ! -d node_modules/prisma &&
+           test ! -d node_modules/eslint &&
+           test ! -d node_modules/eslint-config-next &&
+           npm audit --omit=dev --audit-level=high'
+      - name: Build isolated migration/seed image
+        run: docker build --target init -t tr-rodionova-init:ci .
