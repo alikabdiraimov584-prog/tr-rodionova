@@ -1,10 +1,10 @@
 import { db } from "@/lib/db";
-import { encryptSecret, isEncrypted } from "@/lib/crypto";
+import { decryptSecret, encryptSecret, isCurrentEncryption } from "@/lib/crypto";
 
 /**
- * One-time, idempotent migration for existing staff TOTP seeds.
- * Run on the new app container after old app containers have stopped:
- * node --conditions=react-server --import tsx scripts/encrypt-totp-secrets.ts
+ * Idempotent migration for staff TOTP seeds. With ENCRYPTION_KEY configured, converts
+ * plaintext and legacy AUTH_SECRET-derived enc:v1 values to independent-key enc:v2 values.
+ * Without ENCRYPTION_KEY, preserves the existing backward-compatible v1 behavior.
  */
 async function main() {
   const users = await db.user.findMany({
@@ -15,13 +15,13 @@ async function main() {
   let skipped = 0;
   for (const user of users) {
     const value = user.totpSecret;
-    if (!value || isEncrypted(value)) {
+    if (!value || isCurrentEncryption(value) || (!process.env.ENCRYPTION_KEY && value.startsWith("enc:v1:"))) {
       skipped++;
       continue;
     }
     const result = await db.user.updateMany({
       where: { id: user.id, totpSecret: value },
-      data: { totpSecret: encryptSecret(value) },
+      data: { totpSecret: encryptSecret(decryptSecret(value)) },
     });
     migrated += result.count;
   }
