@@ -85,6 +85,33 @@ async function migrateChannelSecrets() {
   return migrated;
 }
 
+async function countLegacySecrets() {
+  let remaining = 0;
+  const users = await db.user.findMany({ where: { totpSecret: { not: null } }, select: { totpSecret: true } });
+  remaining += users.filter((user) => !!user.totpSecret && !isCurrentEncryption(user.totpSecret)).length;
+
+  const integrations = await db.integration.findMany();
+  for (const row of integrations) {
+    const definition = byKey.get(row.key);
+    const config = (row.config as Record<string, unknown> | null) ?? {};
+    for (const field of definition?.fields ?? []) {
+      const value = config[field.key];
+      if (field.secret && typeof value === "string" && value.length > 0 && !isCurrentEncryption(value)) remaining++;
+    }
+  }
+
+  const channels = await db.channelIntegration.findMany();
+  for (const row of channels) {
+    const fields = CHANNEL_FIELDS[row.channel as Exclude<Channel, "WEBSITE">] ?? [];
+    const secretKeys = new Set(fields.filter((field) => field.secret).map((field) => field.key));
+    const config = (row.config as Record<string, unknown> | null) ?? {};
+    for (const [key, value] of Object.entries(config)) {
+      if (secretKeys.has(key) && typeof value === "string" && value.length > 0 && !isCurrentEncryption(value)) remaining++;
+    }
+  }
+  return remaining;
+}
+
 async function main() {
   if (process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY.length < 32) {
     throw new Error("ENCRYPTION_KEY must contain at least 32 characters");
@@ -97,6 +124,10 @@ async function main() {
     migrateIntegrationSecrets(),
     migrateChannelSecrets(),
   ]);
+  if (process.env.ENCRYPTION_KEY_ACTIVE === "1") {
+    const remaining = await countLegacySecrets();
+    if (remaining > 0) throw new Error(`Encryption migration incomplete: ${remaining} legacy/plaintext secret(s) remain`);
+  }
   console.info(`Encryption migration complete: totp=${totp}, integrations=${integrations}, channels=${channels}`);
 }
 
