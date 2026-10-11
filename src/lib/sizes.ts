@@ -142,6 +142,7 @@ export function recommendSize(chart: SizeChart, m: Measures): SizeAdvice | null 
 
 const CATEGORY_CHART: Record<string, SizeChartKey> = {
   jackets: "outer",
+  suits: "outer",
   coats: "outer",
   knitwear: "knit",
   dresses: "dress",

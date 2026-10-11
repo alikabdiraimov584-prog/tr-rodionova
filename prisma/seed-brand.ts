@@ -15,6 +15,9 @@ export async function seedBrand(db: PrismaClient) {
   // боди — отдельная категория бренда; создаётся один раз вместе с первой загрузкой вещей (удалённая в CRM не возвращается)
   if (!(await db.product.findUnique({ where: { slug: "bodi-tr-01" }, select: { id: true } })) && !(await db.category.findUnique({ where: { slug: "bodysuits" }, select: { id: true } })))
     await db.category.create({ data: { slug: "bodysuits", name: "Боди", order: 3 } });
+  // костюмы — категория для комплектов (жакет, топ, юбка одним артикулом); создаётся вместе с первым костюмом
+  if (!(await db.product.findUnique({ where: { slug: "kostyum-tr-blanc" }, select: { id: true } })) && !(await db.category.findUnique({ where: { slug: "suits" }, select: { id: true } })))
+    await db.category.create({ data: { slug: "suits", name: "Костюмы", order: 1 } });
   const items = [
     {
       slug: "bodi-tr-01",
@@ -100,6 +103,24 @@ export async function seedBrand(db: PrismaClient) {
       featured: true,
       preorder: true,
     },
+    {
+      slug: "kostyum-tr-blanc",
+      care: "Сухая чистка. Кольцо и пряжку TR перед чисткой обернуть тканью, молнию топа застегнуть. Жакет и топ хранить на плечиках, юбку — с зажимами за пояс, всё в чехле.",
+      sku: "TR-ST-101",
+      name: "Костюм TR Blanc",
+      category: "suits",
+      price: 72_900,
+      // состав и материал вводит владелица в CRM: ткань по фото не определяется, придуманных данных здесь нет
+      material: null,
+      sizeChart: "outer",
+      composition: null,
+      description: "Костюм из трёх вещей: укороченный жакет с воротником-стойкой, топ-бюстье и юбка мини. Жакет застёгивается под горлом на фирменное кольцо TR, под ним вырез-капля, на спине — открытая полоса между лопаток, на манжетах по три золотые пуговицы. Топ-бюстье на молнии спереди. Юбка с высокой посадкой, асимметричным запахом и пряжкой TR на поясе. Плотная костюмная ткань держит форму; три вещи носятся вместе и по отдельности — с брюками TR Palazzo или под жакет TR Noir.",
+      sizes: ["XS", "S", "M", "L"],
+      colors: [["Белый", "#F3F0E9"]],
+      image: "jacket",
+      featured: true,
+      preorder: false,
+    },
   ];
   const shipAt = () => new Date(Date.now() + 35 * 86_400_000);
   for (const it of items) {
@@ -166,6 +187,14 @@ export async function seedBrand(db: PrismaClient) {
       cover: "/images/brand/TR-JK-101/01.jpg",
       order: 2,
       items: [["zhaket-tr-noir", "Пряжка TR по талии"], ["yubka-tr-01", "Запах с разрезом"], ["bodi-tr-01", "Под жакет"]],
+    },
+    {
+      slug: "look-04-tr-blanc",
+      title: "Look 04 — Костюм TR Blanc",
+      description: "Укороченный жакет с кольцом TR под горлом, топ-бюстье на молнии и юбка с запахом на пряжке TR: белый комплект из трёх вещей, который носится вместе и по отдельности. Съёмка в студии.",
+      cover: null,
+      order: 3,
+      items: [["kostyum-tr-blanc", "Жакет, топ и юбка одним комплектом"]],
     },
   ];
   // образы бренда создаются один раз; дальше обложку, порядок, публикацию и состав ведёт CRM
