@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { decryptSecret } from "@/lib/crypto";
 
 /** TOTP (RFC 6238) на node:crypto, без внешних библиотек. Совместимо с Google Authenticator, Яндекс Ключ, 1Password. */
 
@@ -55,8 +56,15 @@ export function totpCode(secret: string, time = Date.now(), step = 30) {
 export function verifyTotp(secret: string, input: string, time = Date.now()) {
   const digits = input.replace(/\D/g, "");
   if (digits.length !== 6) return false;
+  let plain: string;
+  try {
+    // Supports both legacy plaintext records and AES-GCM encrypted records during migration.
+    plain = decryptSecret(secret);
+  } catch {
+    return false;
+  }
   for (const delta of [0, -1, 1]) {
-    const expected = Buffer.from(totpCode(secret, time + delta * 30_000));
+    const expected = Buffer.from(totpCode(plain, time + delta * 30_000));
     if (timingSafeEqual(expected, Buffer.from(digits))) return true;
   }
   return false;
