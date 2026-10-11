@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { jwtVerify } from "jose";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff, loginAs } from "@/lib/auth";
+import { requireStaff, requireSection, loginAs } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { checkRate } from "@/lib/ratelimit";
 import { generateTotpSecret, verifyTotp } from "@/lib/totp";
@@ -76,7 +76,8 @@ export async function disableTotpAction(_: ActionState, formData: FormData): Pro
 
 /** Администратор сбрасывает 2FA сотруднику, потерявшему телефон. */
 export async function adminResetTotpAction(formData: FormData) {
-  const me = await requireStaff();
+  // Сброс чужого второго фактора требует полноценной CRM-сессии с пройденной 2FA.
+  const me = await requireSection("staff");
   if (me.role !== "ADMIN") throw new Error("Только администратор");
   const id = String(formData.get("id"));
   const r = await db.user.updateMany({ where: { id, role: { not: "CUSTOMER" } }, data: { totpSecret: null, totpEnabledAt: null, sessionVersion: { increment: 1 } } });
