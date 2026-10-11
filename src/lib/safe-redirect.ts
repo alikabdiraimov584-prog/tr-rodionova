@@ -10,7 +10,7 @@ export function safeNext(value: unknown, fallback: string): string {
     !value.startsWith("/") ||
     value.startsWith("//") ||
     value.includes("\\") ||
-    /[\\u0000-\\u001f\\u007f]/.test(value)
+    /[\u0000-\u001f\u007f]/.test(value)
   ) {
     return fallback;
   }
@@ -18,7 +18,7 @@ export function safeNext(value: unknown, fallback: string): string {
   try {
     const target = new URL(value, INTERNAL_ORIGIN);
     if (target.origin !== INTERNAL_ORIGIN) return fallback;
-    return `${target.pathname}${target.search}${target.hash}`;
+    return target.pathname + target.search + target.hash;
   } catch {
     return fallback;
   }
