@@ -5,7 +5,7 @@ import "server-only";
  * Секретные поля (secret: true) шифруются в базе и не возвращаются в интерфейс.
  */
 
-export type IntegrationGroup = "payments" | "delivery" | "analytics" | "search" | "messaging" | "service";
+export type IntegrationGroup = "payments" | "delivery" | "analytics" | "ads" | "search" | "messaging" | "service";
 
 export type IntegrationField = { key: string; label: string; secret?: boolean; hint?: string; placeholder?: string; multiline?: boolean };
 
@@ -29,6 +29,7 @@ export const GROUPS: Record<IntegrationGroup, { title: string; hint: string }> =
   delivery: { title: "Доставка", hint: "Службы доставки: проверка подключения, трек-ссылки для клиенток" },
   messaging: { title: "Мессенджеры, почта и SMS", hint: "Каналы единого inbox и уведомлений — настраиваются на отдельной странице" },
   analytics: { title: "Аналитика", hint: "Счётчики ставятся на сайт только после согласия на cookie" },
+  ads: { title: "Реклама", hint: "Рекламные кабинеты, которыми CRM управляет сама: кампании, бюджеты, тесты и статистика в разделе «Реклама»" },
   search: { title: "Поисковики", hint: "Подтверждение прав на сайт для Яндекс Вебмастера и Google Search Console; IndexNow — мгновенная индексация изменений" },
   service: { title: "Резервные копии", hint: "Копии базы за пределами сервера: если диск погибнет, данные восстановятся из бакета" },
 };
@@ -51,6 +52,7 @@ export const METRIKA_GOALS = [
   { id: "cart", name: "Вещь добавлена в корзину" },
   { id: "waitlist", name: "Подписка на поступление размера" },
   { id: "register", name: "Регистрация в Circle" },
+  { id: "product_view", name: "Просмотр карточки вещи" },
 ] as const;
 
 export const INTEGRATIONS: IntegrationDef[] = [
@@ -279,7 +281,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     fields: [
       { key: "counterId", label: "Номер счётчика", placeholder: "12345678" },
       { key: "webvisor", label: "Вебвизор", placeholder: "да", hint: "«да» или «on» — запись действий на страницах; в политике ПДн на сайте Вебвизор и cookie Метрики уже описаны (п. 9.2 и 14.1). Включите Вебвизор и в настройках счётчика на metrika.yandex.ru." },
-      { key: "token", label: "OAuth-токен Яндекса (для создания целей)", secret: true, hint: "Не обязателен. С ним «Проверить связь» сама создаёт в счётчике цели сайта: заказ, оформление, корзина, лист ожидания, регистрация. Как получить: oauth.yandex.ru → «Создать приложение» → платформа «Веб-сервисы», Redirect URI https://oauth.yandex.ru/verification_code, права «Яндекс Метрика → Создание счётчиков, изменение параметров» → после сохранения открыть https://oauth.yandex.ru/authorize?response_type=token&client_id=<ClientID приложения> и скопировать token из адресной строки." },
+      { key: "token", label: "OAuth-токен Яндекса (для создания целей)", secret: true, hint: "Не обязателен. С ним «Проверить связь» сама создаёт в счётчике цели сайта: заказ, оформление, корзина, лист ожидания, регистрация, просмотр вещи (с флагом «ретаргетинг» — их видит Директ). Как получить: oauth.yandex.ru → «Создать приложение» → платформа «Веб-сервисы», Redirect URI https://oauth.yandex.ru/verification_code, права «Яндекс Метрика → Создание счётчиков, изменение параметров» → после сохранения открыть https://oauth.yandex.ru/authorize?response_type=token&client_id=<ClientID приложения> и скопировать token из адресной строки." },
     ],
     test: async (config) => {
       const counter = (config.counterId ?? "").replace(/\D/g, "");
@@ -295,7 +297,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
       const created: string[] = [], failed: string[] = [];
       for (const g of METRIKA_GOALS) {
         if (have.has(g.id)) continue;
-        const r = await json<{ message?: string; errors?: { message: string }[] }>(base, { method: "POST", headers, body: JSON.stringify({ goal: { name: g.name, type: "action", is_retargeting: 0, conditions: [{ type: "exact", url: g.id }] } }) });
+        const r = await json<{ message?: string; errors?: { message: string }[] }>(base, { method: "POST", headers, body: JSON.stringify({ goal: { name: g.name, type: "action", is_retargeting: 1, conditions: [{ type: "exact", url: g.id }] } }) });
         if (r.status === 200 || r.status === 201) created.push(g.name);
         else failed.push(`${g.name} (HTTP ${r.status}: ${r.body.message ?? r.body.errors?.[0]?.message ?? "ошибка"})`);
       }
@@ -304,6 +306,38 @@ export const INTEGRATIONS: IntegrationDef[] = [
       return { ok: true, info: `Цели в счётчике ${counter}: создано ${created.length}${created.length ? ` (${created.join(", ")})` : ""}, уже было ${existing}. Отчёт «Конверсии» в Метрике покажет их через несколько минут.` };
     },
     guide: ["Создайте счётчик на metrika.yandex.ru для домена tr-rodionova.ru: в настройках включите Вебвизор, карту кликов и электронную коммерцию (контейнер dataLayer).", "Вставьте номер и включите интеграцию. Сайт отправляет цели order, checkout, cart, waitlist, register и покупку в электронную коммерцию; «Проверить связь» с OAuth-токеном создаст эти цели в счётчике.", "Счётчик ставится только посетительницам, нажавшим «Принять» в баннере cookie, поэтому цифры Метрики ниже реальной посещаемости.", "В Вебмастере привяжите этот счётчик к сайту (Настройки → Привязка к Метрике): поведенческие данные помогают ранжированию в Яндексе."],
+  },
+  {
+    key: "yandex_direct",
+    group: "ads",
+    name: "Яндекс Директ",
+    summary: "CRM управляет кабинетом по API: создаёт кампании, запускает и останавливает, меняет бюджеты, ведёт A/B-тесты текстов, добавляет минус-слова и собирает статистику.",
+    effect: "Раздел CRM → Реклама: стартовый набор кампаний (бренд, категории каталога, ретаргетинг), ежедневная статистика с CAC по реальным заказам, оптимизатор с автопилотом.",
+    fields: [
+      { key: "token", label: "OAuth-токен Яндекса с правом «Яндекс Директ: использование API»", secret: true, hint: "oauth.yandex.ru → «Создать приложение» → платформа «Веб-сервисы», Redirect URI https://oauth.yandex.ru/verification_code, права «Яндекс Директ → Использование API сервиса Яндекс.Директ» (можно в том же приложении добавить права Метрики). После сохранения открыть https://oauth.yandex.ru/authorize?response_type=token&client_id=<ClientID> под логином владельца кабинета и скопировать token. Один раз в кабинете Директа: Инструменты → API → подать заявку на доступ (одобряют за 1–2 дня)." },
+      { key: "login", label: "Логин рекламодателя (только для агентского аккаунта)", placeholder: "оставьте пустым", hint: "Заполняется, если токен выдан агентству и нужно указать, чьим кабинетом управлять." },
+      { key: "targetCpa", label: "Целевая стоимость заказа, ₽", placeholder: "9000", hint: "Сколько рекламы допустимо потратить на один заказ. По этой цифре оптимизатор режет бюджеты убыточных кампаний и масштабирует прибыльные." },
+      { key: "autopilot", label: "Автопилот", placeholder: "да", hint: "«да» — оптимизатор сам останавливает проигравшие объявления, добавляет минус-слова и меняет бюджеты в пределах ×1,5 от плана; «нет» — только рекомендации с кнопкой «Применить» в разделе «Реклама». Смена стратегии и остановка брендовой кампании всегда ждут подтверждения." },
+      { key: "sandbox", label: "Песочница", placeholder: "нет", hint: "«да» — работать с тестовым кабинетом api-sandbox (включается в Директе: Инструменты → API → Песочница). Для обучения без реальных денег." },
+    ],
+    test: async (config) => {
+      const direct = await import("@/lib/ads/direct");
+      const cfg = direct.parseDirectConfig(config);
+      if (!cfg) return { ok: false, error: "Укажите OAuth-токен" };
+      try {
+        const c = await direct.clientInfo(cfg);
+        const units = direct.directUnits();
+        const metrika = await (await import("@/lib/metrika-api")).metrikaAccess();
+        const notes = [`кабинет ${c.Login}${c.Currency ? `, валюта ${c.Currency}` : ""}${cfg.sandbox ? " (песочница)" : ""}`, units ? `баллы API ${units}` : null, cfg.targetCpa ? `цель ${Math.round(cfg.targetCpa / 100)} ₽ за заказ` : "целевая стоимость заказа не задана: оптимизатор не будет менять бюджеты", metrika ? `счётчик Метрики ${metrika.counter}${metrika.token ? "" : " без OAuth-токена: ретаргетинг и цель «заказ» недоступны"}` : "интеграция Метрики выключена: конверсии и ретаргетинг недоступны"].filter(Boolean);
+        return { ok: true, info: notes.join("; ") };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "нет связи";
+        if (e instanceof direct.DirectError && e.code === 53) return { ok: false, error: `Токен не принят: ${msg}. Проверьте, что токен выдан под логином владельца кабинета и приложение имеет право «Директ: использование API».` };
+        if (e instanceof direct.DirectError && e.code === 54) return { ok: false, error: `Нет доступа к API: ${msg}. В кабинете Директа откройте Инструменты → API и подайте заявку на доступ.` };
+        return { ok: false, error: msg };
+      }
+    },
+    guide: ["Получите OAuth-токен (подсказка под полем) и подайте заявку на доступ к API в кабинете Директа: Инструменты → API. Пока заявка не одобрена, проверка связи вернёт код 54.", "Выдайте логину Директа доступ к счётчику Метрики (Метрика → Настройки → Доступ) или используйте один логин для обоих — иначе кампании создадутся без счётчика и ретаргетинга.", "Задайте целевую стоимость заказа и включите интеграцию. Дальше всё в разделе CRM → Реклама: стартовый набор кампаний создаётся на паузе, запуск — одной кнопкой после пополнения баланса в Директе.", "Статистика подтягивается каждую ночь и по кнопке «Обновить»; заказы привязываются к кампании по utm_campaign визита, поэтому CAC и ДРР считаются по реальным оплаченным заказам, а не по кликам."],
   },
   {
     key: "ga4",

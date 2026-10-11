@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-export type MetrikaGoalId = "order" | "checkout" | "cart" | "waitlist" | "register";
+export type MetrikaGoalId = "order" | "checkout" | "cart" | "waitlist" | "register" | "product_view";
 
 export function trackGoal(goal: MetrikaGoalId, params?: Record<string, unknown>) {
   if (typeof window === "undefined") return;

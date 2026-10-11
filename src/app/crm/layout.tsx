@@ -43,6 +43,7 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
     ] },
     { title: "Управление", items: [
       { href: "/crm/analytics", label: "Аналитика", section: "analytics" },
+      { href: "/crm/ads", label: "Реклама", section: "ads" },
       { href: "/crm/finance", label: "Финансы", section: "finance" },
       { href: "/crm/staff", label: "Сотрудники", section: "staff" },
       { href: "/crm/integrations", label: "Интеграции", section: "integrations" },

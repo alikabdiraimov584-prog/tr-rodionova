@@ -4,6 +4,8 @@ import type { Role } from "@/generated/prisma/enums";
 export const SECTIONS = {
   dashboard: ["MANAGER", "ADMIN"],
   analytics: ["MANAGER", "ADMIN"],
+  ads: ["MANAGER", "ADMIN"], // реклама: смотреть статистику и рекомендации
+  adsEdit: ["ADMIN"], // реклама: создавать и запускать кампании, менять бюджеты — трата денег
   campaigns: ["MANAGER", "ADMIN"],
   content: ["MANAGER", "ADMIN"], // лукбук, журнал
   giftcards: ["SUPPORT", "MANAGER", "ADMIN"],

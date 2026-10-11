@@ -31,7 +31,7 @@ jobs:
         run: |
           D="$DOMAIN"
           # «сервер A/B с»: A — соединение и TLS готовы, B — пришёл первый байт; B − A ≈ сборка страницы плюс один проход по сети
-          for p in / /catalog /collections /journal /crm /login /api/health /robots.txt /sitemap.xml; do
+          for p in / /catalog /collections /journal /crm /crm/ads /login /api/health /robots.txt /sitemap.xml; do
             printf '%-14s %s\n' "$p" "$(curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}  сервер %{time_pretransfer}/%{time_starttransfer} с' "https://$D$p" 2>&1 || true)"
           done
           echo "== headers"; curl -sSI -m 30 "https://$D/" | grep -iE "^(HTTP|strict-transport|content-security|x-frame|server)" || true

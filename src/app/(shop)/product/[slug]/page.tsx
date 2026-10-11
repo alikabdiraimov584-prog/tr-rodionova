@@ -17,6 +17,7 @@ import { toggleWishlistAction } from "@/app/actions/shop";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
 import { JsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd } from "@/lib/seo";
 import { productFaq } from "@/lib/faq";
+import { MetrikaGoal } from "@/components/metrika-goal";
 
 async function load(slug: string) {
   return db.product.findUnique({
@@ -97,6 +98,8 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const ld = productJsonLd(p, delivery, { hasStore: !!seller.showroom });
   return (
     <div className="mx-auto max-w-[1600px] md:px-5">
+      {/* цель Метрики для ретаргетинга в Директе: «смотрела вещь, не купила» */}
+      <MetrikaGoal goal="product_view" dedupe={p.slug} />
       <JsonLd data={[ld, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(category ? [{ name: category.name, path: `/catalog?category=${category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
       <div className="grid md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] md:gap-10 lg:gap-16">
         <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />

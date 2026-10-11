@@ -689,7 +689,7 @@ model ChannelIntegration {
  * Секретные поля config хранятся зашифрованными (см. src/lib/crypto.ts).
  */
 model Integration {
-  key         String    @id // yookassa, cdek, boxberry, yandex_delivery, metrika, ga4, yandex_webmaster, google_search_console
+  key         String    @id // yookassa, cdek, boxberry, yandex_delivery, metrika, ga4, yandex_webmaster, google_search_console, yandex_direct
   enabled     Boolean   @default(false)
   config      Json      @default("{}")
   lastCheckAt DateTime?
@@ -947,6 +947,50 @@ model AnalyticsEvent {
 
   @@index([type, createdAt])
   @@index([sessionId])
+}
+
+// ───────────────────────────── Реклама: Яндекс Директ ─────────────────────────────
+
+/**
+ * Зеркало кампании внешнего рекламного кабинета (пока только Яндекс Директ). Создаётся из CRM (managed) или
+ * подтягивается из кабинета при сверке. utmCampaign связывает кампанию с визитами и заказами собственной аналитики.
+ */
+model AdCampaign {
+  id            String   @id @default(cuid())
+  provider      String   @default("yandex_direct")
+  externalId    String // Id кампании в Директе
+  name          String
+  kind          String   @default("external") // brand_search / category_search / retargeting / external
+  category      String? // slug категории каталога для кампаний по категориям
+  state         String? // Директ: ON, OFF, SUSPENDED, ENDED, ARCHIVED
+  status        String? // Директ: DRAFT, MODERATION, ACCEPTED, REJECTED
+  statusPayment String? // Директ: ALLOWED, DISALLOWED
+  strategy      String? // тип стратегии на поиске или в сетях
+  weeklyBudget  Int? // недельный бюджет стратегии, копейки
+  plannedWeekly Int? // недельный бюджет, с которым кампания создана: потолок для автоматического масштабирования
+  targetCpa     Int? // целевая стоимость заказа, копейки
+  utmCampaign   String?
+  managed       Boolean  @default(false) // создана из CRM: оптимизатор меняет только такие
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([provider, externalId])
+}
+
+/** Дневная статистика кампании из отчётов Директа; деньги в копейках с НДС. */
+model AdStat {
+  id          String   @id @default(cuid())
+  provider    String   @default("yandex_direct")
+  campaignId  String // Id кампании в Директе
+  date        DateTime @db.Date
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  cost        Int      @default(0)
+  conversions Int      @default(0) // достижения цели «Заказ оформлен», если цель известна, иначе всех целей
+
+  @@unique([provider, campaignId, date])
+  @@index([date])
 }
 
 // ───────────────────────────── Рассылки ─────────────────────────────

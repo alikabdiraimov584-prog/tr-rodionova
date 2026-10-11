@@ -163,8 +163,10 @@ export async function runDailyJobs(actorId: string | null = null) {
     await db.analyticsEvent.deleteMany({ where: { createdAt: { lt: analyticsBorder } } });
     return (await db.visitorSession.deleteMany({ where: { startedAt: { lt: analyticsBorder } } })).count;
   }, 0);
+  // реклама: статистика Директа за неделю, зеркало кампаний и оптимизатор (автопилот — по настройке интеграции)
+  const ads = await step("ads", async () => (await import("@/lib/ads/sync")).syncAds({ days: 7 }), { skipped: "ошибка" } as Awaited<ReturnType<typeof import("@/lib/ads/sync").syncAds>>);
   const hourly = await step("hourly", runHourlyJobs, {} as Awaited<ReturnType<typeof runHourlyJobs>>);
-  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, reviewRequests, ...hourly, purged, guestCarts, shipments, oldSessions, ...(Object.keys(errors).length ? { errors } : {}) };
+  const result = { completed, birthdays, expired, tiers, campaigns, expiringNotified, cartReminders, reviewRequests, ...hourly, purged, guestCarts, shipments, oldSessions, ads, ...(Object.keys(errors).length ? { errors } : {}) };
   await audit(actorId, "jobs.daily", "System", null, result);
   return result;
 }
