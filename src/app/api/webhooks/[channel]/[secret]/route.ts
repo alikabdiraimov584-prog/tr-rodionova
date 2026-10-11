@@ -39,7 +39,15 @@ export async function POST(request: Request, ctx: RouteContext<"/api/webhooks/[c
   if (!r.integration.enabled) return new Response("disabled", { status: 200 });
   const adapter = ADAPTERS[r.channel];
   if (!adapter) return new Response("unsupported", { status: 400 });
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  const MAX_BODY_BYTES = 1024 * 1024;
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return new Response("payload too large", { status: 413, headers: { "Cache-Control": "no-store" } });
+  }
   const rawBody = await request.text();
+  if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+    return new Response("payload too large", { status: 413, headers: { "Cache-Control": "no-store" } });
+  }
   try {
     const { messages, response } = await adapter.parse({ config: decodeChannelConfig(r.channel, r.integration.config), secret: r.integration.webhookSecret, rawBody, headers: request.headers, url: new URL(request.url) });
     for (const m of messages) await ingestInbound(r.channel, m);
