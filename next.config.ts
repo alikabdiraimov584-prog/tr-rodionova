@@ -45,7 +45,18 @@ const nextConfig: NextConfig = {
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
       { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
     ];
-    return [{ source: "/(.*)", headers: security }];
+    return [
+      { source: "/(.*)", headers: security },
+      // Password-reset tokens are carried in the path; do not cache these pages or leak their URL via Referer.
+      {
+        source: "/reset/:token",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+    ];
   },
 };
 
