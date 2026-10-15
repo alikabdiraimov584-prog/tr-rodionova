@@ -95,6 +95,8 @@ jobs:
         run: docker run --rm tr-rodionova-runtime:ci npm audit --omit=dev --audit-level=high
       - name: Build isolated migration/seed image
         run: docker build --target init -t tr-rodionova-init:ci .
+      - name: Verify migration image can execute Prisma migrations
+        run: docker run --rm --network host -e DATABASE_URL="$DATABASE_URL" tr-rodionova-init:ci npx prisma migrate deploy
       - name: Verify migration image excludes unrelated development tooling
         run: |
           docker run --rm tr-rodionova-init:ci node -e '
