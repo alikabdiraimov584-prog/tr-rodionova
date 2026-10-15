@@ -60,10 +60,17 @@ export async function GET(request: Request) {
     dbOk = false;
   }
   // Public monitoring gets only liveness. Detailed diagnostics require a dedicated bearer token.
-  const configuredToken = process.env.HEALTHCHECK_TOKEN;
+  const configuredToken = process.env.HEALTHCHECK_TOKEN ?? "";
   const authorization = request.headers.get("authorization") ?? "";
   const suppliedToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  const authorized = !!configuredToken && suppliedToken.length === configuredToken.length && timingSafeEqual(Buffer.from(suppliedToken), Buffer.from(configuredToken));
+  const suppliedBytes = Buffer.from(suppliedToken, "utf8");
+  const configuredBytes = Buffer.from(configuredToken, "utf8");
+  // timingSafeEqual throws if byte lengths differ; compare Buffer lengths (not JS character counts)
+  // first so malformed/non-ASCII Authorization values cannot turn a health probe into a 500.
+  const authorized =
+    configuredBytes.length > 0 &&
+    suppliedBytes.length === configuredBytes.length &&
+    timingSafeEqual(suppliedBytes, configuredBytes);
   if (!authorized) {
     return NextResponse.json({ ok: dbOk }, { status: dbOk ? 200 : 503, headers: { "cache-control": "no-store" } });
   }
