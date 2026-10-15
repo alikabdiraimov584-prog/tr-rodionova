@@ -18,6 +18,12 @@ main() {
   done
   local run=(docker compose run --rm --no-deps -T --entrypoint sh)
 
+  # Handle the read-only listing command before resolving a dump path.
+  if [ "$arg" = "--list" ]; then
+    "${run[@]}" backup -c 'ls -lh /backups/*.sql.gz 2>/dev/null || echo "дампов нет"'
+    exit 0
+  fi
+
   if [ -z "$arg" ]; then
     src=$("${run[@]}" backup -c 'ls -1 /backups/*.sql.gz 2>/dev/null | sort | tail -1' | tr -d '\r' | tail -1)
     [ -n "$src" ] || { echo "В томе backups нет дампов. Укажите файл: deploy/restore.sh /путь/к/файлу.sql.gz"; exit 1; }
@@ -28,8 +34,6 @@ main() {
     src="/backups/$(basename "$arg")"
     "${run[@]}" backup -c "test -f '$src'" || { echo "В томе backups нет файла $src. Список: deploy/restore.sh --list"; exit 1; }
   fi
-  if [ "$arg" = "--list" ]; then "${run[@]}" backup -c 'ls -lh /backups/*.sql.gz 2>/dev/null || echo "дампов нет"'; exit 0; fi
-
   echo "Дамп для восстановления: ${arg:-$src}"
   "${run[@]}" "${mount[@]}" backup -c "gunzip -t '$src'" || { echo "Файл повреждён или это не gzip"; exit 1; }
   if [ "$yes" != 1 ]; then
