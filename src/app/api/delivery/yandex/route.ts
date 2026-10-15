@@ -1,4 +1,5 @@
 import { readBoundedBody } from "@/lib/read-bounded-body";
+import { checkRate, clientIp } from "@/lib/ratelimit";
 import { db } from "@/lib/db";
 import { syncYandexClaim } from "@/lib/delivery/yandex";
 
@@ -8,6 +9,9 @@ import { syncYandexClaim } from "@/lib/delivery/yandex";
  * запросом к API. Повтор того же статуса чаще раза в 5 секунд пропускаем — страховка от шторма уведомлений.
  */
 export async function POST(request: Request) {
+  const ip = await clientIp();
+  const rate = await checkRate(`yandex-callback:${ip ?? "unknown"}`, { limit: 60, windowSec: 60, lockSec: 60 });
+  if (!rate.ok) return Response.json({ ok: false }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSec), "Cache-Control": "no-store" } });
   const raw = await readBoundedBody(request, 16_384);
   if (raw === null) return Response.json({ ok: false }, { status: 413 });
   let body: { claim_id?: string; status?: string } | null;
@@ -19,7 +23,8 @@ export async function POST(request: Request) {
   const claimId = typeof body?.claim_id === "string" ? body.claim_id.trim() : "";
   if (!claimId || claimId.length > 128) return Response.json({ ok: false }, { status: 400 });
   const order = await db.order.findFirst({ where: { shipmentId: claimId, deliveryMethod: "YANDEX" }, select: { id: true, shipmentStatus: true, shipmentSyncedAt: true } });
-  const sameRecently = !!order?.shipmentSyncedAt && Date.now() - order.shipmentSyncedAt.getTime() < 5_000 && (!body?.status || body.status === order.shipmentStatus);
+  // Ignore callback repeats shortly after any sync; never let the untrusted body status force API polling.
+  const sameRecently = !!order?.shipmentSyncedAt && Date.now() - order.shipmentSyncedAt.getTime() < 5_000;
   if (order && !sameRecently) {
     await syncYandexClaim(order.id).catch((e) => console.warn("yandex delivery callback", claimId, e instanceof Error ? e.message : e));
   }
