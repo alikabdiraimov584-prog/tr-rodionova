@@ -29,7 +29,6 @@
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
     "sharp": "^0.35.5",
-    "tsx": "^4.23.15",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -51,7 +50,8 @@
     "smtp-server": "^3.19.17",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "prisma": "^7.10.0"
+    "prisma": "^7.10.0",
+    "tsx": "^4.23.15"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2",
