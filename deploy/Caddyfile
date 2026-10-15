@@ -19,7 +19,16 @@
 			roll_size 50mb
 			roll_keep 5
 		}
-		format json
+		# Webhook credentials are currently embedded in legacy URL paths. Never persist request URI,
+		# cookies or authorization headers in access logs; this prevents secret leakage via log exports.
+		format filter {
+			wrap json
+			fields {
+				request>uri delete
+				request>headers>Authorization delete
+				request>headers>Cookie delete
+			}
+		}
 	}
 }
 

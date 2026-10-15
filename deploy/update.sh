@@ -7,7 +7,7 @@ set -euo pipefail
 
 main() {
   cd "$(dirname "$0")/.."
-  local prev
+  local prev old new count status encryption_active encryption_key auth_secret
   prev=$(git rev-parse HEAD)
   git fetch origin main && git reset --hard origin/main
   export GIT_SHA BUILD_AT
@@ -22,19 +22,37 @@ main() {
   fi
   export NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
   NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(sed -n 's/^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=//p' .env | tr -d '"\r' | head -1)
-  docker compose build web
+  encryption_active=$(sed -n 's/^ENCRYPTION_KEY_ACTIVE=//p' .env | tr -d '"\r' | head -n 1)
+  [ "$encryption_active" = "1" ] || encryption_active=0
+  if [ "$encryption_active" = "1" ]; then
+    encryption_key=$(sed -n 's/^ENCRYPTION_KEY=//p' .env | tr -d '"\r' | head -n 1)
+    auth_secret=$(sed -n 's/^AUTH_SECRET=//p' .env | tr -d '"\r' | head -n 1)
+    if [ "${#encryption_key}" -lt 32 ]; then
+      echo "ENCRYPTION_KEY_ACTIVE=1 requires ENCRYPTION_KEY of at least 32 characters; refusing rollout before stopping web."
+      exit 1
+    fi
+    if [ "${#auth_secret}" -lt 32 ]; then
+      echo "ENCRYPTION_KEY_ACTIVE=1 requires a valid AUTH_SECRET; refusing rollout before stopping web."
+      exit 1
+    fi
+    if [ "$encryption_key" = "$auth_secret" ]; then
+      echo "ENCRYPTION_KEY must be independent from AUTH_SECRET; refusing rollout before stopping web."
+      exit 1
+    fi
+  fi
+  docker compose build web init
 
-  local old new count status
   old=$(docker compose ps -q web || true)
-  if [ -z "$old" ]; then
-    # первый запуск или web остановлен: обычный старт
+
+  if [ "$encryption_active" = "1" ]; then
+    # enc:v2 writes are NOT safe during a blue/green overlap: an older live instance may
+    # not know how to decrypt them. Use a deliberate maintenance rollout while this flag is on.
+    echo "ENCRYPTION_KEY_ACTIVE=1: using maintenance rollout to prevent mixed-version secret writes."
+    docker compose stop web >/dev/null 2>&1 || true
+    docker compose up --no-deps init
     docker compose up -d web cron backup
-  else
-    count=$(printf '%s\n' "$old" | wc -l)
-    # новый контейнер из нового образа рядом со старым (--no-recreate не трогает работающий)
-    docker compose up -d --no-deps --no-recreate --scale "web=$((count + 1))" web
-    new=$(comm -13 <(printf '%s\n' "$old" | sort) <(docker compose ps -q web | sort))
-    if [ -z "$new" ]; then echo "Новый контейнер не создан"; exit 1; fi
+    new=$(docker compose ps -q web | head -n 1)
+    if [ -z "$new" ]; then echo "Веб-контейнер не создан"; exit 1; fi
     status=starting
     for _ in $(seq 1 60); do
       status=$(docker inspect -f '{{.State.Health.Status}}' "$new" 2>/dev/null || echo starting)
@@ -43,18 +61,47 @@ main() {
       sleep 5
     done
     if [ "$status" != healthy ]; then
-      echo "Новый контейнер не поднялся (статус: $status), старый продолжает работать. Последние строки лога:"
+      echo "Maintenance rollout failed (status: $status). The web service remains in maintenance/recovery state."
       docker logs --tail 60 "$new" || true
-      docker rm -f "$new" >/dev/null 2>&1 || true
       exit 1
     fi
-    # старые контейнеры: мягкая остановка, Next.js завершает текущие запросы
-    for c in $old; do
-      docker stop -t 30 "$c" >/dev/null && docker rm "$c" >/dev/null
-    done
-    docker compose up -d --no-deps --no-recreate --scale web=1 web >/dev/null
-    docker compose up -d --no-deps cron backup
+  else
+    # Run migrations/seeds before switching the serving image. If this fails, the old web stays up.
+    docker compose up --no-deps init
+    if [ -z "$old" ]; then
+      # первый запуск или web остановлен: обычный старт
+      docker compose up -d web cron backup
+    else
+      count=$(printf '%s\n' "$old" | wc -l)
+      # новый контейнер из нового образа рядом со старым (--no-recreate не трогает работающий)
+      docker compose up -d --no-deps --no-recreate --scale "web=$((count + 1))" web
+      new=$(comm -13 <(printf '%s\n' "$old" | sort) <(docker compose ps -q web | sort))
+      if [ -z "$new" ]; then echo "Новый контейнер не создан"; exit 1; fi
+      status=starting
+      for _ in $(seq 1 60); do
+        status=$(docker inspect -f '{{.State.Health.Status}}' "$new" 2>/dev/null || echo starting)
+        [ "$status" = healthy ] && break
+        if [ "$status" = unhealthy ] || [ "$status" = exited ]; then break; fi
+        sleep 5
+      done
+      if [ "$status" != healthy ]; then
+        echo "Новый контейнер не поднялся (статус: $status), старый продолжает работать. Последние строки лога:"
+        docker logs --tail 60 "$new" || true
+        docker rm -f "$new" >/dev/null 2>&1 || true
+        exit 1
+      fi
+      # старые контейнеры: мягкая остановка, Next.js завершает текущие запросы
+      for c in $old; do
+        docker stop -t 30 "$c" >/dev/null && docker rm "$c" >/dev/null
+      done
+      docker compose up -d --no-deps --no-recreate --scale web=1 web >/dev/null
+      docker compose up -d --no-deps cron backup
+    fi
   fi
+
+  # После остановки старых контейнеров шифруем ранее сохранённые TOTP-секреты.
+  # Скрипт идемпотентен; новая версия поддерживает и старые, и зашифрованные записи.
+  docker compose run --rm --no-deps init node --conditions=react-server --import tsx scripts/encrypt-totp-secrets.ts
 
   # Caddy: конфиг перечитывается без разрыва соединений, если он менялся
   if ! git diff --quiet "$prev" HEAD -- deploy/Caddyfile; then

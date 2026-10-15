@@ -122,7 +122,10 @@ export async function createGiftCardPayment(cardId: string, returnUrl: string) {
 /** Обработать уведомление ЮKassa. Статус перепроверяется запросом к API, не доверяем телу. */
 export async function handleYookassaEvent(body: { event?: string; object?: { id?: string } }) {
   const id = body.object?.id;
-  if (!id) return { ok: false, reason: "no id" };
+  // Payment IDs are UUIDs. Never interpolate arbitrary webhook input into an authenticated API path.
+  if (typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    return { ok: false, reason: "invalid payment id" };
+  }
   const fresh = await api<YPayment>(`/payments/${id}`);
   const giftCardId = fresh.metadata?.giftCardId;
   if (giftCardId) {

@@ -1,3 +1,4 @@
+import { readBoundedBody } from "@/lib/read-bounded-body";
 import { handleWebhook, verifySignature, type WebhookKind } from "@/lib/payments/cloudpayments";
 import { recordCheck } from "@/lib/integrations/store";
 
@@ -10,7 +11,8 @@ import { recordCheck } from "@/lib/integrations/store";
 export async function POST(request: Request) {
   const param = new URL(request.url).searchParams.get("kind");
   const kind: WebhookKind | null = param === "pay" || param === "fail" || param === "refund" ? param : null;
-  const raw = await request.text();
+  const raw = await readBoundedBody(request, 65_536);
+  if (raw === null) return new Response("payload too large or invalid UTF-8", { status: 413 });
   if (!(await verifySignature(raw, request.headers.get("content-hmac")))) {
     // видно в CRM → Интеграции как ошибка: обычно API Secret в CRM не совпадает с кабинетом или выключена подпись HMAC
     await recordCheck("cloudpayments", false, "Уведомление отклонено: неверная подпись HMAC (проверьте API Secret и настройку подписи в кабинете)").catch(() => undefined);

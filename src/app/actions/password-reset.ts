@@ -10,6 +10,7 @@ import { checkRate, clearRate, clientIp } from "@/lib/ratelimit";
 import { sendVia } from "@/lib/notifications";
 import { getSetting } from "@/lib/settings";
 import { sendAlert } from "@/lib/alerts";
+import { publicAppUrl } from "@/lib/public-app-url";
 import { startTwoFactor } from "@/lib/two-factor";
 import { homeFor } from "@/lib/permissions";
 import type { ActionState } from "@/lib/action-result";
@@ -38,7 +39,7 @@ export async function requestPasswordResetAction(_: ActionState, formData: FormD
   if (!user || !user.isActive) return neutral;
   const token = randomBytes(32).toString("base64url");
   await db.passwordResetToken.create({ data: { userId: user.id, tokenHash: hash(token), expiresAt: new Date(Date.now() + TTL_MIN * 60_000) } });
-  const base = (process.env.APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const base = publicAppUrl();
   const brand = await getSetting("brand");
   const link = `${base}/reset/${token}`;
   const text = `${user.firstName}, здравствуйте.\n\nВы запросили восстановление пароля на сайте ${brand.name}. Перейдите по ссылке, она действует ${TTL_MIN} минут:\n${link}\n\nЕсли это были не вы, просто не открывайте ссылку — пароль останется прежним.\n\n— ${brand.name}\n${brand.email}`;
@@ -65,16 +66,26 @@ const ResetSchema = z.object({
 export async function resetPasswordAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = ResetSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const ip = await clientIp();
+  const rate = await checkRate(`reset-submit:ip:${ip ?? "unknown"}`, { limit: 20, windowSec: 600, lockSec: 600 });
+  if (!rate.ok) return { error: "Слишком много попыток. Запросите новую ссылку позже." };
   const row = await db.passwordResetToken.findUnique({ where: { tokenHash: hash(parsed.data.token) }});
   if (!row || row.usedAt || row.expiresAt < new Date()) return { error: "Ссылка недействительна или устарела. Запросите новую." };
   const user = await db.user.findUnique({ where: { id: row.userId } });
   if (!user || !user.isActive) return { error: "Аккаунт недоступен" };
+  const passwordHash = await hashPassword(parsed.data.password);
   const updated = await db.$transaction(async (tx) => {
-    await tx.passwordResetToken.update({ where: { id: row.id }, data: { usedAt: new Date() } });
+    // Атомарно захватываем токен: два параллельных запроса не смогут использовать его оба.
+    const claimed = await tx.passwordResetToken.updateMany({
+      where: { id: row.id, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+    if (claimed.count !== 1) return null;
     await tx.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
-    // все старые сессии завершаются
-    return tx.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.password), sessionVersion: { increment: 1 } } });
+    // Все старые сессии завершаются в той же транзакции.
+    return tx.user.update({ where: { id: user.id }, data: { passwordHash, sessionVersion: { increment: 1 } } });
   });
+  if (!updated) return { error: "Ссылка недействительна или уже использована. Запросите новую." };
   await audit(user.id, "auth.passwordReset", "User", user.id);
   // сотрудник с включённой 2FA: доступ к почте не должен обходить второй фактор — как при обычном входе
   if (isStaff(user.role) && user.totpSecret && user.totpEnabledAt) {

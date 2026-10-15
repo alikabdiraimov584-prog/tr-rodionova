@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { runDailyJobs, runHourlyJobs } from "@/lib/jobs";
 import { recordCronRun } from "@/lib/cron-runs";
 
@@ -11,9 +12,14 @@ import { recordCronRun } from "@/lib/cron-runs";
  *   после обновления GET /api/cron?job=warm — прогрев кэша картинок (все кадры вещей в ширинах каталога и карточки)
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return Response.json({ error: "unauthorized" }, { status: 401 });
+  const secret = process.env.CRON_SECRET ?? "";
+  const authorization = request.headers.get("authorization") ?? "";
+  const supplied = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const expectedBytes = Buffer.from(secret);
+  const suppliedBytes = Buffer.from(supplied);
+  const authorized = expectedBytes.length > 0 && suppliedBytes.length === expectedBytes.length && timingSafeEqual(suppliedBytes, expectedBytes);
+  if (!authorized) {
+    return Response.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   }
   const job = new URL(request.url).searchParams.get("job") ?? "daily";
   try {

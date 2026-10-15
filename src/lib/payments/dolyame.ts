@@ -19,6 +19,33 @@ import type { Prisma } from "@/generated/prisma/client";
  */
 
 const DEFAULT_API = "https://partner.dolyame.ru";
+
+/**
+ * mTLS client certificate and Basic credentials must never be sent to a URL editable in CRM.
+ * Only the official HTTPS API origin is accepted; custom hosts, ports, credentials and URL paths
+ * disable the integration instead of risking SSRF or credential exfiltration.
+ */
+function normalizeApiBaseUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Недопустимый адрес API Долями");
+  }
+  if (
+    url.protocol !== "https:" ||
+    url.hostname !== "partner.dolyame.ru" ||
+    url.username ||
+    url.password ||
+    url.port ||
+    (url.pathname !== "/" && url.pathname !== "") ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error("Разрешён только официальный адрес https://partner.dolyame.ru");
+  }
+  return url.origin;
+}
 const RUB = 100;
 /** Диапазон суммы заказа для Долями по умолчанию (рубли); уточняется в договоре и настраивается в интеграции. */
 const DEFAULT_MIN = 1_000;
@@ -32,12 +59,19 @@ async function credentials(): Promise<Creds | null> {
   const i = await activeIntegration("dolyame");
   const c = i?.config;
   if (!c?.login || !c.password || !c.cert || !c.key) return null;
+  let baseUrl: string;
+  try {
+    baseUrl = normalizeApiBaseUrl(c.baseUrl || DEFAULT_API);
+  } catch {
+    // Неверный адрес API отключает интеграцию: секреты mTLS не отправляются на неизвестный хост.
+    return null;
+  }
   return {
     login: c.login,
     password: c.password,
     cert: c.cert,
     key: c.key,
-    baseUrl: (c.baseUrl || DEFAULT_API).replace(/\/$/, ""),
+    baseUrl,
     autoCommit: c.autoCommit !== "0",
     fiscalize: c.fiscalize === "1",
     min: Number(c.minAmount) > 0 ? Number(c.minAmount) : DEFAULT_MIN,
@@ -65,7 +99,14 @@ export class DolyameError extends Error {
 
 /** HTTPS-запрос с клиентским сертификатом: глобальный fetch (undici) сертификаты не принимает. */
 export function request<T>(creds: Pick<Creds, "login" | "password" | "cert" | "key" | "baseUrl">, method: "GET" | "POST", path: string, body?: unknown): Promise<{ status: number; data: T; correlationId: string }> {
-  const url = new URL(creds.baseUrl + path);
+  const baseUrl = normalizeApiBaseUrl(creds.baseUrl);
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error("Недопустимый путь API Долями");
+  }
+  const url = new URL(path, baseUrl);
+  if (url.origin !== baseUrl || !url.pathname.startsWith("/v1/")) {
+    throw new Error("Запрос за пределы API Долями запрещён");
+  }
   const correlationId = randomUUID();
   const payload = body === undefined ? undefined : JSON.stringify(body);
   return new Promise((resolve, reject) => {

@@ -1,0 +1,115 @@
+name: security-checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - security/critical-hardening-2026-10
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tr
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: tr_rodionova
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tr -d tr_rodionova"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tr:ci-password@localhost:5432/tr_rodionova?schema=public
+      AUTH_SECRET: ci-only-secret-that-is-at-least-32-characters-long
+      CRON_SECRET: ci-cron-secret-for-tests-only
+      HEALTHCHECK_TOKEN: ci-healthcheck-token-for-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+      # Next.js generates global PageProps/RouteContext types during the build.
+      - name: Production build
+        run: npm run build
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Security unit tests
+        run: npm run test:security
+      - name: Security integration tests (PostgreSQL)
+        run: npm run test:security:integration
+      - name: ESLint
+        run: npm run lint
+      # Report the complete tree too. Current npm advisory data flags dev-only braces (no patched npm release)
+      # and Prisma CLI's transitive config packages; keep this visible without treating build tooling as runtime.
+      - name: Full dependency audit report (including development tools)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+      - name: Validate Docker Compose configuration
+        run: touch .env && docker compose config --quiet
+      - name: Validate deployment shell scripts
+        run: bash -n deploy/update.sh deploy/autoupdate.sh && sh -n scripts/init.sh scripts/start.sh scripts/start-web.sh
+      - name: Validate Caddy configuration
+        run: docker run --rm -e DOMAIN=example.com -v "${{ github.workspace }}/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      # This is the blocking security gate for packages installed as runtime dependencies.
+      - name: Production dependency vulnerability audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build production runtime image
+        run: docker build --target runner -t tr-rodionova-runtime:ci .
+      - name: Verify development tooling is absent from runtime image
+        run: |
+          docker run --rm tr-rodionova-runtime:ci node -e '
+            const fs = require("node:fs");
+            const pkg = require("./package.json");
+            const forbidden = [...Object.keys(pkg.devDependencies || {}), "tsx", "@prisma/config", "@prisma/dev", "@prisma/engines", "@prisma/studio-core", "deepmerge-ts", "mysql2", "postgres", "braces"];
+            const present = forbidden.filter((name) => fs.existsSync("node_modules/" + name));
+            if (present.length) {
+              console.error("Unexpected development packages in runtime image:", present.join(", "));
+              process.exit(1);
+            }
+            console.log("Development tooling is absent from runtime image.");
+          '
+      - name: Audit the actual runtime image
+        run: docker run --rm tr-rodionova-runtime:ci npm audit --omit=dev --audit-level=high
+      - name: Build isolated migration/seed image
+        run: docker build --target init -t tr-rodionova-init:ci .
+      - name: Verify migration image can execute Prisma migrations
+        run: docker run --rm --network host -e DATABASE_URL="$DATABASE_URL" tr-rodionova-init:ci npx prisma migrate deploy
+      - name: Verify migration image excludes unrelated development tooling
+        run: |
+          docker run --rm tr-rodionova-init:ci node -e '
+            const fs = require("node:fs");
+            const { execFileSync } = require("node:child_process");
+            const pkg = require("./package.json");
+            const keep = new Set(["prisma", "tsx", "typescript"]);
+            const forbidden = [...Object.keys(pkg.devDependencies || {}).filter((name) => !keep.has(name)), "braces"];
+            const present = [...new Set(forbidden)].filter((name) => fs.existsSync("node_modules/" + name));
+            const nestedBraces = execFileSync("find", ["node_modules", "-type", "d", "-name", "braces", "-print", "-quit"], { encoding: "utf8" }).trim();
+            if (present.length || nestedBraces) {
+              console.error("Unexpected development packages in migration image:", [...present, ...(nestedBraces ? [nestedBraces] : [])].join(", "));
+              process.exit(1);
+            }
+            console.log("Migration image contains only the required Prisma/TypeScript toolchain and no braces copies.");
+          '

@@ -16,13 +16,10 @@ import { homeFor } from "@/lib/permissions";
 import { recordConsent } from "@/lib/consent";
 import { trackEvent } from "@/lib/web-analytics";
 import { sendVia } from "@/lib/notifications";
-import { createHash, randomInt } from "node:crypto";
+import { randomInt } from "node:crypto";
 import { notifyWelcome } from "@/lib/notifications";
-
-function safeNext(next: FormDataEntryValue | null, fallback: string) {
-  const n = typeof next === "string" ? next : "";
-  return n.startsWith("/") && !n.startsWith("//") ? n : fallback;
-}
+import { safeNext } from "@/lib/safe-redirect";
+import { consumeLoginCode, hashLoginCode } from "@/lib/login-code";
 
 const LoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Неверный email"),
@@ -115,7 +112,6 @@ export async function logoutAction() {
 
 
 const CODE_TTL_MIN = 10;
-const codeHash = (email: string, code: string) => createHash("sha256").update(`${email}:${code}:${process.env.AUTH_SECRET ?? ""}`).digest("hex");
 
 /** Шаг 1 входа по коду: письмо с 6-значным кодом. Ответ одинаковый, есть аккаунт или нет. */
 export async function requestLoginCodeAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -129,7 +125,7 @@ export async function requestLoginCodeAction(_: ActionState, formData: FormData)
   const user = await db.user.findUnique({ where: { email }, select: { id: true, isActive: true, firstName: true } });
   if (user?.isActive) {
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-    await db.loginCode.create({ data: { email, codeHash: codeHash(email, code), expiresAt: new Date(Date.now() + CODE_TTL_MIN * 60_000) } });
+    await db.loginCode.create({ data: { email, codeHash: hashLoginCode(email, code), expiresAt: new Date(Date.now() + CODE_TTL_MIN * 60_000) } });
     const brand = await getSetting("brand");
     await sendVia("EMAIL", email, `${user.firstName}, здравствуйте.\n\nКод для входа на сайт ${brand.name}: ${code}\nДействует ${CODE_TTL_MIN} минут. Если вы не запрашивали вход, просто не используйте код.`, `Код входа: ${code}`);
   }
@@ -140,17 +136,29 @@ export async function requestLoginCodeAction(_: ActionState, formData: FormData)
 export async function verifyLoginCodeAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const code = String(formData.get("code") ?? "").replace(/\D/g, "");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "Неверный email" };
+
+  // Rate-limit verification separately from code issuance: otherwise an attacker can
+  // request several codes and get five guesses against every code.
+  const ip = await clientIp();
+  const [byIp, byEmail] = await Promise.all([
+    checkRate(`verify-code:ip:${ip ?? "unknown"}`, { limit: 30, windowSec: 600, lockSec: 900 }),
+    checkRate(`verify-code:email:${email}`, { limit: 10, windowSec: 600, lockSec: 900 }),
+  ]);
+  if (!byIp.ok || !byEmail.ok) return { error: "Слишком много попыток. Попробуйте через 15 минут." };
   if (code.length !== 6) return { error: "Введите 6 цифр из письма" };
-  const rec = await db.loginCode.findFirst({ where: { email, usedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: "desc" } });
-  if (!rec || rec.attempts >= 5) return { error: "Код устарел. Запросите новый." };
-  if (rec.codeHash !== codeHash(email, code)) {
-    await db.loginCode.update({ where: { id: rec.id }, data: { attempts: { increment: 1 } } });
-    return { error: "Неверный код" };
-  }
-  const user = await db.user.findUnique({ where: { email } });
-  if (!user || !user.isActive) return { error: "Аккаунт не найден" };
-  await db.loginCode.update({ where: { id: rec.id }, data: { usedAt: new Date() } });
-  if (isStaff(user.role)) return { error: "Сотрудники входят по паролю и коду из приложения" };
+
+  const result = await consumeLoginCode(email, code);
+
+  if (result.status === "expired") return { error: "Код устарел. Запросите новый." };
+  if (result.status === "invalid") return { error: "Неверный код" };
+  if (result.status === "staff") return { error: "Сотрудники входят по паролю и коду из приложения" };
+  if (result.status === "account") return { error: "Аккаунт не найден" };
+
+  const user = result.user;
+  // Clear the successful account's counter, but keep the shared IP counter to
+  // prevent successful logins for one account from resetting limits for other accounts.
+  await clearRate(`verify-code:email:${email}`);
   await loginAs(user.id, user.role, user.sessionVersion);
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
   await audit(user.id, "auth.login", "User", user.id, { via: "code" });

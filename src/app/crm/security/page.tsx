@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import { twoFactorRequired } from "@/lib/two-factor-policy";
 import { otpauthUrl } from "@/lib/totp";
+import { decryptSecret } from "@/lib/crypto";
 import QRCode from "qrcode";
 import { Badge, PageTitle } from "@/components/ui";
 import { BeginSetupButton, ConfirmCodeForm, DisableForm, RefreshSessionForm } from "@/components/crm/totp-forms";
@@ -17,8 +18,10 @@ export default async function SecurityPage() {
   const required = twoFactorRequired(me.role);
   // сессия выдана до появления отметки о втором факторе — обновить одной кнопкой
   const staleSession = enabled && required && session?.tf !== true;
-  // QR-код рисуется на сервере в SVG: секрет не уходит ни в какие внешние сервисы
-  const qr = pending ? await QRCode.toString(otpauthUrl(me.totpSecret!, me.email), { type: "svg", margin: 1, width: 220, errorCorrectionLevel: "M" }) : null;
+  // QR-код рисуется на сервере в SVG: секрет не уходит ни в какие внешние сервисы.
+  // Расшифровка здесь нужна только для показа ключа владельцу при настройке.
+  const totpSecret = pending ? decryptSecret(me.totpSecret!) : null;
+  const qr = pending ? await QRCode.toString(otpauthUrl(totpSecret!, me.email), { type: "svg", margin: 1, width: 220, errorCorrectionLevel: "M" }) : null;
   return (
     <div className="max-w-2xl space-y-6">
       <PageTitle title="Безопасность входа" actions={<Badge tone={enabled ? "success" : "warning"}>{enabled ? "2FA включена" : "2FA выключена"}</Badge>}>
@@ -47,9 +50,9 @@ export default async function SecurityPage() {
               {qr && <div className="shrink-0 rounded-lg bg-white p-2" aria-label="QR-код для приложения-аутентификатора" dangerouslySetInnerHTML={{ __html: qr }} />}
               <div className="min-w-0 flex-1">
               <div className="label">Ключ</div>
-              <div className="select-all break-all font-mono text-base tracking-[0.15em]">{me.totpSecret!.match(/.{1,4}/g)!.join(" ")}</div>
+              <div className="select-all break-all font-mono text-base tracking-[0.15em]">{totpSecret!.match(/.{1,4}/g)!.join(" ")}</div>
               <div className="label mt-3">Ссылка otpauth</div>
-              <div className="select-all break-all font-mono text-xs text-muted">{otpauthUrl(me.totpSecret!, me.email)}</div>
+              <div className="select-all break-all font-mono text-xs text-muted">{otpauthUrl(totpSecret!, me.email)}</div>
               </div>
             </div>
             <ConfirmCodeForm />

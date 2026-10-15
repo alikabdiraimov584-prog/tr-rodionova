@@ -1,3 +1,4 @@
+import { readBoundedBody } from "@/lib/read-bounded-body";
 import { handleWebhook } from "@/lib/payments/dolyame";
 
 /**
@@ -6,9 +7,11 @@ import { handleWebhook } from "@/lib/payments/dolyame";
  * ничего не меняет; отвечаем 200, иначе Долями повторяют отправку.
  */
 export async function POST(request: Request) {
+  const raw = await readBoundedBody(request, 16_384);
+  if (raw === null) return new Response("payload too large or invalid UTF-8", { status: 413 });
   let body: { id?: string; status?: string };
   try {
-    body = (await request.json()) as { id?: string; status?: string };
+    body = JSON.parse(raw) as { id?: string; status?: string };
   } catch {
     return new Response("bad request", { status: 400 });
   }

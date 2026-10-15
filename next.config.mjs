@@ -1,10 +1,9 @@
-import type { NextConfig } from "next";
-
 // Идентификатор сборки для защиты от «разъезда версий» при обновлении без простоя: клиент со старой
 // вкладкой узнаёт о новой версии и перезагружает страницу вместо ошибки. На стенде не задаётся.
 const deploymentId = process.env.GIT_SHA && process.env.GIT_SHA !== "unknown" ? process.env.GIT_SHA : undefined;
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   deploymentId,
   // Фото в карточку вещи грузятся через server action: по умолчанию Next принимает тело не больше 1 МБ,
   // а кадр со съёмки весит 2–10 МБ. Лимит действия — 12 МБ на файл, до пяти файлов за раз плюс служебные байты.
@@ -45,7 +44,18 @@ const nextConfig: NextConfig = {
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
       { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
     ];
-    return [{ source: "/(.*)", headers: security }];
+    return [
+      { source: "/(.*)", headers: security },
+      // Password-reset tokens are carried in the path; do not cache these pages or leak their URL via Referer.
+      {
+        source: "/reset/:token",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+    ];
   },
 };
 

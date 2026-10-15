@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -14,6 +13,7 @@ import { checkRate } from "@/lib/ratelimit";
 import { createGiftCardPayment, demoPaymentsAllowed, paymentsEnabled } from "@/lib/payments/provider";
 import { GIFT_MAX_RUB, GIFT_MIN_RUB, GIFT_VALIDITY_MONTHS, generateGiftCode } from "@/lib/gift";
 import { errorMessage, type ActionState } from "@/lib/action-result";
+import { publicAppUrl } from "@/lib/public-app-url";
 
 const BuySchema = z.object({
   amount: z.string().trim(),
@@ -92,8 +92,7 @@ export async function payGiftCardAction(_: ActionState, formData: FormData): Pro
   if (await paymentsEnabled()) {
     let url: string;
     try {
-      const h = await headers();
-      const base = process.env.APP_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+      const base = publicAppUrl();
       url = await createGiftCardPayment(card.id, `${base}/account/giftcards/${card.id}?paid=1`);
     } catch (e) {
       return { error: errorMessage(e) };

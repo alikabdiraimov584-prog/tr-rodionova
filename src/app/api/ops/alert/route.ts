@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { sendAlert } from "@/lib/alerts";
 
 /**
@@ -5,10 +6,13 @@ import { sendAlert } from "@/lib/alerts";
  * Сообщение уходит владельцу в Telegram по настройкам CRM → Интеграции → «Заказы и тревоги в Telegram».
  */
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return Response.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const secret = process.env.CRON_SECRET ?? "";
+  const authorization = request.headers.get("authorization") ?? "";
+  const supplied = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const expectedBytes = Buffer.from(secret);
+  const suppliedBytes = Buffer.from(supplied);
+  const authorized = expectedBytes.length > 0 && suppliedBytes.length === expectedBytes.length && timingSafeEqual(suppliedBytes, expectedBytes);
+  if (!authorized) return Response.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   let text = "";
   let key: string | undefined;
   const type = request.headers.get("content-type") ?? "";
