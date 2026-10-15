@@ -13,6 +13,10 @@ const db = new PrismaClient({
 const RUB = 100; // копейки в рубле
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.SEED_DEMO === "1") {
+    throw new Error("Refusing to seed demo accounts/data in production. Use a local test database.");
+  }
+
   // ── Уровни лояльности «T.Rodionova Circle» (см. docs/01-market-research.md) ──
   const tiers = [
     {
