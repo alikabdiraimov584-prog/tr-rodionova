@@ -23,7 +23,8 @@ RUN npm run build
 # One-shot database migration and idempotent seed runner. Never expose this container publicly.
 FROM build AS init
 # The migration runner needs Prisma CLI and TSX, not the full lint/test toolchain.
-RUN node -e 'const fs = require("node:fs"); const pkg = require("/app/package.json"); const keep = new Set(["prisma", "tsx", "typescript"]); for (const name of Object.keys(pkg.devDependencies || {})) if (!keep.has(name)) fs.rmSync("/app/node_modules/" + name, { recursive: true, force: true }); fs.rmSync("/app/node_modules/braces", { recursive: true, force: true });'
+RUN node -e 'const fs = require("node:fs"); const pkg = require("/app/package.json"); const keep = new Set(["prisma", "tsx", "typescript"]); for (const name of Object.keys(pkg.devDependencies || {})) if (!keep.has(name)) fs.rmSync("/app/node_modules/" + name, { recursive: true, force: true }); fs.rmSync("/app/node_modules/braces", { recursive: true, force: true });' \
+ && find /app/node_modules -type d -name braces -prune -exec rm -rf {} +
 CMD ["sh", "scripts/init.sh"]
 
 FROM base AS runner
