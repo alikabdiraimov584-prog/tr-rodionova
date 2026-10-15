@@ -110,7 +110,7 @@ async function main() {
 
   // ── Сотрудники и демо-клиент: только для стенда (SEED_DEMO=0 в продакшене их не создаёт,
   // администратор там создаётся из ADMIN_EMAIL / ADMIN_PASSWORD скриптом bootstrap-admin) ──
-  if (process.env.SEED_DEMO !== "0") {
+  if (process.env.SEED_DEMO === "1") {
   const passwordHash = await bcrypt.hash("admin12345", 10);
   await db.user.upsert({
     where: { email: "admin@tr-rodionova.ru" },
@@ -450,7 +450,7 @@ async function main() {
   });
 
   // ── Поддержка: каналы, шаблоны (демо-сотрудник поддержки — только для стенда) ──
-  if (process.env.SEED_DEMO !== "0") {
+  if (process.env.SEED_DEMO === "1") {
     await db.user.upsert({
       where: { email: "support@tr-rodionova.ru" },
       update: {},
@@ -482,7 +482,7 @@ async function main() {
 
   await seedBrand(db);
 
-  if (process.env.SEED_DEMO !== "0") {
+  if (process.env.SEED_DEMO === "1") {
     await seedDemo(base.id);
     await seedSupportDemo();
     await seedA(db);
