@@ -92,6 +92,10 @@ jobs:
           if [ -n "$HEALTHCHECK_TOKEN" ] && echo "$health" | grep -q '"s3Enabled":false'; then
             fail="$fail внеплощадочное резервное копирование S3 отключено;"
           fi
+          # IMAP authentication errors mean the email integration is not operational, even if SMTP is configured.
+          if echo "$health" | grep -q 'AUTHENTICATIONFAILED'; then
+            fail="$fail почтовая интеграция: IMAP AUTHENTICATIONFAILED;"
+          fi
           # Если S3 включён, проверяем свежесть последней загруженной копии.
           if echo "$health" | grep -q '"s3Enabled":true'; then
             upAt=$(echo "$health" | sed -n 's/.*"uploadedAt":"\([^"]*\)".*/\1/p')
