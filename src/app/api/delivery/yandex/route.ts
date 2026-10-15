@@ -1,3 +1,4 @@
+import { readBoundedBody } from "@/lib/read-bounded-body";
 import { db } from "@/lib/db";
 import { syncYandexClaim } from "@/lib/delivery/yandex";
 
@@ -7,7 +8,14 @@ import { syncYandexClaim } from "@/lib/delivery/yandex";
  * запросом к API. Повтор того же статуса чаще раза в 5 секунд пропускаем — страховка от шторма уведомлений.
  */
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as { claim_id?: string; status?: string } | null;
+  const raw = await readBoundedBody(request, 16_384);
+  if (raw === null) return Response.json({ ok: false }, { status: 413 });
+  let body: { claim_id?: string; status?: string } | null;
+  try {
+    body = JSON.parse(raw) as { claim_id?: string; status?: string };
+  } catch {
+    return Response.json({ ok: false }, { status: 400 });
+  }
   const claimId = typeof body?.claim_id === "string" ? body.claim_id.trim() : "";
   if (!claimId || claimId.length > 128) return Response.json({ ok: false }, { status: 400 });
   const order = await db.order.findFirst({ where: { shipmentId: claimId, deliveryMethod: "YANDEX" }, select: { id: true, shipmentStatus: true, shipmentSyncedAt: true } });
