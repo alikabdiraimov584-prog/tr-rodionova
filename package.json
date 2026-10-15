@@ -18,7 +18,7 @@
     "@prisma/client": "^7.10.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.5",
-    "imapflow": "^2.2.5",
+    "imapflow": "^2.4.0",
     "jose": "^6.2.12",
     "mailparser": "^3.9.36",
     "next": "16.3.8",
