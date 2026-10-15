@@ -2,6 +2,8 @@
 # При сбое — письмо владельцу репозитория от GitHub и, если заданы секреты, сообщение в Telegram.
 name: Check site
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:
