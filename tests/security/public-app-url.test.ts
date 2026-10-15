@@ -32,8 +32,8 @@ test("rejects missing, insecure, or URL-decorated production origins", () => {
     assert.throws(() => publicAppUrl(), /APP_URL must be configured/);
     process.env.APP_URL = "http://shop.example";
     assert.throws(() => publicAppUrl(), /HTTPS/);
-    process.env.APP_URL = "https://shop.example.evil.invalid";
-    assert.equal(publicAppUrl(), "https://shop.example.evil.invalid");
+    process.env.APP_URL = "https://shop.example/?next=https://evil.invalid";
+    assert.throws(() => publicAppUrl(), /only the public site origin/);
     process.env.APP_URL = "https://user:pass@shop.example";
     assert.throws(() => publicAppUrl(), /only the public site origin/);
     process.env.APP_URL = "https://shop.example/path";
