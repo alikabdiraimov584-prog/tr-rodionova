@@ -5,9 +5,10 @@ import { publicAppUrl } from "../../src/lib/public-app-url";
 test("uses only the configured canonical origin", () => {
   const previousApp = process.env.APP_URL;
   const previousPublic = process.env.NEXT_PUBLIC_SITE_URL;
-  const previousEnv = process.env.NODE_ENV;
+  const env = process.env as Record<string, string | undefined>;
+  const previousEnv = env.NODE_ENV;
   try {
-    process.env.NODE_ENV = "production";
+    env.NODE_ENV = "production";
     process.env.APP_URL = "https://shop.example/";
     delete process.env.NEXT_PUBLIC_SITE_URL;
     assert.equal(publicAppUrl(), "https://shop.example");
@@ -16,17 +17,17 @@ test("uses only the configured canonical origin", () => {
     else process.env.APP_URL = previousApp;
     if (previousPublic === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
     else process.env.NEXT_PUBLIC_SITE_URL = previousPublic;
-    if (previousEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = previousEnv;
+    if (previousEnv === undefined) delete env.NODE_ENV;
+    else env.NODE_ENV = previousEnv;
   }
 });
 
 test("rejects missing, insecure, or URL-decorated production origins", () => {
   const previousApp = process.env.APP_URL;
   const previousPublic = process.env.NEXT_PUBLIC_SITE_URL;
-  const previousEnv = process.env.NODE_ENV;
+  const previousEnv = env.NODE_ENV;
   try {
-    process.env.NODE_ENV = "production";
+    env.NODE_ENV = "production";
     delete process.env.APP_URL;
     delete process.env.NEXT_PUBLIC_SITE_URL;
     assert.throws(() => publicAppUrl(), /APP_URL must be configured/);
@@ -43,17 +44,17 @@ test("rejects missing, insecure, or URL-decorated production origins", () => {
     else process.env.APP_URL = previousApp;
     if (previousPublic === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
     else process.env.NEXT_PUBLIC_SITE_URL = previousPublic;
-    if (previousEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = previousEnv;
+    if (previousEnv === undefined) delete env.NODE_ENV;
+    else env.NODE_ENV = previousEnv;
   }
 });
 
 test("local development has a safe deterministic fallback", () => {
   const previousApp = process.env.APP_URL;
   const previousPublic = process.env.NEXT_PUBLIC_SITE_URL;
-  const previousEnv = process.env.NODE_ENV;
+  const previousEnv = env.NODE_ENV;
   try {
-    process.env.NODE_ENV = "development";
+    env.NODE_ENV = "development";
     delete process.env.APP_URL;
     delete process.env.NEXT_PUBLIC_SITE_URL;
     assert.equal(publicAppUrl(), "http://localhost:3000");
@@ -62,7 +63,7 @@ test("local development has a safe deterministic fallback", () => {
     else process.env.APP_URL = previousApp;
     if (previousPublic === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
     else process.env.NEXT_PUBLIC_SITE_URL = previousPublic;
-    if (previousEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = previousEnv;
+    if (previousEnv === undefined) delete env.NODE_ENV;
+    else env.NODE_ENV = previousEnv;
   }
 });
