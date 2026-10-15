@@ -62,6 +62,7 @@ jobs:
           else
             health=$(curl -sS -m 30 "https://$DOMAIN/api/health" 2>/dev/null || echo '{}')
             echo "HEALTHCHECK_TOKEN не задан: подробная проверка бэкапов и задач пропущена"
+            fail="$fail HEALTHCHECK_TOKEN отсутствует в GitHub Actions Secrets; мониторинг бэкапов и задач отключён;"
           fi
           echo "$health" | grep -q '"ok":true' || fail="$fail база или приложение не отвечают;"
           if [ -n "$HEALTHCHECK_TOKEN" ]; then
