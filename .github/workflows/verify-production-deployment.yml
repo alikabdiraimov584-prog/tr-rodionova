@@ -31,8 +31,9 @@ jobs:
             echo "::error::Production has not deployed the version endpoint yet."
             exit 1
           fi
-          if [ "$actual" != "$expected" ]; then
+          # git may choose a longer unique abbreviation on the server than in a shallow CI checkout.
+          if [ "${actual:0:7}" != "${expected:0:7}" ]; then
             echo "::error::Production is on commit $actual; expected $expected. Server-side auto-update has not caught up."
             exit 1
           fi
-          echo "Production is running expected commit $expected."
+          echo "Production is running expected commit prefix ${expected:0:7}."
