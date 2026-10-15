@@ -35,7 +35,7 @@ jobs:
         run: |
           D="$DOMAIN"
           # «сервер A/B с»: A — соединение и TLS готовы, B — пришёл первый байт; B − A ≈ сборка страницы плюс один проход по сети
-          for p in / /catalog /collections /journal /crm /crm/ads /login /api/health /robots.txt /sitemap.xml; do
+          for p in / /catalog /collections /journal /crm /crm/ads /login /api/health /api/version /robots.txt /sitemap.xml; do
             printf '%-14s %s\n' "$p" "$(curl -sS -m 30 -o /dev/null -w '%{http_code} -> %{redirect_url}  сервер %{time_pretransfer}/%{time_starttransfer} с' "https://$D$p" 2>&1 || true)"
           done
           echo "== headers"; curl -sSI -m 30 "https://$D/" | grep -iE "^(HTTP|strict-transport|content-security|x-frame|server)" || true
@@ -46,6 +46,7 @@ jobs:
             health=$(curl -fsS -m 30 "https://$D/api/health" 2>/dev/null || echo '{}')
           fi
           printf '%s' "$health" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({k:d.get(k) for k in ("ok","commit","builtAt") if k in d}, ensure_ascii=False))' 2>/dev/null || echo "API health response unavailable"
+          echo "== версия развёрнутого приложения"; curl -fsS -m 10 "https://$D/api/version" || echo "Deployment marker not yet available (server may not have updated)"; echo
           echo "== robots.txt"; curl -sS -m 30 "https://$D/robots.txt" | grep -iE "^(sitemap|host):|localhost" || true
           echo "== llms.txt"; curl -sS -m 30 "https://$D/llms.txt" | head -3
           echo "== Метрика (запрос с согласием на cookie)"; curl -sS -m 30 -H "Cookie: tr_consent=all" "https://$D/" | grep -oE 'ym\([0-9]+,"init",\{[^}]*\}' || echo "счётчик Метрики не подключён: CRM → Интеграции → Аналитика → Яндекс Метрика"
