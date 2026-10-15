@@ -1,0 +1,38 @@
+name: Verify production deployment
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Confirm production has deployed this commit
+        env:
+          DOMAIN: tr-rodionova.ru
+        run: |
+          set -eu
+          expected=$(git rev-parse --short HEAD)
+          body=$(curl --fail --silent --show-error --max-time 15 "https://$DOMAIN/api/version") || {
+            echo "::error::Production version endpoint is unavailable; server auto-update may not have deployed the current commit."
+            exit 1
+          }
+          printf 'Production version response: %s\n' "$body"
+          actual=$(printf '%s' "$body" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit", ""))')
+          if [ -z "$actual" ] || [ "$actual" = "unknown" ]; then
+            echo "::error::Production has not deployed the version endpoint yet."
+            exit 1
+          fi
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Production is on commit $actual; expected $expected. Server-side auto-update has not caught up."
+            exit 1
+          fi
+          echo "Production is running expected commit $expected."
