@@ -51,9 +51,11 @@ test("high-impact CRM capabilities remain admin-only", () => {
   }
 });
 
-test("staff 2FA policy defaults to ADMIN and MANAGER and can explicitly include SUPPORT", () => {
-  const previous = process.env.STAFF_2FA_REQUIRED;
+test("staff 2FA cannot be disabled in production by environment override", () => {
+  const previousMode = process.env.STAFF_2FA_REQUIRED;
+  const previousNodeEnv = process.env.NODE_ENV;
   try {
+    process.env.NODE_ENV = "test";
     delete process.env.STAFF_2FA_REQUIRED;
     assert.equal(twoFactorRequired("ADMIN"), true);
     assert.equal(twoFactorRequired("MANAGER"), true);
@@ -65,9 +67,18 @@ test("staff 2FA policy defaults to ADMIN and MANAGER and can explicitly include 
 
     process.env.STAFF_2FA_REQUIRED = "0";
     assert.equal(twoFactorRequired("ADMIN"), false);
+
+    process.env.NODE_ENV = "production";
+    assert.equal(twoFactorRequired("ADMIN"), true);
+    assert.equal(twoFactorRequired("MANAGER"), true);
+    assert.equal(twoFactorRequired("SUPPORT"), false);
+    process.env.STAFF_2FA_REQUIRED = "all";
+    assert.equal(twoFactorRequired("SUPPORT"), true);
   } finally {
-    if (previous === undefined) delete process.env.STAFF_2FA_REQUIRED;
-    else process.env.STAFF_2FA_REQUIRED = previous;
+    if (previousMode === undefined) delete process.env.STAFF_2FA_REQUIRED;
+    else process.env.STAFF_2FA_REQUIRED = previousMode;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
   }
 });
 
