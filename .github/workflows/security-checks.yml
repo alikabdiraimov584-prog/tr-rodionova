@@ -99,13 +99,15 @@ jobs:
         run: |
           docker run --rm tr-rodionova-init:ci node -e '
             const fs = require("node:fs");
+            const { execFileSync } = require("node:child_process");
             const pkg = require("./package.json");
             const keep = new Set(["prisma", "tsx", "typescript"]);
             const forbidden = [...Object.keys(pkg.devDependencies || {}).filter((name) => !keep.has(name)), "braces"];
             const present = [...new Set(forbidden)].filter((name) => fs.existsSync("node_modules/" + name));
-            if (present.length) {
-              console.error("Unexpected development packages in migration image:", present.join(", "));
+            const nestedBraces = execFileSync("find", ["node_modules", "-type", "d", "-name", "braces", "-print", "-quit"], { encoding: "utf8" }).trim();
+            if (present.length || nestedBraces) {
+              console.error("Unexpected development packages in migration image:", [...present, ...(nestedBraces ? [nestedBraces] : [])].join(", "));
               process.exit(1);
             }
-            console.log("Migration image contains only the required Prisma/TypeScript toolchain.");
+            console.log("Migration image contains only the required Prisma/TypeScript toolchain and no braces copies.");
           '
