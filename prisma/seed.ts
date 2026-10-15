@@ -16,6 +16,7 @@ async function main() {
   if (process.env.NODE_ENV === "production" && process.env.SEED_DEMO === "1") {
     throw new Error("Refusing to seed demo accounts/data in production. Use a local test database.");
   }
+  if (process.env.SEED_DEMO === "1") requireDemoPassword();
 
   // ── Уровни лояльности «T.Rodionova Circle» (см. docs/01-market-research.md) ──
   const tiers = [
@@ -115,7 +116,7 @@ async function main() {
   // ── Сотрудники и демо-клиент: только для стенда (SEED_DEMO=0 в продакшене их не создаёт,
   // администратор там создаётся из ADMIN_EMAIL / ADMIN_PASSWORD скриптом bootstrap-admin) ──
   if (process.env.SEED_DEMO === "1") {
-  const passwordHash = await bcrypt.hash("admin12345", 10);
+  const passwordHash = await bcrypt.hash(requireDemoPassword(), 10);
   await db.user.upsert({
     where: { email: "admin@tr-rodionova.ru" },
     update: {},
@@ -133,7 +134,7 @@ async function main() {
     update: {},
     create: {
       email: "manager@tr-rodionova.ru",
-      passwordHash: await bcrypt.hash("manager12345", 10),
+      passwordHash: await bcrypt.hash(requireDemoPassword(), 10),
       firstName: "Мария",
       role: "MANAGER",
       loyaltyTierId: base.id,
@@ -145,7 +146,7 @@ async function main() {
     create: {
       email: "anna@example.com",
       phone: "+7 916 000-00-01",
-      passwordHash: await bcrypt.hash("anna12345", 10),
+      passwordHash: await bcrypt.hash(requireDemoPassword(), 10),
       firstName: "Анна",
       lastName: "Смирнова",
       birthday: new Date("1990-05-14"),
@@ -458,7 +459,7 @@ async function main() {
     await db.user.upsert({
       where: { email: "support@tr-rodionova.ru" },
       update: {},
-      create: { email: "support@tr-rodionova.ru", passwordHash: await bcrypt.hash("support12345", 10), firstName: "Ольга", lastName: "Белова", role: "SUPPORT" },
+      create: { email: "support@tr-rodionova.ru", passwordHash: await bcrypt.hash(requireDemoPassword(), 10), firstName: "Ольга", lastName: "Белова", role: "SUPPORT" },
     });
   }
   const channels = [
@@ -498,6 +499,14 @@ async function main() {
 
 // ───────────────────────────── Демо-данные для CRM ─────────────────────────────
 
+function requireDemoPassword(): string {
+  const password = process.env.SEED_DEMO_PASSWORD;
+  if (!password || password.length < 16) {
+    throw new Error("SEED_DEMO=1 requires SEED_DEMO_PASSWORD of at least 16 characters; never use a production password.");
+  }
+  return password;
+}
+
 function rng(seed: number) {
   let x = seed;
   return () => {
@@ -522,7 +531,7 @@ async function seedDemo(baseTierId: string) {
   const variants = await db.productVariant.findMany({ include: { product: true } });
   const manager = await db.user.findUniqueOrThrow({ where: { email: "manager@tr-rodionova.ru" } });
   const anna = await db.user.findUniqueOrThrow({ where: { email: "anna@example.com" } });
-  const pwd = await bcrypt.hash("demo12345", 10);
+  const pwd = await bcrypt.hash(requireDemoPassword(), 10);
 
   // профиль клиента: частота и «температура»
   const customers: { id: string; profile: "vip" | "regular" | "one" | "lapsed" | "none" }[] = [{ id: anna.id, profile: "regular" }];
