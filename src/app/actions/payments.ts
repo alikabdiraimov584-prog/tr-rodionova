@@ -2,12 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { markOrderPaid } from "@/lib/orders";
 import { createOrderPayment, demoPaymentsAllowed, paymentsEnabled } from "@/lib/payments/provider";
 import { errorMessage, type ActionState } from "@/lib/action-result";
+import { publicAppUrl } from "@/lib/public-app-url";
 
 /** Кнопка «Оплатить»: при подключённом провайдере — переход на платёжную страницу, иначе демо-оплата. */
 export async function payOrderAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -24,8 +24,7 @@ export async function payOrderAction(_: ActionState, formData: FormData): Promis
   }
   let url: string;
   try {
-    const h = await headers();
-    const base = process.env.APP_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+    const base = publicAppUrl();
     url = await createOrderPayment(order.id, `${base}/account/orders/${order.id}?paid=1`);
   } catch (e) {
     return { error: errorMessage(e) };
