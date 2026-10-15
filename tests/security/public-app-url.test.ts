@@ -25,6 +25,7 @@ test("uses only the configured canonical origin", () => {
 test("rejects missing, insecure, or URL-decorated production origins", () => {
   const previousApp = process.env.APP_URL;
   const previousPublic = process.env.NEXT_PUBLIC_SITE_URL;
+  const env = process.env as Record<string, string | undefined>;
   const previousEnv = env.NODE_ENV;
   try {
     env.NODE_ENV = "production";
@@ -52,6 +53,7 @@ test("rejects missing, insecure, or URL-decorated production origins", () => {
 test("local development has a safe deterministic fallback", () => {
   const previousApp = process.env.APP_URL;
   const previousPublic = process.env.NEXT_PUBLIC_SITE_URL;
+  const env = process.env as Record<string, string | undefined>;
   const previousEnv = env.NODE_ENV;
   try {
     env.NODE_ENV = "development";
