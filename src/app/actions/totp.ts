@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireStaff, requireSection, loginAs } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { checkRate } from "@/lib/ratelimit";
+import { checkRate, clearRate } from "@/lib/ratelimit";
 import { generateTotpSecret, verifyTotp } from "@/lib/totp";
 import { encryptSecret } from "@/lib/crypto";
 import { homeFor } from "@/lib/permissions";
@@ -55,8 +55,16 @@ export async function beginTotpSetupAction(): Promise<ActionState> {
 export async function confirmTotpAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireStaff();
   if (!me.totpSecret) return { error: "Сначала создайте секрет" };
+  const rate = await checkRate(`totp-setup:${me.id}`, { limit: 6, windowSec: 300, lockSec: 900 });
+  if (!rate.ok) return { error: "Слишком много попыток. Попробуйте через 15 минут." };
   if (!verifyTotp(me.totpSecret, String(formData.get("code") ?? ""))) return { error: "Код не подошёл. Проверьте время на телефоне и попробуйте снова." };
-  await db.user.update({ where: { id: me.id }, data: { totpEnabledAt: new Date() } });
+  // Compare-and-set: do not enable a secret that changed while the submitted code was being verified.
+  const activated = await db.user.updateMany({
+    where: { id: me.id, totpSecret: me.totpSecret, totpEnabledAt: null, sessionVersion: me.sessionVersion },
+    data: { totpEnabledAt: new Date() },
+  });
+  if (activated.count !== 1) return { error: "Секрет изменился. Начните настройку двухфакторной защиты заново." };
+  await clearRate(`totp-setup:${me.id}`);
   await audit(me.id, "user.totpEnabled", "User", me.id);
   // текущая сессия получает отметку о втором факторе, иначе остальные разделы останутся закрытыми
   await loginAs(me.id, me.role, me.sessionVersion, true);
@@ -67,8 +75,16 @@ export async function confirmTotpAction(_: ActionState, formData: FormData): Pro
 export async function disableTotpAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireStaff();
   if (!me.totpSecret || !me.totpEnabledAt) return { error: "Защита не включена" };
+  const rate = await checkRate(`totp-disable:${me.id}`, { limit: 6, windowSec: 300, lockSec: 900 });
+  if (!rate.ok) return { error: "Слишком много попыток. Попробуйте через 15 минут." };
   if (!verifyTotp(me.totpSecret, String(formData.get("code") ?? ""))) return { error: "Неверный код" };
-  await db.user.update({ where: { id: me.id }, data: { totpSecret: null, totpEnabledAt: null, sessionVersion: { increment: 1 } } });
+  // Compare-and-set and bump the session version only if the verified secret is still current.
+  const disabled = await db.user.updateMany({
+    where: { id: me.id, totpSecret: me.totpSecret, totpEnabledAt: me.totpEnabledAt, sessionVersion: me.sessionVersion },
+    data: { totpSecret: null, totpEnabledAt: null, sessionVersion: { increment: 1 } },
+  });
+  if (disabled.count !== 1) return { error: "Настройки безопасности изменились. Обновите страницу и попробуйте снова." };
+  await clearRate(`totp-disable:${me.id}`);
   await audit(me.id, "user.totpDisabled", "User", me.id);
   const fresh = await db.user.findUniqueOrThrow({ where: { id: me.id }, select: { sessionVersion: true } });
   await loginAs(me.id, me.role, fresh.sessionVersion, false);
