@@ -1,35 +1,25 @@
-# Автодеплой на продакшен-сервер при push в main. Секреты в GitHub → Settings → Secrets:
-#   DEPLOY_HOST (IP), DEPLOY_USER (deploy), DEPLOY_SSH_KEY (приватный ключ, которому разрешён вход под deploy)
-name: deploy
+# Продакшен обновляется серверным cron через deploy/autoupdate.sh.
+# Этот workflow только проверяет скрипты: он не подключается к серверу и не выдаёт себя за деплой.
+name: Server auto-update validation
 on:
   push:
     branches: [main]
   workflow_dispatch:
 jobs:
-  deploy:
-    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+  validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Проверить настройки подключения до запуска SSH
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate server-side update scripts
         run: |
           set -eu
-          missing=""
-          [ -n "$DEPLOY_HOST" ] || missing="$missing DEPLOY_HOST"
-          [ -n "$DEPLOY_USER" ] || missing="$missing DEPLOY_USER"
-          [ -n "$DEPLOY_SSH_KEY" ] || missing="$missing DEPLOY_SSH_KEY"
-          if [ -n "$missing" ]; then
-            echo "::error::Автодеплой остановлен до подключения: не заданы обязательные GitHub Secrets:$missing"
-            exit 1
-          fi
-          echo "Настройки подключения присутствуют; значения секретов не выводятся."
-      - name: Обновить сервер
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: cd /opt/tr-rodionova && bash deploy/update.sh
+          test -x deploy/autoupdate.sh
+          test -x deploy/update.sh
+          bash -n deploy/autoupdate.sh deploy/update.sh
+          echo "Update scripts are present and have valid Bash syntax."
+          echo "Production rollout is performed by the server cron, not this workflow."
