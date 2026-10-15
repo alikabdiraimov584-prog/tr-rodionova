@@ -5,6 +5,7 @@ on:
   pull_request:
   push:
     branches:
+      - main
       - security/critical-hardening-2026-10
 
 permissions:
