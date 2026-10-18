@@ -66,6 +66,7 @@ jobs:
             health=$(curl -sS -m 30 "https://$DOMAIN/api/health" 2>/dev/null || echo '{}')
             echo "::warning::HEALTHCHECK_TOKEN не задан. Публичные проверки сайта продолжаются; детальная проверка резервных копий, планировщика, загрузок и интеграций пропущена."
             echo "DEEP_CHECKS=SKIPPED (no token); public site checks remain active."
+            fail="$fail HEALTHCHECK_TOKEN не задан; глубокая диагностика резервных копий, планировщика, загрузок и интеграций отключена;"
           fi
           echo "$health" | grep -q '"ok":true' || fail="$fail база или приложение не отвечают;"
           if [ -n "$HEALTHCHECK_TOKEN" ]; then
