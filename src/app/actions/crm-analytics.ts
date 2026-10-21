@@ -5,12 +5,14 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { safeNext } from "@/lib/safe-redirect";
 import type { ActionState } from "@/lib/action-result";
 
 const LinkSchema = z.object({
   name: z.string().trim().min(1, "Название"),
   slug: z.string().trim().min(2, "Короткий адрес").max(40).regex(/^[a-z0-9-]+$/, "Адрес: латиница, цифры и дефис"),
-  targetPath: z.string().trim().min(1, "Куда ведёт").regex(/^\//, "Путь должен начинаться с /"),
+  // только адрес этого сайта: «//чужой-сайт» и «/\\чужой-сайт» браузер увёл бы с домена бренда
+  targetPath: z.string().trim().min(1, "Куда ведёт").refine((v) => safeNext(v, "") !== "", "Путь на этом сайте, начинается с /"),
   source: z.string().trim().min(1, "Источник"),
   medium: z.string().trim().min(1, "Тип"),
   campaign: z.string().trim().optional(),
@@ -33,9 +35,10 @@ export async function createTrackingLinkAction(_: ActionState, formData: FormDat
 }
 
 export async function toggleTrackingLinkAction(formData: FormData) {
-  await requireSection("analytics");
   const id = String(formData.get("id"));
+  const me = await requireSection("analytics");
   const l = await db.trackingLink.findUniqueOrThrow({ where: { id } });
   await db.trackingLink.update({ where: { id }, data: { isActive: !l.isActive } });
+  await audit(me.id, l.isActive ? "tracking.disable" : "tracking.enable", "TrackingLink", id, { slug: l.slug });
   revalidatePath("/crm/analytics");
 }

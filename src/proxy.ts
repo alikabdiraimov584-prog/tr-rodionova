@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { allowedWithoutTwoFactor, twoFactorRequired } from "@/lib/two-factor-policy";
+import { isSessionClaims } from "@/lib/token-claims";
 
 const SESSION_COOKIE = "tr_session";
 
@@ -10,6 +11,7 @@ async function readSession(req: NextRequest) {
   if (!token || !secret || secret.length < 32) return null;
   try {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), { algorithms: ["HS256"] });
+    if (!isSessionClaims(payload)) return null;
     return payload as { userId: string; role: "CUSTOMER" | "SUPPORT" | "MANAGER" | "ADMIN"; tf?: boolean };
   } catch {
     return null;

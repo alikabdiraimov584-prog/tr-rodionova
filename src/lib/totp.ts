@@ -52,22 +52,28 @@ export function totpCode(secret: string, time = Date.now(), step = 30) {
   return String(code % 1_000_000).padStart(6, "0");
 }
 
-/** Принимает текущий код и соседние окна (±30 с) на случай рассинхрона часов. */
-export function verifyTotp(secret: string, input: string, time = Date.now()) {
+/** Принимает текущий код и соседние окна (±30 с) на случай рассинхрона часов; возвращает номер совпавшего шага. */
+export function matchTotp(secret: string, input: string, time = Date.now()): number | null {
   const digits = input.replace(/\D/g, "");
-  if (digits.length !== 6) return false;
+  if (digits.length !== 6) return null;
   let plain: string;
   try {
     // Supports both legacy plaintext records and AES-GCM encrypted records during migration.
     plain = decryptSecret(secret);
   } catch {
-    return false;
+    return null;
   }
   for (const delta of [0, -1, 1]) {
-    const expected = Buffer.from(totpCode(plain, time + delta * 30_000));
-    if (timingSafeEqual(expected, Buffer.from(digits))) return true;
+    const at = time + delta * 30_000;
+    const expected = Buffer.from(totpCode(plain, at));
+    if (timingSafeEqual(expected, Buffer.from(digits))) return Math.floor(at / 1000 / 30);
   }
-  return false;
+  return null;
+}
+
+/** Только проверка кода. Для входа и смены настроек — acceptTotp из @/lib/two-factor (с защитой от повтора). */
+export function verifyTotp(secret: string, input: string, time = Date.now()) {
+  return matchTotp(secret, input, time) !== null;
 }
 
 export function otpauthUrl(secret: string, account: string, issuer = "T.Rodionova CRM") {

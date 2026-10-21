@@ -2,6 +2,7 @@ import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { Role } from "@/generated/prisma/enums";
+import { isSessionClaims } from "@/lib/token-claims";
 
 export const SESSION_COOKIE = "tr_session";
 const CUSTOMER_SESSION_DAYS = 30;
@@ -39,7 +40,8 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
-    return payload as unknown as SessionPayload;
+    // токен ожидания 2FA и любой другой токен на том же ключе сессией не считается
+    return isSessionClaims(payload) ? (payload as unknown as SessionPayload) : null;
   } catch {
     return null;
   }

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { safeNext } from "@/lib/safe-redirect";
 import { requireSection } from "@/lib/auth";
 import { buildAudience, runCampaign, sendOne, personalize, type Segment } from "@/lib/campaigns";
 import { audit } from "@/lib/audit";
@@ -79,7 +80,7 @@ export async function saveCampaignAction(_: ActionState, formData: FormData): Pr
   if (d.withLink === "on" && !trackingLinkId) {
     const slug = `c-${Date.now().toString(36)}`;
     const link = await db.trackingLink.create({
-      data: { slug, name: `Рассылка: ${d.name}`, targetPath: d.linkTarget?.startsWith("/") ? d.linkTarget : "/catalog", source: d.channel.toLowerCase(), medium: "campaign", campaign: d.name.slice(0, 60), createdBy: me.id },
+      data: { slug, name: `Рассылка: ${d.name}`, targetPath: safeNext(d.linkTarget?.trim(), "/catalog"), source: d.channel.toLowerCase(), medium: "campaign", campaign: d.name.slice(0, 60), createdBy: me.id },
     });
     trackingLinkId = link.id;
   }

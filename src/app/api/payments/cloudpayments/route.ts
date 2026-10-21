@@ -1,6 +1,7 @@
 import { readBoundedBody } from "@/lib/read-bounded-body";
 import { handleWebhook, verifySignature, type WebhookKind } from "@/lib/payments/cloudpayments";
 import { recordCheck } from "@/lib/integrations/store";
+import { checkRate, clientIp } from "@/lib/ratelimit";
 
 /**
  * Вебхуки CloudPayments. В кабинете (Сайты → Уведомления) для Pay, Fail и Refund укажите один адрес как есть:
@@ -9,6 +10,13 @@ import { recordCheck } from "@/lib/integrations/store";
  * Подпись Content-HMAC проверяется по API Secret; формат тела — form-urlencoded или JSON.
  */
 export async function POST(request: Request) {
+  // Как у ЮKassa и Долями: поток с одного адреса ограничен, иначе запросы с неверной подписью
+  // нагружают базу и непрерывно переписывают статус интеграции в CRM.
+  const ip = await clientIp();
+  if (ip) {
+    const rate = await checkRate(`cloudpayments-webhook:${ip}`, { limit: 120, windowSec: 60, lockSec: 60 });
+    if (!rate.ok) return new Response("rate limited", { status: 429, headers: { "Retry-After": String(rate.retryAfterSec), "Cache-Control": "no-store" } });
+  }
   const param = new URL(request.url).searchParams.get("kind");
   const kind: WebhookKind | null = param === "pay" || param === "fail" || param === "refund" ? param : null;
   const raw = await readBoundedBody(request, 65_536);
