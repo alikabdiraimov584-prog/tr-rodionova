@@ -71,7 +71,7 @@ jobs:
       - name: Validate Docker Compose configuration
         run: touch .env && docker compose config --quiet
       - name: Validate deployment shell scripts
-        run: bash -n deploy/update.sh deploy/autoupdate.sh && sh -n scripts/init.sh scripts/start.sh scripts/start-web.sh
+        run: bash -n deploy/update.sh deploy/autoupdate.sh deploy/activate-encryption.sh deploy/backup.sh deploy/restore.sh && sh -n scripts/init.sh scripts/start.sh scripts/start-web.sh
       - name: Validate Caddy configuration
         run: docker run --rm -e DOMAIN=example.com -v "${{ github.workspace }}/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       # This is the blocking security gate for packages installed as runtime dependencies.

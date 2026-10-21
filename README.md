@@ -40,8 +40,9 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron
 |---|---|
 | `DATABASE_URL` | PostgreSQL |
 | `AUTH_SECRET` | ключ подписи сессий (32+ символа) |
-| `ENCRYPTION_KEY` | независимый ключ шифрования секретов в БД (32+ символа; не менять после включения без миграции) |
-| `ENCRYPTION_KEY_ACTIVE` | `1` — включить запись `enc:v2` после обновления всех инстансов; до этого не задавать |
+| `ENCRYPTION_KEY` | независимый ключ шифрования секретов в БД (32+ символа; `deploy/update.sh` создаёт сам, не менять) |
+| `ENCRYPTION_KEY_ACTIVE` | `1` — запись `enc:v2`; включается командой `deploy/activate-encryption.sh` (см. `docs/DEPLOY.md`) |
+| `HEALTHCHECK_TOKEN` | токен подробного `/api/health` (бэкапы, планировщик, интеграции); `deploy/update.sh` создаёт сам, копия — в секрете GitHub |
 | `CRON_SECRET` | токен для `/api/cron` |
 | `APP_URL` | публичный адрес сайта — для URL вебхуков, трекинговых ссылок, sitemap и Open Graph (обязателен в проде) |
 | `SEED_ON_START` | `1` — засеять демо-данные при пустой базе (только стенд); по умолчанию `0` |
@@ -94,5 +95,6 @@ prisma/              схема, миграции, сид
 ## Проверка
 
 ```bash
-npx tsc --noEmit && npm run lint && npm run build
+npx next typegen && npx tsc --noEmit && npm run lint && npm run test:security && npm run build
+# с PostgreSQL в DATABASE_URL: npm run test:security:integration
 ```

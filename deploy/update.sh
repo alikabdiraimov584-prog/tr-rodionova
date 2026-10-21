@@ -7,7 +7,7 @@ set -euo pipefail
 
 main() {
   cd "$(dirname "$0")/.."
-  local prev old new count status encryption_active encryption_key auth_secret
+  local prev old new count status encryption_active encryption_key auth_secret maintenance running_key c
   prev=$(git rev-parse HEAD)
   git fetch origin main && git reset --hard origin/main
   export GIT_SHA BUILD_AT
@@ -19,6 +19,16 @@ main() {
   # и кнопки в открытых до обновления вкладках CRM падают с «Раздел не открылся»
   if ! grep -q '^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=' .env; then
     printf '\n# Ключ подписи серверных действий Next.js (постоянный, не менять)\nNEXT_SERVER_ACTIONS_ENCRYPTION_KEY=%s\n' "$(openssl rand -base64 32)" >> .env
+  fi
+  # Токен подробной проверки /api/health и независимый ключ шифрования секретов создаются один раз.
+  # Пустая строка считается отсутствием значения; уже заданное значение никогда не перезаписывается.
+  # ENCRYPTION_KEY только появляется в окружении: записи переходят на него после deploy/activate-encryption.sh.
+  sed -i '/^HEALTHCHECK_TOKEN=["]*$/d; /^ENCRYPTION_KEY=["]*$/d' .env
+  if ! grep -q '^HEALTHCHECK_TOKEN=' .env; then
+    printf '\n# Токен подробной проверки /api/health (тот же — в секрет HEALTHCHECK_TOKEN в GitHub)\nHEALTHCHECK_TOKEN=%s\n' "$(openssl rand -hex 32)" >> .env
+  fi
+  if ! grep -q '^ENCRYPTION_KEY=' .env; then
+    printf '\n# Независимый ключ шифрования секретов в базе (постоянный, не менять и не терять)\nENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
   fi
   export NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
   NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(sed -n 's/^NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=//p' .env | tr -d '"\r' | head -1)
@@ -44,7 +54,21 @@ main() {
 
   old=$(docker compose ps -q web || true)
 
+  # Режим обслуживания нужен, только пока работающий сайт не знает ENCRYPTION_KEY: новая версия начнёт писать
+  # enc:v2, а старая не сможет их прочитать. Если у всех работающих контейнеров тот же ключ, смена без простоя безопасна.
+  maintenance=0
   if [ "$encryption_active" = "1" ]; then
+    maintenance=1
+    if [ -n "$old" ]; then
+      maintenance=0
+      for c in $old; do
+        running_key=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$c" 2>/dev/null | sed -n 's/^ENCRYPTION_KEY=//p' | head -n 1)
+        [ "$running_key" = "$encryption_key" ] || maintenance=1
+      done
+    fi
+  fi
+
+  if [ "$maintenance" = "1" ]; then
     # enc:v2 writes are NOT safe during a blue/green overlap: an older live instance may
     # not know how to decrypt them. Use a deliberate maintenance rollout while this flag is on.
     echo "ENCRYPTION_KEY_ACTIVE=1: using maintenance rollout to prevent mixed-version secret writes."
