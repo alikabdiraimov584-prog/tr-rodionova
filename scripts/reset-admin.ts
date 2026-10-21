@@ -1,5 +1,5 @@
 // Сброс пароля администратора из ADMIN_EMAIL / ADMIN_PASSWORD в .env (когда пароль забыт).
-// Запуск на сервере: docker compose exec -T web npx tsx scripts/reset-admin.ts
+// Запуск на сервере: cd /opt/tr-rodionova && sudo -u deploy bash deploy/reset-admin.sh [email]
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
