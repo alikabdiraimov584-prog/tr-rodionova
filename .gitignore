@@ -48,3 +48,6 @@ audit-shots/
 
 # временные скрипты проверок на стенде (лежат в scripts/, чтобы видеть node_modules проекта)
 scripts/.tmp-*
+
+# скриншоты scripts/e2e.mjs
+e2e-*.png
