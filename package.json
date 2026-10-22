@@ -22,7 +22,7 @@
     "imapflow": "^2.2.5",
     "jose": "^6.2.12",
     "mailparser": "^3.9.36",
-    "next": "16.3.8",
+    "next": "16.4.2",
     "nodemailer": "^10.0.15",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",
@@ -46,13 +46,13 @@
     "@types/smtp-server": "^3.5.13",
     "axe-core": "^4.13.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.2",
     "playwright-core": "^1.63.0",
+    "prisma": "^7.10.0",
     "smtp-server": "^3.19.17",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "prisma": "^7.10.0",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "typescript": "^5"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2",

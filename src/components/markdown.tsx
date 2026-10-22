@@ -15,7 +15,7 @@ function bold(text: string, key: string): ReactNode[] {
 
 function inline(text: string): ReactNode[] {
   // ссылки: внутренние (/journal/…) — переходом внутри сайта, внешние — в новой вкладке; остальной текст — с жирным
-  return text.split(/(\[[^\]]+\]\([^)\s]+\))/g).flatMap((part, i) => {
+  return text.split(/(\[[^\]]+\]\([^)\s]+\))/g).flatMap<ReactNode>((part, i) => {
     const m = part.match(LINK);
     if (!m || m[0] !== part) return bold(part, `t${i}`);
     const [, label, href] = m;

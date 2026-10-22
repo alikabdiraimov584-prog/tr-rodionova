@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/money";
 import { Empty, PageTitle } from "@/components/ui";
@@ -53,6 +54,8 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
     db.article.groupBy({ by: ["category"], where: { ...published, category: { not: null } }, _count: true, orderBy: { category: "asc" } }),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // страница листания за пределами журнала — 404, а не пустая страница, которую поисковик посчитает малоценной
+  if (page > pages) notFound();
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 md:px-8">
       <PageTitle eyebrow="Журнал" title="Заметки ателье">О тканях, уходе за вещами и людях, которые их создают.</PageTitle>
