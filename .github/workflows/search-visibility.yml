@@ -28,6 +28,12 @@ jobs:
               "YandexBot": "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
               "Googlebot": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
               "Bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+              # ИИ-краулеры: Алиса AI (YandexAdditional), ChatGPT (OAI-SearchBot, GPTBot), Claude, Perplexity
+              "YandexAdd": "Mozilla/5.0 (compatible; YandexAdditional/3.0; +http://yandex.com/bots)",
+              "OAI-Search": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot",
+              "GPTBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.1; +https://openai.com/gptbot",
+              "ClaudeBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)",
+              "Perplexity": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
           }
           def get(url, ua=BROWSER):
               try:
@@ -53,6 +59,29 @@ jobs:
           print("Google Search Console:", "есть" if meta(home, "google-site-verification") else "НЕТ мета-тега (CRM → Интеграции → Google Search Console)")
           m = re.search(r'<link[^>]+rel="canonical"[^>]+href="([^"]+)"', home)
           print("canonical главной:", m.group(1) if m else "-")
+
+          print("== Сущность бренда для ИИ (разметка Organization на главной, llms.txt, фиды, FAQ)")
+          import json
+          org = {}
+          for block in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', home, re.S):
+              try:
+                  data = json.loads(block)
+              except Exception:
+                  continue
+              for x in (data.get("@graph") if isinstance(data, dict) and "@graph" in data else data if isinstance(data, list) else [data]):
+                  if isinstance(x, dict) and x.get("@type") in ("Organization", "OnlineStore", "ClothingStore", ["Organization", "OnlineStore"]):
+                      org = org or x
+          if org:
+              same = org.get("sameAs") or []
+              cp = (org.get("contactPoint") or [{}])[0]
+              print("Organization:", org.get("name"), "| телефон:", org.get("telephone") or cp.get("telephone") or "нет", "| e-mail:", org.get("email") or cp.get("email") or "нет",
+                    "| адрес:", "есть" if org.get("address") else "нет", "| основательница:", "есть" if org.get("founder") else "нет")
+              print(f"sameAs (площадки бренда вне сайта): {len(same)}", *same, sep="\n    ")
+          else:
+              print("Organization в разметке главной не найдена")
+          for path, need in (("/llms.txt", D), ("/llms-full.txt", D), ("/yml.xml", "<offer"), ("/faq", "FAQPage"), ("/press", "T.Rodionova")):
+              s, _, body = get(B + path)
+              print(f"{path:15} HTTP {s} {'ok' if need in body else 'нет ожидаемого содержимого'}  {len(body)//1024} КБ")
 
           print("== Карта сайта")
           s, _, xml = get(B + "/sitemap.xml")
