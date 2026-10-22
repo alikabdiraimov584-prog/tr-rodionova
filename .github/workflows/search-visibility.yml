@@ -1,5 +1,6 @@
 # Видимость в поиске снаружи, только чтение: что видят роботы Яндекса и Google (ответ, запреты индексации),
 # подтверждение сайта в Вебмастере и Search Console, карта сайта, и сколько страниц находят поисковики по site:.
+# Для каждой статьи журнала — ищется ли она по точному заголовку.
 # Число просмотров здесь не видно: оно только в Яндекс Метрике (закрытая статистика счётчика).
 name: Search visibility
 on:
@@ -19,7 +20,7 @@ jobs:
           D: ${{ github.event.inputs.domain || 'tr-rodionova.ru' }}
         run: |
           python3 - <<'PY'
-          import base64, os, re, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+          import base64, os, re, time, urllib.parse, urllib.request, xml.etree.ElementTree as ET
           D = os.environ["D"]; B = f"https://{D}"
           BROWSER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
           BOTS = {
@@ -79,29 +80,55 @@ jobs:
           print("== Что находят поисковики по запросу site:" + D)
           q = urllib.parse.quote(f"site:{D}")
           engines = {
-              "Яндекс": f"https://yandex.ru/search/?text={q}&lr=213",
-              "Google": f"https://www.google.com/search?q={q}&hl=ru&num=50",
-              "Bing": f"https://www.bing.com/search?q={q}&setlang=ru&count=50",
-              "DuckDuckGo": f"https://html.duckduckgo.com/html/?q={q}",
+              "Яндекс": "https://yandex.ru/search/?lr=213&text=",
+              "Google": "https://www.google.com/search?hl=ru&num=50&gbv=1&q=",
+              "Bing": "https://www.bing.com/search?setlang=ru&count=50&q=",
+              "DuckDuckGo": "https://html.duckduckgo.com/html/?q=",
           }
-          for name, url in engines.items():
-              s, _, html = get(url)
+          def search(name, query):
+              """Адреса сайта в выдаче поисковика; None — поисковик показал капчу или пустую страницу роботу."""
+              s, _, html = get(engines[name] + urllib.parse.quote(query))
               low = html.lower()
-              if "captcha" in low or "showcaptcha" in low or "unusual traffic" in low or "/sorry/" in low:
-                  print(f"{name:10} HTTP {s}: поисковик показал капчу роботу — проверить вручную по ссылке {url}")
-                  continue
-              # Bing и DuckDuckGo отдают ссылки закодированными (uddg=https%3A%2F%2F…, u=a1aHR0…), поэтому ищем и в раскодированном тексте
+              if s != 200 or "captcha" in low or "unusual traffic" in low or "/sorry/" in low or "enablejs" in low:
+                  return None
+              # Bing и DuckDuckGo отдают ссылки закодированными (uddg=https%3A%2F%2F…, u=a1aHR0…), а Bing ещё и пишет адрес
+              # хлебными крошками «tr-rodionova.ru › journal › …» — приводим всё к обычным адресам
               plain = urllib.parse.unquote(urllib.parse.unquote(html))
               for b in re.findall(r"[?&;]u=a1([A-Za-z0-9_-]+)", html):
                   try:
                       plain += " " + base64.urlsafe_b64decode(b + "=" * (-len(b) % 4)).decode("utf-8", "replace")
                   except Exception:
                       pass
-              found = sorted(set(re.findall(r"https?://(?:www\.)?" + re.escape(D) + r"[^\s\"'<>&]*", plain)))
-              if not found and D in plain:
-                  print(f"{name:10} домен встречается в ответе {plain.count(D)} раз(а), но не как ссылка — проверить вручную: {url}")
-              total = re.search(r"(?:About |Примерно |Около |Нашлось |)([\d\s,. ]+)\s*(?:results|результат|ответ)", html)
-              print(f"{name:10} HTTP {s}: страниц сайта в выдаче {len(found)}" + (f", счётчик поисковика: {total.group(1).strip()}" if total else ""))
-              for f in found[:15]:
+              plain = re.sub(r"<[^>]+>", "", plain).replace("&#8250;", "›").replace(" › ", "/").replace("›", "/")
+              plain = plain.replace(f"site:{D}", "").replace(f"site%3A{D}", "")  # сам запрос в поле поиска — не результат
+              return {u.rstrip("/.,") for u in re.findall(r"(?:https?://)?(?:www\.)?" + re.escape(D) + r"(?:/[^\s\"'<>&]*)?", plain)}
+          blocked = set()
+          for name in engines:
+              found = search(name, f"site:{D}")
+              if found is None:
+                  blocked.add(name)
+                  print(f"{name:10} показал капчу роботу — проверить вручную: {engines[name]}{urllib.parse.quote('site:' + D)}")
+                  continue
+              print(f"{name:10} адресов сайта в выдаче: {len(found)}")
+              for f in sorted(found)[:25]:
                   print("   ", f)
+
+          print("== Статьи журнала: находит ли поиск статью по точному заголовку")
+          s, _, feed = get(B + "/journal/feed.xml")
+          items = re.findall(r"<item>.*?<title>(.*?)</title>.*?<link>(.*?)</link>.*?<pubDate>(.*?)</pubDate>", feed, re.S)
+          items = [(re.sub(r"<!\[CDATA\[|\]\]>", "", t).strip(), l.strip(), d[5:16]) for t, l, d in items]
+          print(f"статей в RSS: {len(items)}")
+          live = [n for n in ("Bing", "DuckDuckGo", "Яндекс", "Google") if n not in blocked]
+          totals = {n: 0 for n in live}
+          for title, link, date in items:
+              slug = link.rstrip("/").split("/")[-1]
+              marks = []
+              for n in live:
+                  found = search(n, f'"{title}"')
+                  ok = found is not None and any(slug in u for u in found)
+                  totals[n] += ok
+                  marks.append(f"{n}: {'да' if ok else ('капча' if found is None else 'нет')}")
+                  time.sleep(2)
+              print(f"{date} | {' | '.join(marks)} | {title[:70]}")
+          print("итого найдено:", ", ".join(f"{n} {v} из {len(items)}" for n, v in totals.items()))
           PY
