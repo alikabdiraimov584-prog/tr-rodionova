@@ -48,7 +48,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "playwright-core": "^1.63.0",
-    "prisma": "^7.10.0",
+    "prisma": "^7.10.1",
     "smtp-server": "^3.19.17",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
