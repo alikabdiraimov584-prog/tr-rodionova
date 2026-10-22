@@ -1,0 +1,98 @@
+# Видимость в поиске снаружи, только чтение: что видят роботы Яндекса и Google (ответ, запреты индексации),
+# подтверждение сайта в Вебмастере и Search Console, карта сайта, и сколько страниц находят поисковики по site:.
+# Число просмотров здесь не видно: оно только в Яндекс Метрике (закрытая статистика счётчика).
+name: Search visibility
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: Домен
+        default: tr-rodionova.ru
+  schedule:
+    - cron: "41 6 * * 1"
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверка
+        env:
+          D: ${{ github.event.inputs.domain || 'tr-rodionova.ru' }}
+        run: |
+          python3 - <<'PY'
+          import os, re, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+          D = os.environ["D"]; B = f"https://{D}"
+          BROWSER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+          BOTS = {
+              "Браузер": BROWSER,
+              "YandexBot": "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
+              "Googlebot": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+              "Bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+          }
+          def get(url, ua=BROWSER):
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua, "Accept-Language": "ru-RU,ru;q=0.9"}), timeout=40)
+                  return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as e:
+                  return e.code, dict(e.headers or {}), ""
+              except Exception as e:
+                  return f"ошибка {type(e).__name__}", {}, ""
+          def meta(html, name):
+              m = re.search(r'<meta[^>]+name="%s"[^>]+content="([^"]*)"' % re.escape(name), html)
+              return m.group(1) if m else None
+
+          print("== Главная глазами роботов (код, X-Robots-Tag, meta robots)")
+          home = ""
+          for who, ua in BOTS.items():
+              s, h, html = get(B + "/", ua)
+              home = home or html
+              print(f"{who:10} {s}  x-robots-tag={h.get('X-Robots-Tag') or h.get('x-robots-tag') or '-'}  meta robots={meta(html, 'robots') or '-'}")
+
+          print("== Подтверждение сайта и аналитика")
+          print("Яндекс Вебмастер:", "есть" if meta(home, "yandex-verification") else "НЕТ мета-тега (CRM → Интеграции → Яндекс Вебмастер)")
+          print("Google Search Console:", "есть" if meta(home, "google-site-verification") else "НЕТ мета-тега (CRM → Интеграции → Google Search Console)")
+          m = re.search(r'<link[^>]+rel="canonical"[^>]+href="([^"]+)"', home)
+          print("canonical главной:", m.group(1) if m else "-")
+
+          print("== Карта сайта")
+          s, _, xml = get(B + "/sitemap.xml")
+          urls = []
+          try:
+              urls = [e.text for e in ET.fromstring(xml).iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
+          except Exception as e:
+              print("не разобрать:", e)
+          print(f"HTTP {s}, адресов: {len(urls)}")
+          kinds = {}
+          for u in urls:
+              k = urllib.parse.urlparse(u).path.strip("/").split("/")[0] or "(главная)"
+              kinds[k] = kinds.get(k, 0) + 1
+          print("по разделам:", ", ".join(f"{k} {v}" for k, v in sorted(kinds.items(), key=lambda x: -x[1])))
+          print("== Выборочно страницы из карты глазами YandexBot")
+          bad = 0
+          for u in urls[:: max(1, len(urls) // 12)][:12]:
+              s, h, html = get(u, BOTS["YandexBot"])
+              r = meta(html, "robots") or "-"
+              flag = "" if s == 200 and "noindex" not in r and "noindex" not in str(h.get("X-Robots-Tag", "")) else "  <-- проблема"
+              bad += bool(flag)
+              print(f"{s} {r:30} {u}{flag}")
+          print("проблемных:", bad)
+
+          print("== Что находят поисковики по запросу site:" + D)
+          q = urllib.parse.quote(f"site:{D}")
+          engines = {
+              "Яндекс": f"https://yandex.ru/search/?text={q}&lr=213",
+              "Google": f"https://www.google.com/search?q={q}&hl=ru&num=50",
+              "Bing": f"https://www.bing.com/search?q={q}&setlang=ru&count=50",
+              "DuckDuckGo": f"https://html.duckduckgo.com/html/?q={q}",
+          }
+          for name, url in engines.items():
+              s, _, html = get(url)
+              low = html.lower()
+              if "captcha" in low or "showcaptcha" in low or "unusual traffic" in low or "/sorry/" in low:
+                  print(f"{name:10} HTTP {s}: поисковик показал капчу роботу — проверить вручную по ссылке {url}")
+                  continue
+              found = sorted(set(re.findall(r"https?://(?:www\.)?" + re.escape(D) + r"[^\s\"'<>&]*", html)))
+              total = re.search(r"(?:About |Примерно |Около |Нашлось |)([\d\s,. ]+)\s*(?:results|результат|ответ)", html)
+              print(f"{name:10} HTTP {s}: страниц сайта в выдаче {len(found)}" + (f", счётчик поисковика: {total.group(1).strip()}" if total else ""))
+              for f in found[:15]:
+                  print("   ", f)
+          PY
