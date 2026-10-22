@@ -6,6 +6,7 @@ import { getGuestToken, guestCartCount } from "@/lib/guest-cart";
 import { getSettingOrDefault } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { Logo } from "@/components/ui";
+import { BrandLockup } from "@/components/brand-marks";
 import { SiteMenu } from "@/components/shop/mobile-menu";
 import { IconBag, IconHeart, IconSearch, IconUser } from "@/components/shop/icons";
 
@@ -100,8 +101,9 @@ export async function ShopFooter() {
           {seller.showroom && <p className="mt-3 text-muted">{seller.showroom}</p>}
         </div>
       </div>
-      <div className="border-t border-line px-4 py-5 text-center text-[0.68rem] text-muted md:px-5">
-        © {new Date().getFullYear()} {brand.name}
+      <div className="flex flex-col items-center gap-4 border-t border-line px-4 py-8 text-center text-[0.68rem] text-muted md:px-5">
+        <BrandLockup className="h-auto w-[200px] text-ink md:w-[240px]" />
+        <span>© {new Date().getFullYear()} {brand.name}</span>
       </div>
     </footer>
   );

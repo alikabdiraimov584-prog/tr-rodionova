@@ -1,5 +1,6 @@
 "use client";
 
+import { Wordmark } from "@/components/brand-marks";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CrmNav } from "@/components/crm/nav";
@@ -35,7 +36,7 @@ export function CrmMobileNav({ groups }: { groups: Group[] }) {
           <button type="button" aria-label="Закрыть меню" onClick={() => setOpen(false)} className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-y-0 left-0 flex w-[86%] max-w-xs flex-col bg-ivory shadow-2xl">
             <div className="flex h-13 shrink-0 items-center justify-between bg-[#1a1c1f] px-4 text-white">
-              <span className="text-[0.95rem] font-bold tracking-tight">T.Rodionova <span className="font-normal text-white/60">CRM</span></span>
+              <span className="flex items-center gap-2"><Wordmark title="T.Rodionova" className="h-[18px] w-auto" /><span className="text-[0.8rem] text-white/60">CRM</span></span>
               <button type="button" aria-label="Закрыть меню" onClick={() => setOpen(false)} className="-mr-2 flex h-11 w-11 items-center justify-center rounded-lg text-2xl leading-none hover:bg-white/10">×</button>
             </div>
             <form action="/crm/customers" className="border-b border-line p-3">

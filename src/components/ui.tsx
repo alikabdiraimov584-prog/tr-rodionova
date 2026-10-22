@@ -1,21 +1,20 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Tone } from "@/lib/labels";
+import { MonogramMark, Wordmark } from "@/components/brand-marks";
 
-export function Logo({ className = "", href = "/" }: { className?: string; href?: string }) {
+/** Логотип-ссылка на главную: векторный знак «T.Rodionova» из файлов бренда, цвет — от текста. */
+export function Logo({ className = "", href = "/", markClassName = "h-[22px] md:h-[26px]" }: { className?: string; href?: string; markClassName?: string }) {
   return (
-    <Link href={href} className={`text-[0.95rem] font-medium uppercase leading-none tracking-[0.22em] ${className}`}>
-      T.Rodionova
+    <Link href={href} aria-label="T.Rodionova — на главную" className={`inline-flex items-center ${className}`}>
+      <Wordmark className={`w-auto ${markClassName}`} />
     </Link>
   );
 }
 
+/** Монограмма TR из файлов бренда; размер — размер шрифта (text-6xl), цвет — цвет текста. */
 export function Monogram({ className = "text-4xl" }: { className?: string }) {
-  return (
-    <span className={`monogram ${className}`} aria-hidden>
-      TR
-    </span>
-  );
+  return <MonogramMark className={`inline-block ${className}`} />;
 }
 
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {

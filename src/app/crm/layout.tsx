@@ -7,6 +7,7 @@ import { CrmMobileNav } from "@/components/crm/mobile-nav";
 import { can, type Section } from "@/lib/permissions";
 import { ROLE } from "@/lib/labels";
 import { logoutAction } from "@/app/actions/auth";
+import { Wordmark } from "@/components/brand-marks";
 
 export const metadata: Metadata = { title: { default: "CRM", template: "%s — CRM T.Rodionova" }, robots: { index: false } };
 
@@ -59,7 +60,7 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
     <div className="crm flex min-h-screen flex-col bg-ivory text-ink">
       <header className="sticky top-0 z-30 flex h-13 items-center gap-3 bg-[#1a1c1f] px-4 text-white md:gap-4">
         <CrmMobileNav groups={visible} />
-        <Link href="/crm" className="text-[0.95rem] font-bold tracking-tight">T.Rodionova <span className="font-normal text-white/60">CRM</span></Link>
+        <Link href="/crm" aria-label="T.Rodionova CRM" className="flex shrink-0 items-center gap-2"><Wordmark className="h-[18px] w-auto" /><span className="text-[0.8rem] text-white/60">CRM</span></Link>
         <form action="/crm/customers" className="mx-auto hidden w-full max-w-xl md:block">
           <input name="q" placeholder="Поиск по клиентам, заказам, товарам…" className="w-full rounded-lg border-0 bg-[#2b2e33] px-3 py-1.5 text-sm text-white placeholder:text-white/50 outline-none focus:bg-[#34373d]" />
         </form>

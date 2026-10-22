@@ -87,7 +87,7 @@ export default async function PressPage() {
       )}
       <Section id="contact" title="Контакт для СМИ">
         <p>Запросы на интервью, комментарии и вещи для съёмок: <a href={`mailto:${brand.email}`} className="underline">{brand.email}</a>{publicPhone(brand.phone) ? `, ${publicPhone(brand.phone)}` : ""}{brand.telegram ? <>, <a href={brand.telegram} className="underline">Telegram</a></> : null}. Отвечаем {seller.hours || "в рабочие часы"}.</p>
-        <p>Логотип: <a href="/logo.png" className="underline">PNG 512×512</a>. Для машинного чтения: <a href="/llms.txt" className="underline">llms.txt</a>.</p>
+        <p>Логотип: <a href="/images/brand/logo/t-rodionova-logo.svg" className="underline">SVG</a> и <a href="/images/brand/logo/t-rodionova-logo.png" className="underline">PNG</a> на прозрачном фоне, монограмма TR — <a href="/images/brand/logo/tr-monogram.svg" className="underline">SVG</a> и <a href="/images/brand/logo/tr-monogram.png" className="underline">PNG</a>, квадрат для соцсетей — <a href="/logo.png" className="underline">PNG 512×512</a>. Фирменные цвета: #2B2A29 и #857054. Для машинного чтения: <a href="/llms.txt" className="underline">llms.txt</a>.</p>
       </Section>
     </TextPage>
   );

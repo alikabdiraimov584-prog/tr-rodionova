@@ -84,5 +84,5 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   // всё, кроме статики: CSP нужен каждой странице, проверка входа — только нужным путям
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|images/|uploads/|robots.txt|sitemap.xml).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|images/|uploads/|robots.txt|sitemap.xml).*)"],
 };

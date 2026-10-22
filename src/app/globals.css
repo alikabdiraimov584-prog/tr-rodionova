@@ -51,6 +51,7 @@
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-taupe: #8b7f71;
+  --color-bronze: #857054; /* монограмма TR в логотипе */
   --color-taupe-dark: #6f655a;
   --color-champagne: var(--champagne);
   --color-muted-dark: var(--muted-dark);
@@ -122,7 +123,6 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
 
 
 /* цвет монограмме не задаётся: она наследует цвет текста, а водяной знак на карточке Circle красят утилиты */
-.monogram { font-family: "Times New Roman", Times, serif; letter-spacing: -0.06em; }
 
 /* Размеры кнопок как до редизайна витрины: на них свёрстаны панели CRM. Витрина укрупняет кнопки ниже, в слое components. */
 @utility btn {

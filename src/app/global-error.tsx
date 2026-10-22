@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Wordmark } from "@/components/brand-marks";
 
 /** Сбой корневого макета: стили сайта недоступны, поэтому оформление встроено. */
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -8,7 +9,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     <html lang="ru">
       <body style={{ margin: 0, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F6F3EC", color: "#141210", fontFamily: "Georgia, 'Times New Roman', serif", textAlign: "center", padding: "24px" }}>
         <div style={{ maxWidth: 480 }}>
-          <div style={{ letterSpacing: "0.3em", fontSize: 14, textTransform: "uppercase" }}>T.Rodionova</div>
+          <Wordmark title="T.Rodionova" style={{ display: "block", height: 30, width: "auto", margin: "0 auto" }} />
           <h1 style={{ fontWeight: 500, fontSize: 28, margin: "40px 0 8px" }}>Что-то пошло не так</h1>
           <p style={{ fontSize: 15, lineHeight: 1.5, color: "#5F5A52", margin: 0 }}>
             Сайт временно не открывается из-за ошибки на нашей стороне. Попробуйте ещё раз через минуту или напишите нам: care@tr-rodionova.ru
