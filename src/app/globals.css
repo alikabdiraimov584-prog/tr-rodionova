@@ -3,7 +3,7 @@
 /*
   Два визуальных контура на одних классах:
   — сайт и кабинет: минималистичный, по образцу ACTE (белый фон, Golos Text, тонкие линейки, без скруглений,
-    крупные фото, мелкие заглавные подписи);
+    крупные фото, мелкие заглавные подписи; заголовки — фирменная антиква Libre Caslon Text / Cormorant Garamond);
   — CRM (.crm): коммерческий (серый фон, белые карточки со скруглением и тенью, цветные статусы).
 */
 :root {
@@ -26,6 +26,8 @@
   --radius: 0px;
   --shadow: none;
   --font-ui: var(--font-golos), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* фирменная антиква: латиница — Libre Caslon Text (брендбук), кириллица — Cormorant Garamond */
+  --font-brand: var(--font-caslon), var(--font-cormorant), Georgia, "Times New Roman", serif;
 }
 
 .crm {
@@ -41,6 +43,7 @@
   --radius: 12px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   --font-ui: var(--font-manrope), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-brand: var(--font-ui); /* CRM остаётся на гротеске */
 }
 
 @theme inline {
@@ -62,7 +65,7 @@
   --color-warning: var(--warning);
   --color-info: var(--info);
   --font-sans: var(--font-ui);
-  --font-serif: var(--font-ui);
+  --font-serif: var(--font-brand);
 }
 
 html { scroll-behavior: smooth; }
@@ -83,10 +86,12 @@ body {
 /* Базовые заголовки — в слое base: классы размера и разрядки (text-*, tracking-*) на конкретном заголовке
    их перекрывают. Вне слоя эти правила побеждали любые утилиты, и заданные в разметке размеры не работали. */
 @layer base {
+  /* font-size-adjust: from-font выравнивает высоту строчных Cormorant по Caslon — русские и латинские буквы одного роста */
   h1, h2, h3 {
-    font-family: var(--font-ui);
+    font-family: var(--font-brand);
+    font-size-adjust: from-font;
     font-weight: 400;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
     line-height: 1.15;
   }
   h1 { font-size: 1.5rem; }
@@ -94,9 +99,10 @@ body {
   h3 { font-size: 1rem; }
 }
 .serif {
-  font-family: var(--font-ui);
+  font-family: var(--font-brand);
+  font-size-adjust: from-font;
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   line-height: 1.15;
 }
 
@@ -115,11 +121,11 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
 .drawer-in { animation: drawer-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @media (prefers-reduced-motion: reduce) { .drawer-in { animation: none; } }
 /* CRM: заголовки фиксированного размера поверх утилит — как было до переноса базовых правил в слой */
-.crm h1, .crm h2, .crm h3 { font-family: var(--font-ui); letter-spacing: -0.01em; line-height: 1.15; }
+.crm h1, .crm h2, .crm h3 { font-family: var(--font-ui); font-size-adjust: none; letter-spacing: -0.01em; line-height: 1.15; }
 .crm h1 { font-weight: 700; font-size: 1.35rem; }
 .crm h2 { font-weight: 700; font-size: 1.25rem; }
 .crm h3 { font-weight: 600; font-size: 1rem; }
-.crm .serif { font-weight: 700; letter-spacing: -0.02em; }
+.crm .serif { font-family: var(--font-ui); font-size-adjust: none; font-weight: 700; letter-spacing: -0.02em; }
 
 
 /* цвет монограмме не задаётся: она наследует цвет текста, а водяной знак на карточке Circle красят утилиты */
