@@ -1,11 +1,34 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
-/** Минимальный рендер Markdown для юридических документов: заголовки, абзацы, списки, жирный. */
-function inline(text: string): ReactNode[] {
+/**
+ * Минимальный рендер Markdown для статей журнала, SEO-текстов каталога и юридических документов:
+ * заголовки, абзацы, маркированные и нумерованные списки, жирный, ссылки [текст](/адрес).
+ */
+const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
+
+function bold(text: string, key: string): ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? <strong key={i} className="font-medium">{part.slice(2, -2)}</strong> : part,
+    part.startsWith("**") && part.endsWith("**") ? <strong key={`${key}-${i}`} className="font-medium">{part.slice(2, -2)}</strong> : part,
   );
 }
+
+function inline(text: string): ReactNode[] {
+  // ссылки: внутренние (/journal/…) — переходом внутри сайта, внешние — в новой вкладке; остальной текст — с жирным
+  return text.split(/(\[[^\]]+\]\([^)\s]+\))/g).flatMap((part, i) => {
+    const m = part.match(LINK);
+    if (!m || m[0] !== part) return bold(part, `t${i}`);
+    const [, label, href] = m;
+    const cls = "underline underline-offset-4 hover:opacity-60";
+    if (href.startsWith("/") && !href.startsWith("//")) return [<Link key={`l${i}`} href={href} className={cls}>{bold(label, `l${i}`)}</Link>];
+    if (/^https?:\/\//.test(href)) return [<a key={`l${i}`} href={href} target="_blank" rel="noopener noreferrer" className={cls}>{bold(label, `l${i}`)}</a>];
+    if (/^mailto:/.test(href)) return [<a key={`l${i}`} href={href} className={cls}>{bold(label, `l${i}`)}</a>];
+    return bold(label, `t${i}`);
+  });
+}
+
+const BULLET = /^- /;
+const NUMBERED = /^\d+\.\s/;
 
 const ANCHORS: [RegExp, string][] = [
   [/программы лояльности/i, "loyalty"],
@@ -36,18 +59,15 @@ export function Markdown({ source }: { source: string }) {
       out.push(<h2 key={i} id={id} className="mt-12 scroll-mt-32">{title}</h2>);
     } else if (b.startsWith("### ")) {
       out.push(<h3 key={i} className="mt-8">{b.slice(4)}</h3>);
-    } else if (b.split("\n").every((l) => l.trim().startsWith("- "))) {
-      out.push(
-        <ul key={i} className="my-3 list-disc space-y-1.5 pl-6">
-          {b.split("\n").map((l, j) => <li key={j}>{inline(l.trim().slice(2))}</li>)}
-        </ul>,
-      );
     } else {
-      const lines = b.split("\n");
-      const head = lines.filter((l) => !l.trim().startsWith("- "));
-      const items = lines.filter((l) => l.trim().startsWith("- "));
-      out.push(<p key={i} className="my-3">{inline(head.join(" "))}</p>);
-      if (items.length) out.push(<ul key={`${i}-l`} className="my-3 list-disc space-y-1.5 pl-6">{items.map((l, j) => <li key={j}>{inline(l.trim().slice(2))}</li>)}</ul>);
+      // абзац, за которым могут идти пункты списка: «- » — маркированный, «1. » — нумерованный
+      const lines = b.split("\n").map((l) => l.trim());
+      const head = lines.filter((l) => !BULLET.test(l) && !NUMBERED.test(l));
+      const bullets = lines.filter((l) => BULLET.test(l));
+      const numbered = lines.filter((l) => NUMBERED.test(l));
+      if (head.length) out.push(<p key={i} className="my-3">{inline(head.join(" "))}</p>);
+      if (bullets.length) out.push(<ul key={`${i}-l`} className="my-3 list-disc space-y-1.5 pl-6">{bullets.map((l, j) => <li key={j}>{inline(l.replace(BULLET, ""))}</li>)}</ul>);
+      if (numbered.length) out.push(<ol key={`${i}-o`} className="my-3 list-decimal space-y-1.5 pl-6">{numbered.map((l, j) => <li key={j}>{inline(l.replace(NUMBERED, ""))}</li>)}</ol>);
     }
   });
   return (

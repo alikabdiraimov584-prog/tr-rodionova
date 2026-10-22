@@ -114,7 +114,7 @@ export async function cancelUnpaidOrders(now = new Date()) {
   return n;
 }
 
-/** Ежечасные задачи: напоминания об оплате и снятие просроченного резерва. */
+/** Ежечасные задачи: напоминания об оплате, снятие просроченного резерва, рассылки и статьи по расписанию. */
 export async function runHourlyJobs() {
   const paymentReminders = await notifyUnpaidOrders();
   const unpaidCancelled = await cancelUnpaidOrders();
@@ -124,7 +124,9 @@ export async function runHourlyJobs() {
   const mail = await (await import("@/lib/support/mail-imap")).pollMailbox().catch((e) => ({ error: e instanceof Error ? e.message : "mail" }));
   // утренняя сводка задач в Telegram: сама решает, что сейчас 09:00 по Москве и что сводка за день ещё не уходила
   const taskDigest = await (await import("@/lib/tasks")).remindOverdueTasks().catch((e) => ({ sent: false, error: e instanceof Error ? e.message : "tasks" }));
-  return { paymentReminders, unpaidCancelled, dueCampaigns, mail, taskDigest };
+  // статьи журнала с отложенной датой: в час выхода их адреса уходят в Яндекс и Bing через IndexNow
+  const scheduledArticles = await (await import("@/lib/indexnow")).pingScheduledArticles().catch((e) => ({ sent: 0, error: e instanceof Error ? e.message : "indexnow" }));
+  return { paymentReminders, unpaidCancelled, dueCampaigns, mail, taskDigest, scheduledArticles };
 }
 
 export async function runDailyJobs(actorId: string | null = null) {
