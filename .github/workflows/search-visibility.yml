@@ -19,7 +19,7 @@ jobs:
           D: ${{ github.event.inputs.domain || 'tr-rodionova.ru' }}
         run: |
           python3 - <<'PY'
-          import os, re, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+          import base64, os, re, urllib.parse, urllib.request, xml.etree.ElementTree as ET
           D = os.environ["D"]; B = f"https://{D}"
           BROWSER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
           BOTS = {
@@ -90,7 +90,16 @@ jobs:
               if "captcha" in low or "showcaptcha" in low or "unusual traffic" in low or "/sorry/" in low:
                   print(f"{name:10} HTTP {s}: поисковик показал капчу роботу — проверить вручную по ссылке {url}")
                   continue
-              found = sorted(set(re.findall(r"https?://(?:www\.)?" + re.escape(D) + r"[^\s\"'<>&]*", html)))
+              # Bing и DuckDuckGo отдают ссылки закодированными (uddg=https%3A%2F%2F…, u=a1aHR0…), поэтому ищем и в раскодированном тексте
+              plain = urllib.parse.unquote(urllib.parse.unquote(html))
+              for b in re.findall(r"[?&;]u=a1([A-Za-z0-9_-]+)", html):
+                  try:
+                      plain += " " + base64.urlsafe_b64decode(b + "=" * (-len(b) % 4)).decode("utf-8", "replace")
+                  except Exception:
+                      pass
+              found = sorted(set(re.findall(r"https?://(?:www\.)?" + re.escape(D) + r"[^\s\"'<>&]*", plain)))
+              if not found and D in plain:
+                  print(f"{name:10} домен встречается в ответе {plain.count(D)} раз(а), но не как ссылка — проверить вручную: {url}")
               total = re.search(r"(?:About |Примерно |Около |Нашлось |)([\d\s,. ]+)\s*(?:results|результат|ответ)", html)
               print(f"{name:10} HTTP {s}: страниц сайта в выдаче {len(found)}" + (f", счётчик поисковика: {total.group(1).strip()}" if total else ""))
               for f in found[:15]:
