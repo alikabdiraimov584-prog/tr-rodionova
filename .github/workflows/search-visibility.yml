@@ -55,8 +55,9 @@ jobs:
               print(f"{who:10} {s}  x-robots-tag={h.get('X-Robots-Tag') or h.get('x-robots-tag') or '-'}  meta robots={meta(html, 'robots') or '-'}")
 
           print("== Подтверждение сайта и аналитика")
-          print("Яндекс Вебмастер:", "есть" if meta(home, "yandex-verification") else "НЕТ мета-тега (CRM → Интеграции → Яндекс Вебмастер)")
-          print("Google Search Console:", "есть" if meta(home, "google-site-verification") else "НЕТ мета-тега (CRM → Интеграции → Google Search Console)")
+          # коды подтверждения публичны (стоят в HTML), печатаются целиком: их сверяют с кодом в Вебмастере и Search Console
+          print("Яндекс Вебмастер:", meta(home, "yandex-verification") or "НЕТ мета-тега (CRM → Интеграции → Яндекс Вебмастер)")
+          print("Google Search Console:", meta(home, "google-site-verification") or "НЕТ мета-тега (CRM → Интеграции → Google Search Console)")
           m = re.search(r'<link[^>]+rel="canonical"[^>]+href="([^"]+)"', home)
           print("canonical главной:", m.group(1) if m else "-")
 
