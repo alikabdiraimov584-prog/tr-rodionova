@@ -1,25 +1,61 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/money";
 import { Empty, PageTitle } from "@/components/ui";
 
-export const metadata: Metadata = { title: "Журнал", description: "Журнал T.Rodionova: уход за вещами, ткани, ателье, интервью." };
+// по 24 статьи на страницу: журнал пополняется каждый день, без листания страница росла бы бесконечно
+const PAGE_SIZE = 24;
+
+type Params = { category?: string; page: number };
+
+function readParams(sp: Record<string, string | string[] | undefined>): Params {
+  const category = typeof sp.category === "string" && sp.category ? sp.category : undefined;
+  const n = typeof sp.page === "string" ? Number.parseInt(sp.page, 10) : 1;
+  return { category, page: Number.isFinite(n) && n > 1 ? n : 1 };
+}
+
+function href({ category, page }: Params) {
+  const q = new URLSearchParams();
+  if (category) q.set("category", category);
+  if (page > 1) q.set("page", String(page));
+  const s = q.toString();
+  return s ? `/journal?${s}` : "/journal";
+}
+
+export async function generateMetadata({ searchParams }: PageProps<"/journal">): Promise<Metadata> {
+  const p = readParams(await searchParams);
+  const suffix = [p.category, p.page > 1 ? `страница ${p.page}` : null].filter(Boolean).join(", ");
+  return {
+    title: suffix ? `Журнал — ${suffix}` : "Журнал",
+    description: "Журнал T.Rodionova: уход за вещами, ткани, образы, размеры и ателье.",
+    // каждая страница листания и рубрика — самостоятельная страница со своим адресом
+    alternates: { canonical: href(p) },
+  };
+}
 
 export default async function JournalPage({ searchParams }: PageProps<"/journal">) {
-  const sp = await searchParams;
-  const category = typeof sp.category === "string" && sp.category ? sp.category : undefined;
+  const p = readParams(await searchParams);
+  const { category, page } = p;
   const now = new Date();
   const published = { publishedAt: { not: null, lte: now } } as const;
-  const [articles, categories] = await Promise.all([
+  const where = { ...published, ...(category ? { category } : {}) };
+  const [articles, total, categories] = await Promise.all([
     db.article.findMany({
-      where: { ...published, ...(category ? { category } : {}) },
+      where,
       orderBy: { publishedAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       select: { id: true, slug: true, title: true, excerpt: true, coverUrl: true, category: true, publishedAt: true },
     }),
+    db.article.count({ where }),
     db.article.groupBy({ by: ["category"], where: { ...published, category: { not: null } }, _count: true, orderBy: { category: "asc" } }),
   ]);
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // страница листания за пределами журнала — 404, а не пустая страница, которую поисковик посчитает малоценной
+  if (page > pages) notFound();
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 md:px-8">
       <PageTitle eyebrow="Журнал" title="Заметки ателье">О тканях, уходе за вещами и людях, которые их создают.</PageTitle>
@@ -27,7 +63,7 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
         <nav className="mb-10 flex flex-wrap gap-x-5 gap-y-2 border-y border-line py-4 text-[0.68rem] uppercase tracking-[0.18em]">
           <Link href="/journal" className={!category ? "text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>Все</Link>
           {categories.map((c) => (
-            <Link key={c.category} href={`/journal?category=${encodeURIComponent(c.category!)}`} className={category === c.category ? "text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>
+            <Link key={c.category} href={href({ category: c.category!, page: 1 })} className={category === c.category ? "text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>
               {c.category}
             </Link>
           ))}
@@ -51,6 +87,13 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
             </Link>
           ))}
         </div>
+      )}
+      {pages > 1 && (
+        <nav aria-label="Страницы журнала" className="mt-16 flex items-center justify-between gap-4 border-t border-line pt-6 text-[0.68rem] uppercase tracking-[0.16em]">
+          {page > 1 ? <Link href={href({ category, page: page - 1 })} className="hover:opacity-60">← Новее</Link> : <span />}
+          <span className="text-muted">Страница {page} из {pages}</span>
+          {page < pages ? <Link href={href({ category, page: page + 1 })} className="hover:opacity-60">Ранее →</Link> : <span />}
+        </nav>
       )}
     </div>
   );

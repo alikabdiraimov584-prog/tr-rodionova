@@ -11,7 +11,11 @@ import { isRealPhoto, photoFirst } from "@/lib/photos";
 
 const withImages = { images: { orderBy: { order: "asc" as const } }, variants: true } as const;
 
-export const metadata: Metadata = { title: { absolute: "T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка" } };
+// canonical: адреса с метками рекламы (?utm_…, ?yclid=…) поисковики склеивают с главной, а не считают копиями
+export const metadata: Metadata = {
+  title: { absolute: "T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка" },
+  alternates: { canonical: "/", types: { "application/rss+xml": "/journal/feed.xml" } },
+};
 
 /**
  * Главная по образцу ACTE: кадр съёмки на весь экран с одной кнопкой, категории картинками, новинки,

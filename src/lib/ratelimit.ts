@@ -10,7 +10,9 @@ import { db } from "@/lib/db";
 export async function checkRate(key: string, opts: { limit: number; windowSec: number; lockSec?: number }) {
   const lockSec = opts.lockSec ?? opts.windowSec;
   return db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+    // $executeRaw, а не $queryRaw: функция возвращает void, и драйвер Prisma не умеет прочитать такую колонку —
+    // $queryRaw падал с UnsupportedNativeDataType, и вместе с ним вход, регистрация и сброс пароля
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
     const now = new Date();
     const row = await tx.rateLimit.findUnique({ where: { key } });
     if (row?.lockedUntil && row.lockedUntil > now) {

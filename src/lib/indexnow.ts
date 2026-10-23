@@ -48,6 +48,27 @@ export async function submitSitemapOnce(): Promise<{ sent: number; skipped?: str
 }
 
 /**
+ * Статьи с отложенной датой выходят на сайт сами, без сохранения в CRM, и pingIndexNow при сохранении их не видит.
+ * Раз в час (задача hourly) отправляем адреса статей, вышедших после прошлой отправки. Отметка хранится в настройках
+ * и сдвигается только после успешной отправки; самый первый запуск берёт статьи за последние сутки.
+ */
+export async function pingScheduledArticles(now = new Date()): Promise<{ sent: number; skipped?: string }> {
+  const key = await getIndexNowKey();
+  if (!key) return { sent: 0, skipped: "интеграция выключена" };
+  const mark = await db.setting.findUnique({ where: { key: "indexnowArticlesAt" } });
+  const markAt = mark ? new Date(String(mark.value)) : null;
+  const since = markAt && !Number.isNaN(markAt.getTime()) ? markAt : new Date(now.getTime() - 86_400_000);
+  const due = await db.article.findMany({ where: { publishedAt: { gt: since, lte: now } }, select: { slug: true } });
+  if (due.length) {
+    const r = await pingIndexNow([...due.map((a) => `/journal/${a.slug}`), "/journal", "/journal/feed.xml", "/llms.txt"]);
+    if (!r.ok) return { sent: 0, skipped: r.error };
+  }
+  const at = now.toISOString();
+  await db.setting.upsert({ where: { key: "indexnowArticlesAt" }, update: { value: at }, create: { key: "indexnowArticlesAt", value: at } });
+  return { sent: due.length };
+}
+
+/**
  * Отправить адреса страниц (пути вида /journal/slug). Ошибка не мешает сохранению в CRM: она записывается в карточку
  * интеграции и видна там. Боевой адрес берётся из APP_URL — на стенде с localhost ничего не отправляется.
  */

@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
-import { Golos_Text, Manrope } from "next/font/google";
+import { Cormorant_Garamond, Golos_Text, Libre_Caslon_Text, Manrope } from "next/font/google";
 import "./globals.css";
 import { activeIntegration } from "@/lib/integrations/store";
 
 // Витрина: Golos Text — гротеск с полной кириллицей (прежний Hanken Grotesk кириллицы не имел, и русский текст шёл системным Arial)
 const golos = Golos_Text({ variable: "--font-golos", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600"] });
+// Фирменная антиква (брендбук: дескриптор логотипа — Libre Caslon Text) для заголовков витрины. В Libre Caslon Text нет кириллицы,
+// поэтому русские буквы берутся из Cormorant Garamond (близкий рисунок, как у знака T.Rodionova). Запасной шрифт next/font
+// у Caslon отключён: он без unicode-range и перехватывал бы кириллицу системным Times раньше Cormorant.
+const caslon = Libre_Caslon_Text({ variable: "--font-caslon", subsets: ["latin", "latin-ext"], weight: ["400", "700"], adjustFontFallback: false, fallback: [] });
+const cormorant = Cormorant_Garamond({ variable: "--font-cormorant", subsets: ["cyrillic"], weight: ["500", "600", "700"] });
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"] });
 
 // CSP с nonce на каждый запрос: ни одна страница не может быть статической, иначе её скрипты останутся без nonce
@@ -39,7 +44,7 @@ const baseMetadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" data-scroll-behavior="smooth" className={`${golos.variable} ${manrope.variable} h-full antialiased`}>
+    <html lang="ru" data-scroll-behavior="smooth" className={`${golos.variable} ${manrope.variable} ${caslon.variable} ${cormorant.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

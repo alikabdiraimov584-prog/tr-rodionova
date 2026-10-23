@@ -1,13 +1,23 @@
 import type { PrismaClient } from "../src/generated/prisma/client";
+import { JOURNAL_BATCHES } from "./journal";
 
 /**
  * Статьи журнала под поисковые запросы о вещах бренда: обращение к ним с товарных страниц и из поиска.
  * Создаются один раз (по slug); правки, сделанные в CRM → Контент, не перезаписываются.
+ * Новые статьи добавляются пачками в prisma/journal/ с датой выхода в будущем: сайт показывает их сам в назначенный час.
  */
 export async function seedJournal(db: PrismaClient) {
-  const products = await db.product.findMany({ where: { slug: { in: ["bodi-tr-01", "bryuki-tr-palazzo", "yubka-tr-01", "zhaket-tr-noir", "plate-tr-halter"] } }, select: { id: true, slug: true, images: { orderBy: { order: "asc" }, take: 1, select: { url: true } } } });
+  // пачки статей, написанные заранее и выходящие по расписанию (prisma/journal/*.ts)
+  const batch = JOURNAL_BATCHES.flat();
+  const slugs = new Set(["bodi-tr-01", "bryuki-tr-palazzo", "yubka-tr-01", "zhaket-tr-noir", "plate-tr-halter"]);
+  for (const a of batch) for (const s of [...a.products, ...(a.coverProduct ? [a.coverProduct] : [])]) slugs.add(s);
+  const products = await db.product.findMany({ where: { slug: { in: [...slugs] } }, select: { id: true, slug: true, images: { orderBy: { order: "asc" }, take: 8, select: { url: true } } } });
   const bySlug = new Map(products.map((p) => [p.slug, p]));
-  const cover = (slug: string, fallback: string) => bySlug.get(slug)?.images[0]?.url ?? fallback;
+  // заглушки товаров без фото (/images/placeholder/…) обложкой не берём: у статьи своя заглушка по теме
+  const cover = (slug: string, fallback: string, index = 0) => {
+    const images = (bySlug.get(slug)?.images ?? []).filter((i) => !i.url.startsWith("/images/placeholder/"));
+    return images[Math.min(index, images.length - 1)]?.url ?? fallback;
+  };
   const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
   const articles: { slug: string; title: string; excerpt: string; category: string; cover: string; publishedAt: Date; products: string[]; metaTitle: string; metaDescription: string; keywords: string[]; body: string }[] = [
@@ -935,6 +945,14 @@ export async function seedJournal(db: PrismaClient) {
 Каждую вещь T.Rodionova до отправки проверяют вручную в Москве — по этому же списку. Если что-то всё-таки вызывает вопросы, напишите на care@tr-rodionova.ru с фотографиями: разберёмся. А как потом сохранить то, за что вы заплатили, — в статье об [уходе за костюмной шерстью](/journal/uhod-za-kostyumnoy-sherstyu).`,
     },
   ];
+
+  for (const a of batch) {
+    articles.push({
+      ...a,
+      cover: a.coverProduct ? cover(a.coverProduct, a.coverFallback, a.coverIndex) : a.coverFallback,
+      publishedAt: new Date(a.publishedAt),
+    });
+  }
 
   let created = 0;
   for (const a of articles) {
