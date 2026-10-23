@@ -26,6 +26,12 @@ jobs:
           echo "== подключённые скрипты и стили"
           echo "$html" | grep -oiE '<(script|link)[^>]*(src|href)="[^"]*"' | grep -oiE '"[^"]*"' | grep -iE 'swiper|slick|fotorama|zoom|photoswipe|splide|glide|lightgallery|magnific' | head
           echo "== заголовок"; echo "$html" | grep -oE '<title>[^<]*' | head -1
+          echo "== подтверждение поисковиков (Яндекс Вебмастер, Search Console, Bing)"
+          echo "$html" | grep -oiE '<meta[^>]*name="(yandex-verification|google-site-verification|msvalidate\.01)"[^>]*>' || echo "мета-тегов подтверждения нет"
+          echo "== robots.txt и sitemap.xml"
+          curl -sS -m 30 -o /dev/null -w 'robots.txt %{http_code}\n' "https://$DOMAIN/robots.txt"
+          curl -sS -m 30 -o /dev/null -w 'sitemap.xml %{http_code}\n' "https://$DOMAIN/sitemap.xml"
+          curl -sS -m 30 -o /dev/null -w 'yml.xml %{http_code}\n' "https://$DOMAIN/yml.xml"
           echo "== картинки (src и url из /_next/image)"
           echo "$html" | grep -oE '<img[^>]*' | grep -oE '(src|srcset)="[^"]*"' | sed 's/&amp;/\&/g' | grep -oE '(url=[^&" ]*|/[^" ,]*\.(jpg|jpeg|png|webp|avif|svg))' | sed 's/^url=//' | python3 -c 'import sys,urllib.parse; seen=[]
           for l in sys.stdin:
