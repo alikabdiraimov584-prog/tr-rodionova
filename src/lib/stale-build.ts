@@ -26,3 +26,17 @@ export function reloadOnceForStaleBuild() {
   window.location.reload();
   return true;
 }
+
+/**
+ * Связь оборвалась посреди запроса: пропал мобильный интернет или сайт как раз перезапускался после обновления.
+ * Safari пишет «Load failed», Chrome — «Failed to fetch», Firefox — «NetworkError…». Ошибки сервера здесь нет.
+ */
+export function isNetworkError(error: Error & { digest?: string }) {
+  if (error.digest) return false;
+  return /Load failed|Failed to fetch|NetworkError|fetch failed|Connection closed|network connection was lost/i.test(error.message ?? "");
+}
+
+/** Короткое описание ошибки браузера (у неё нет кода сервера): по скриншоту страницы видно, что сломалось. */
+export function browserErrorLabel(error: Error) {
+  return `${error.name || "Error"}${error.message ? `: ${error.message.replace(/\s+/g, " ").slice(0, 100)}` : ""}`;
+}
