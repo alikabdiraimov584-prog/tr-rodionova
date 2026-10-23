@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Golos_Text, Libre_Caslon_Text, Manrope } from "next/font/google";
 import "./globals.css";
 import { activeIntegration } from "@/lib/integrations/store";
+import { verificationCode } from "@/lib/site-verification";
 
 // Витрина: Golos Text — гротеск с полной кириллицей (прежний Hanken Grotesk кириллицы не имел, и русский текст шёл системным Arial)
 const golos = Golos_Text({ variable: "--font-golos", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600"] });
@@ -22,7 +23,10 @@ export async function generateMetadata(): Promise<Metadata> {
   let verification: Metadata["verification"];
   try {
     const [ya, go] = await Promise.all([activeIntegration("yandex_webmaster"), activeIntegration("google_search_console")]);
-    verification = { ...(ya?.config.verification ? { yandex: ya.config.verification } : {}), ...(go?.config.verification ? { google: go.config.verification } : {}) };
+    // в CRM часто вставляют тег целиком или строку для DNS: на сайт выводится только сам код
+    const yandex = verificationCode(ya?.config.verification);
+    const google = verificationCode(go?.config.verification);
+    verification = { ...(yandex ? { yandex } : {}), ...(google ? { google } : {}) };
   } catch {
     verification = undefined;
   }

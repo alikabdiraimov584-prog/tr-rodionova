@@ -354,7 +354,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     name: "Яндекс Вебмастер",
     summary: "Подтверждение прав на сайт мета-тегом, затем sitemap и индексация.",
     effect: "Мета-тег yandex-verification добавляется на все страницы.",
-    fields: [{ key: "verification", label: "Код подтверждения", hint: "Вебмастер → Добавить сайт → Мета-тег: значение content" }],
+    fields: [{ key: "verification", label: "Код подтверждения", hint: "Вебмастер → Добавить сайт → Мета-тег. Можно вставить весь тег <meta …> или только значение content — на сайт попадёт сам код" }],
     guide: ["Добавьте сайт в webmaster.yandex.ru, выберите способ «Мета-тег» и вставьте код.", "После подтверждения укажите в Вебмастере sitemap: /sitemap.xml и добавьте товарный фид /yml.xml в разделе «Товары и предложения».", "Видимость в ответах ИИ: отчёт «Эффективность → Показы сайта в Алисе AI» (https://webmaster.yandex.ru/) — единственная первичная метрика GEO для Яндекса; сверяйте раз в месяц."],
   },
   {
@@ -363,7 +363,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     name: "Google Search Console",
     summary: "Подтверждение прав мета-тегом.",
     effect: "Мета-тег google-site-verification добавляется на все страницы.",
-    fields: [{ key: "verification", label: "Код подтверждения", hint: "Search Console → HTML tag: значение content" }],
+    fields: [{ key: "verification", label: "Код подтверждения", hint: "Search Console → HTML-тег. Можно вставить весь тег <meta …> или только значение content — на сайт попадёт сам код" }],
     guide: ["Добавьте ресурс «URL-префикс» в Search Console, выберите «HTML-тег» и вставьте код.", "После подтверждения отправьте sitemap: /sitemap.xml."],
   },
   {
