@@ -48,7 +48,8 @@ export default async function SizesPage() {
             <section key={k}>
               <h2>{chart.title}</h2>
               <p className="mt-1 text-sm text-muted">{chart.hint}</p>
-              <div className="card mt-4 overflow-x-auto">
+              {/* на телефоне таблица шире экрана: прокручиваемая область доступна с клавиатуры */}
+              <div className="card mt-4 overflow-x-auto" tabIndex={0} role="region" aria-label={`Таблица: ${chart.title}`}>
                 <table className="table">
                   <thead>
                     <tr>
