@@ -1,15 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { getCurrentCustomer } from "@/lib/auth";
 import { formatMoney, formatDate } from "@/lib/money";
 import { AddToCart } from "@/components/shop/add-to-cart";
-import { ProductCard } from "@/components/shop/product-card";
+import { RowGrid, SANS, PLAIN_HEADING } from "@/components/shop/row-grid";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { MobileBuyBar } from "@/components/shop/mobile-buy-bar";
-import { IconHeart } from "@/components/shop/icons";
 import { isRealPhoto, photoFirst } from "@/lib/photos";
 import { chartForProduct, recommendSize } from "@/lib/sizes";
 import { dolyameAvailableFor } from "@/lib/payments/dolyame";
@@ -96,68 +96,89 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const sizesAll = [...new Set(p.variants.map((v) => v.size))];
   const faq = productFaq(p, sizesAll, delivery, pts);
   const ld = productJsonLd(p, delivery, { hasStore: !!seller.showroom });
+  const shots = p.images.filter((img) => isRealPhoto(img.url));
+  const price = (
+    <>
+      {p.compareAt && <s className="mr-2 text-[#9a9a9a]"><span className="sr-only">Было </span>{formatMoney(p.compareAt)}</s>}
+      {formatMoney(p.price)}
+    </>
+  );
+  // карточка по образцу therow.com: кадры слева (на компьютере друг под другом, на телефоне листаются), справа узкая
+  // колонка обычным гротеском — путь, название, цена, цвет, размеры строкой, кнопка в рамке, описание и список разделов
   return (
-    <div className="mx-auto max-w-[1600px] md:px-5">
+    <div style={SANS} className="text-[0.84rem] leading-relaxed">
       {/* цель Метрики для ретаргетинга в Директе: «смотрела вещь, не купила» */}
       <MetrikaGoal goal="product_view" dedupe={p.slug} />
       <JsonLd data={[ld, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(category ? [{ name: category.name, path: `/catalog?category=${category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />
-      <div className="grid md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] md:gap-10 lg:gap-16">
-        <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />
-        <div id="buy" className="min-w-0 scroll-mt-20 px-4 pt-6 md:sticky md:top-24 md:self-start md:px-0 md:pt-10 lg:max-w-[460px]">
-          <nav aria-label="Навигация" className="hidden text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-muted md:block [&_a]:hover:text-ink">
-            <Link href="/#collection">← Коллекция</Link>
+      <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:gap-10 lg:gap-20">
+        <div className="md:hidden">
+          <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />
+        </div>
+        <section aria-label={`Фото: ${p.name}`} className="hidden space-y-2 md:block md:pl-5">
+          {(shots.length ? shots : p.images.slice(0, 1)).map((img, i) => (
+            <div key={img.id} className="relative mx-auto aspect-[4/5] max-w-[680px] bg-[#f6f5f3]">
+              <Image src={img.url} alt={i === 0 ? img.alt ?? p.name : `${p.name}, фото ${i + 1}`} fill quality={85} loading={i === 0 ? "eager" : "lazy"} sizes="(min-width: 768px) 50vw, 1px" className="object-cover" />
+            </div>
+          ))}
+        </section>
+        <div id="buy" className="min-w-0 scroll-mt-20 px-5 pt-6 md:sticky md:top-16 md:self-start md:pl-0 md:pr-10 md:pt-8 lg:max-w-[520px]">
+          <nav aria-label="Навигация" className="hidden gap-2 text-[#6f6f6f] md:flex">
+            <Link href="/#collection" className="hover:text-ink">Коллекция</Link>
+            {category && <><span aria-hidden>·</span><span>{category.name}</span></>}
           </nav>
-          <h1 className="mt-1 text-[2rem] font-light leading-tight md:mt-4 md:text-[2.5rem]">{p.name}</h1>
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-[1.05rem]">{formatMoney(p.price)}</span>
-            {p.compareAt && <span className="text-muted line-through">{formatMoney(p.compareAt)}</span>}
-            {rating && <a href="#reviews" className="-my-2 py-2 text-[0.75rem] text-muted underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
-          </div>
-          {installments && <div className="mt-1 text-[0.78rem]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
-          {p.isPreorder && <p className="mt-4 border-l-2 border-ink pl-3 text-[0.8rem]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
-          <div className="mt-5"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
-          <div className="mt-5">
+          <h1 style={PLAIN_HEADING} className="flex items-baseline justify-between gap-4 md:mt-14 md:block">
+            <span>{p.name}</span>
+            <span className="shrink-0 md:hidden">{price}</span>
+          </h1>
+          <div className="mt-5 hidden md:block">{price}</div>
+          {rating && <a href="#reviews" className="mt-1 inline-block text-[#6f6f6f] underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
+          {installments && <div className="mt-1 text-[#6f6f6f]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
+          {p.isPreorder && <p className="mt-6 text-[#6f6f6f]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
+          <div className="mt-8"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
+          <div className="mt-2">
             <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} defaultSize={wantedSize ?? (advice?.fit === "точно" ? advice.size : null)} defaultColor={wantedColor} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
               <form action={toggleWishlistAction}>
                 <input type="hidden" name="productId" value={p.id} />
                 <input type="hidden" name="back" value={`/product/${p.slug}`} />
-                <button aria-label={inWishlist ? "Убрать из избранного" : "В избранное"} aria-pressed={!!inWishlist} className="flex h-12 w-12 items-center justify-center border border-line hover:border-ink"><IconHeart filled={!!inWishlist} /></button>
+                <button aria-pressed={!!inWishlist} className="min-h-11 transition-opacity hover:opacity-60">{inWishlist ? "В избранном" : "В избранное"}</button>
               </form>
             </AddToCart>
           </div>
-          <div className="mt-8 divide-y divide-line border-y border-line">
-            <details className="group" open>
-              <summary className="acc">Описание<span aria-hidden className="acc-mark">+</span></summary>
-              <p className="pb-5 text-[0.9rem] leading-relaxed text-ink/85">{p.description}</p>
-            </details>
+          {p.description && <p className="mt-8">{p.description}</p>}
+          {p.sku && <div className="mt-3 text-[0.72rem] text-[#6f6f6f]">{p.sku}</div>}
+          <div className="mt-10">
             <details className="group">
-              <summary className="acc">Состав и уход<span aria-hidden className="acc-mark">+</span></summary>
-              <dl className="space-y-2 pb-5 text-[0.85rem]">
-                {specs.filter(([, v]) => v).map(([k, v]) => <div key={k} className="grid grid-cols-[110px_1fr] gap-3"><dt className="text-muted">{k}</dt><dd>{v}</dd></div>)}
+              <summary className="acc-line">Состав и уход<span aria-hidden className="acc-mark">+</span></summary>
+              <dl className="space-y-1.5 pb-5">
+                {specs.filter(([k, v]) => v && k !== "Артикул").map(([k, v]) => <div key={k} className="grid grid-cols-[110px_1fr] gap-3"><dt className="text-[#6f6f6f]">{k}</dt><dd>{v}</dd></div>)}
               </dl>
             </details>
             <details className="group">
-              <summary className="acc">Доставка и возврат<span aria-hidden className="acc-mark">+</span></summary>
-              <div className="space-y-2 pb-5 text-[0.85rem] text-ink/85">
+              <summary className="acc-line">Размер и посадка<span aria-hidden className="acc-mark">+</span></summary>
+              <p className="pb-5">Размеры и мерки — в <Link href="/sizes" className="underline underline-offset-4">таблице размеров</Link>. Не уверены — закажите курьера с примеркой: платите только за то, что подошло.</p>
+            </details>
+            <details className="group">
+              <summary className="acc-line">Доставка и возврат<span aria-hidden className="acc-mark">+</span></summary>
+              <div className="space-y-2 pb-5">
                 <p>Курьер с примеркой по Москве и Петербургу за 1–2 дня: до 20 минут на примерку, платите только за то, что подошло. СДЭК по России — 2–7 дней.</p>
                 <p>Возврат 14 дней с момента получения. Для уровня Privé обратный забор бесплатный. <Link href="/delivery" className="underline underline-offset-4">Подробнее</Link></p>
               </div>
             </details>
             {p.articles.length > 0 && (
               <details className="group">
-                <summary className="acc">Читать в журнале<span aria-hidden className="acc-mark">+</span></summary>
-                <ul className="space-y-2 pb-5 text-[0.85rem]">
+                <summary className="acc-line">Читать в журнале<span aria-hidden className="acc-mark">+</span></summary>
+                <ul className="space-y-1.5 pb-5">
                   {p.articles.map((a) => <li key={a.slug}><Link href={`/journal/${a.slug}`} className="underline underline-offset-4 hover:opacity-70">{a.title}</Link></li>)}
                 </ul>
               </details>
             )}
             <details className="group">
-              <summary className="acc">Вопросы о вещи<span aria-hidden className="acc-mark">+</span></summary>
-              <dl className="space-y-4 pb-5 text-[0.85rem]">
+              <summary className="acc-line">Вопросы о вещи<span aria-hidden className="acc-mark">+</span></summary>
+              <dl className="space-y-4 pb-5">
                 {faq.map((f) => (
                   <div key={f.q}>
-                    <dt className="font-medium">{f.q}</dt>
-                    <dd className="mt-1 text-ink/80">{f.a}{f.href && <> <Link href={f.href} className="underline underline-offset-4">Подробнее</Link></>}</dd>
+                    <dt>{f.q}</dt>
+                    <dd className="mt-1 text-[#6f6f6f]">{f.a}{f.href && <> <Link href={f.href} className="underline underline-offset-4">Подробнее</Link></>}</dd>
                   </div>
                 ))}
               </dl>
@@ -165,7 +186,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           </div>
           {/* образы, в которых снята вещь, кроме того, что собран ниже в «Собрать образ» */}
           {otherLooks.length > 0 && (
-            <div className="mt-5 text-[0.78rem] text-muted">
+            <div className="mt-5 text-[#6f6f6f]">
               {otherLooks.map((li) => <div key={li.id}>{lookWith ? "Ещё в образе" : "В образе"}: <Link href={`/lookbook/${li.look.slug}`} className="text-ink underline underline-offset-4">{li.look.title}</Link></div>)}
             </div>
           )}
@@ -173,24 +194,24 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       </div>
 
       {wornWith.length > 0 && (
-        <section className="mt-20 px-1 md:px-0">
-          <div className="mb-5 flex items-baseline justify-between px-3 md:px-1">
-            <h2 className="section-title">{lookMates.length > 0 ? "Собрать образ" : "Вам может понравиться"}</h2>
-            {lookSlug && <Link href={`/lookbook/${lookSlug}`} className="nav-link -my-2 py-2 underline underline-offset-4">Весь образ</Link>}
+        <section className="mt-28 md:mt-40">
+          <div className="flex items-baseline justify-between px-5 pb-6">
+            <h2 style={PLAIN_HEADING}>{lookMates.length > 0 ? "Собрать образ" : "С этим носят"}</h2>
+            {lookSlug && <Link href={`/lookbook/${lookSlug}`} className="underline underline-offset-4">Весь образ</Link>}
           </div>
-          <div className="grid grid-cols-2 gap-x-1 md:grid-cols-4">{wornWith.map((r) => <ProductCard key={r.id} p={r} />)}</div>
+          <RowGrid items={wornWith} />
         </section>
       )}
 
       {p.reviews.length > 0 && (
-        <section id="reviews" className="mt-16 scroll-mt-20 px-4 md:px-1">
-          <h2 className="section-title">Отзывы · {p.reviews.length}</h2>
-          <div className="mt-5 grid gap-6 sm:grid-cols-2 md:grid-cols-3">
+        <section id="reviews" className="mt-28 scroll-mt-20 px-5">
+          <h2 style={PLAIN_HEADING}>Отзывы · {p.reviews.length}</h2>
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 md:grid-cols-3">
             {p.reviews.map((r) => (
-              <div key={r.id} className="border-t border-line pt-4 text-[0.88rem]">
-                <div className="text-[0.72rem] text-muted">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)} · {r.user.firstName}{r.user.height ? ` · рост ${r.user.height}` : ""}{r.user.preferredSize ? ` · размер ${r.user.preferredSize}` : ""}</div>
+              <div key={r.id} className="border-t border-line pt-4">
+                <div className="text-[0.75rem] text-[#6f6f6f]">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)} · {r.user.firstName}{r.user.height ? ` · рост ${r.user.height}` : ""}{r.user.preferredSize ? ` · размер ${r.user.preferredSize}` : ""}</div>
                 <p className="mt-2">{r.text}</p>
-                <div className="mt-2 text-[0.72rem] text-muted">{formatDate(r.createdAt)}</div>
+                <div className="mt-2 text-[0.75rem] text-[#6f6f6f]">{formatDate(r.createdAt)}</div>
               </div>
             ))}
           </div>

@@ -134,6 +134,10 @@ body {
 .acc::-webkit-details-marker { display: none; }
 .acc-mark { color: var(--muted); font-size: 1rem; transition: transform 0.2s; }
 details[open] > .acc .acc-mark { transform: rotate(45deg); }
+/* строка раздела в карточке вещи по образцу therow.com: обычный текст без заглавных, плюс справа */
+.acc-line { display: flex; min-height: 2.75rem; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: 1rem; }
+.acc-line::-webkit-details-marker { display: none; }
+details[open] > .acc-line .acc-mark { transform: rotate(45deg); }
 
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
 .drawer-in { animation: drawer-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both; }

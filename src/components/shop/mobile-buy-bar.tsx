@@ -47,7 +47,7 @@ export function MobileBuyBar({ name, price, label }: { name: string; price: stri
       className="fixed inset-x-0 z-30 flex items-center gap-3 border-t border-line bg-ivory/95 px-4 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur md:hidden"
     >
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[0.78rem] font-semibold uppercase tracking-[0.2em]">{name}</div>
+        <div className="truncate">{name}</div>
         <div className="text-[0.85rem]">{price}</div>
       </div>
       <button

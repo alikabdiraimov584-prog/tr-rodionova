@@ -9,7 +9,7 @@ import { trackGoal } from "@/lib/metrika-client";
 type V = { id: string; size: string; color: string | null; colorHex: string | null; available: number };
 
 /**
- * Выбор цвета и размера и кнопка покупки; children — дополнительная кнопка справа от неё (избранное).
+ * Выбор цвета и размера и кнопка покупки; children — строка под кнопкой (избранное).
  * Размер заранее не выбирается (кроме единственного или подсказанного по меркам): покупательница выбирает его сама,
  * иначе в корзину молча уходит первый размер в наличии и растут возвраты.
  */
@@ -29,86 +29,80 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
   // ответ сервера относится к конкретному размеру и цвету: при выборе другого он не показывается
   const [answerFor, atMax] = (state?.code ?? "").split("|");
   const mine = !!variantId && answerFor === variantId;
+  // кнопки по образцу therow.com: тонкая рамка на всю ширину, обычный текст; при наведении заливка
+  const btn = "flex min-h-12 w-full items-center justify-center border border-ink px-4 transition-colors hover:bg-ink hover:text-white disabled:border-line disabled:text-[#6f6f6f] disabled:hover:bg-transparent";
   return (
     <div className="space-y-5">
       {colors.length > 0 && colors[0].color && (
-        <div>
-          <div className="label">Цвет: <span className="normal-case tracking-normal text-ink">{color}</span></div>
-          {/* один цвет — только подпись: кружок выбирать не из чего, а кнопка покупки поднимается выше */}
-          {colors.length > 1 && <div className="flex gap-1">
-            {colors.map((c) => (
-              <button
-                key={c.color}
-                type="button"
-                title={c.color ?? ""}
-                onClick={() => {
-                  setColor(c.color ?? "");
-                  // при смене цвета размер сохраняется, если он есть в новом цвете
-                  const same = variants.find((v) => v.color === c.color && v.size === selected?.size && can(v));
-                  setVariantId(same?.id ?? "");
-                }}
-                aria-label={`Цвет: ${c.color ?? ""}`}
-                aria-pressed={color === c.color}
-                className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink"
-              >
-                <span className={`block h-8 w-8 rounded-full border border-line ${color === c.color ? "ring-1 ring-ink ring-offset-2" : ""}`} style={{ background: c.colorHex ?? undefined }} />
-              </button>
-            ))}
-          </div>}
+        <div className="flex flex-wrap items-center gap-x-1">
+          <span className="sr-only">Цвет:</span>
+          {/* один цвет — квадрат и название без выбора; несколько — квадраты-кнопки */}
+          {colors.length > 1 ? colors.map((c) => (
+            <button
+              key={c.color}
+              type="button"
+              title={c.color ?? ""}
+              onClick={() => {
+                setColor(c.color ?? "");
+                // при смене цвета размер сохраняется, если он есть в новом цвете
+                const same = variants.find((v) => v.color === c.color && v.size === selected?.size && can(v));
+                setVariantId(same?.id ?? "");
+              }}
+              aria-label={`Цвет: ${c.color ?? ""}`}
+              aria-pressed={color === c.color}
+              className="flex h-11 w-9 items-center justify-center focus-visible:outline-2 focus-visible:outline-ink"
+            >
+              <span className={`block h-4 w-4 border ${color === c.color ? "border-ink outline outline-1 outline-offset-2 outline-ink" : "border-line"}`} style={{ background: c.colorHex ?? undefined }} />
+            </button>
+          )) : <span className="mr-2 block h-4 w-4 border border-ink outline outline-1 outline-offset-2 outline-ink" style={{ background: colors[0].colorHex ?? undefined }} aria-hidden />}
+          <span className="ml-2">{color}</span>
         </div>
       )}
       <div>
-        <div className="flex items-baseline justify-between">
-          <div className="label" id={`size-${slug}`}>Размер{!selected && <span className="normal-case tracking-normal"> — выберите</span>}</div>
-          <Link href="/sizes" className="-my-2 py-2 text-[0.72rem] text-muted underline underline-offset-4 hover:text-ink">Таблица размеров</Link>
+        <div className="flex items-center justify-between gap-4">
+          <span className="sr-only" id={`size-${slug}`}>Размер</span>
+          <div className="-ml-2 flex flex-wrap" role="group" aria-labelledby={`size-${slug}`}>
+            {sizes.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setVariantId(s.id)}
+                aria-pressed={variantId === s.id}
+                className={`min-h-11 min-w-10 px-2 underline-offset-[6px] transition-opacity hover:opacity-60 ${variantId === s.id ? "underline" : ""} ${s.available <= 0 && !preorder ? "text-[#a8a8a8] line-through" : ""}`}
+              >
+                {s.size}
+              </button>
+            ))}
+          </div>
+          <Link href="/sizes" className="shrink-0 py-2 underline underline-offset-4 hover:opacity-60">Таблица размеров</Link>
         </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby={`size-${slug}`}>
-          {sizes.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setVariantId(s.id)}
-              aria-pressed={variantId === s.id}
-              className={`min-w-12 min-h-11 border px-3 py-2 text-[0.85rem] transition-colors ${variantId === s.id ? "border-ink bg-ink text-ivory" : "border-line bg-panel hover:border-ink"} ${s.available <= 0 && !preorder ? "text-muted line-through" : ""}`}
-            >
-              {s.size}
-            </button>
-          ))}
-        </div>
-        {selected && !preorder && selected.available > 0 && selected.available <= 2 && <div className="mt-2 text-xs text-warning">Осталось {selected.available} шт.</div>}
+        {selected && !preorder && selected.available > 0 && selected.available <= 2 && <div className="mt-1 text-[#6f6f6f]">Осталось {selected.available} шт.</div>}
       </div>
       {selected && selected.available <= 0 && !preorder ? (
         <div className="space-y-2">
-          <div id="buy-cta" className="flex gap-2">
-            <form action={waitAction} className="flex-1">
-              <input type="hidden" name="variantId" value={selected.id} />
-              <input type="hidden" name="slug" value={slug} />
-              <button className="btn-outline w-full" disabled={waitPending}>Сообщить о поступлении</button>
-            </form>
-            {children}
-          </div>
+          <form id="buy-cta" action={waitAction}>
+            <input type="hidden" name="variantId" value={selected.id} />
+            <input type="hidden" name="slug" value={slug} />
+            <button className={btn} disabled={waitPending}>Сообщить о поступлении</button>
+          </form>
           {wait?.message && <p className="text-xs text-success">{wait.message}</p>}
           {wait?.error && <p className="text-xs text-danger">{wait.error}</p>}
+          {children}
         </div>
       ) : (
         <div className="space-y-2">
-          <div id="buy-cta" className="flex gap-2">
-            <form action={action} className="flex-1">
-              <input type="hidden" name="variantId" value={variantId} />
-              <input type="hidden" name="slug" value={slug} />
-              <button className="btn-primary w-full" disabled={pending || !variantId || (mine && atMax === "max")}>
-                {pending ? "Добавляем…" : !variantId ? "Выберите размер" : mine && atMax === "max" ? "Уже в корзине" : mine && state?.ok ? "Добавить ещё" : preorder ? "Оформить предзаказ" : "Добавить в корзину"}
-              </button>
-            </form>
-            {children}
-          </div>
+          <form id="buy-cta" action={action}>
+            <input type="hidden" name="variantId" value={variantId} />
+            <input type="hidden" name="slug" value={slug} />
+            <button className={btn} disabled={pending || !variantId || (mine && atMax === "max")}>
+              {pending ? "Добавляем…" : !variantId ? "Выберите размер" : mine && atMax === "max" ? "Уже в корзине" : mine && state?.ok ? "Добавить ещё" : preorder ? "Оформить предзаказ" : "Добавить в корзину"}
+            </button>
+          </form>
           {mine && state?.ok && (
-            <div className="space-y-2" role="status">
-              <p className="text-xs text-success">✓ {state.message}</p>
-              <Link href="/cart" className="btn-outline w-full">Перейти в корзину</Link>
-            </div>
+            <p role="status">{state.message} · <Link href="/cart" className="underline underline-offset-4">Перейти в корзину</Link></p>
           )}
           {mine && state?.error && <p className="text-xs text-danger" role="alert">{state.error}</p>}
+          {children}
         </div>
       )}
     </div>
