@@ -46,7 +46,7 @@ export default async function AccountSupport({ searchParams }: PageProps<"/accou
         ))}
       </div>
       <SupportChatForm key={topic ?? "chat"} preset={topic && PRESETS[topic] ? PRESETS[topic](order) : undefined} />
-      <div className="mt-8 flex flex-wrap gap-2 text-[0.65rem] uppercase tracking-[0.16em]">
+      <div className="mt-8 flex flex-wrap gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em]">
         <a href="/account/support?topic=stylist" className="btn-ghost btn-sm">Записаться к стилисту</a>
         <a href="/account/support?topic=delete" className="btn-ghost btn-sm text-muted">Удалить аккаунт</a>
       </div>

@@ -106,7 +106,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
     <div className="mx-auto max-w-[1600px] px-1 md:px-5">
       {plain && products.length > 0 && <JsonLd data={[itemListJsonLd(`${listName} — T.Rodionova`, products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(current ? [{ name: current.name, path: `/catalog?category=${current.slug}` }] : [])])]} />}
       <div className="px-3 pt-8 text-center md:px-0 md:pt-12">
-        <h1 className="text-[1.05rem] uppercase tracking-[0.14em] md:text-[1.25rem]">{listName}</h1>
+        <h1 className="text-[2.2rem] font-light md:text-[3rem]">{listName}</h1>
         {searching && (
           <form action="/catalog" role="search" className="mx-auto mt-5 flex max-w-md items-center border-b border-ink focus-within:shadow-[0_1px_0_0_var(--ink)]">
             <input name="q" defaultValue={q} placeholder="Что вы ищете?" aria-label="Поиск по каталогу" autoFocus={!q} className="min-w-0 flex-1 bg-transparent py-3 text-[0.95rem] outline-none" />
@@ -115,7 +115,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
         )}
       </div>
       {/* ряд категорий: по центру, пока помещается, иначе листается от левого края; на телефоне правый край растворяется — видно, что дальше есть пункты */}
-      <nav aria-label="Категории" data-category-row className="scroll-row relative mt-5 overflow-x-auto text-[0.72rem] uppercase tracking-[0.12em] max-md:[mask-image:linear-gradient(to_left,transparent,#000_2.5rem)]">
+      <nav aria-label="Категории" data-category-row className="scroll-row relative mt-5 overflow-x-auto text-[0.72rem] font-semibold uppercase tracking-[0.2em] max-md:[mask-image:linear-gradient(to_left,transparent,#000_2.5rem)]">
         <div className="mx-auto flex w-max gap-6 px-3 max-md:pr-10 md:w-auto md:max-w-5xl md:flex-wrap md:justify-center md:gap-y-0 md:px-0">
           <Link href="/catalog" className={tab(!category && !onlyNew && !searching)} aria-current={!category && !onlyNew && !searching ? "page" : undefined}>Все</Link>
           <Link href="/catalog?new=1" className={tab(onlyNew && !category)} aria-current={onlyNew && !category ? "page" : undefined}>Новинки</Link>

@@ -36,7 +36,7 @@ export default async function WaitlistPage() {
                   {available > 0 ? <Badge tone="success">В наличии</Badge> : <Badge>Ожидается</Badge>}
                   <form action={unsubscribeStockAction}>
                     <input type="hidden" name="id" value={s.id} />
-                    <button className="text-[0.62rem] uppercase tracking-[0.18em] text-muted hover:text-danger">Удалить</button>
+                    <button className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted hover:text-danger">Удалить</button>
                   </form>
                 </div>
               </div>

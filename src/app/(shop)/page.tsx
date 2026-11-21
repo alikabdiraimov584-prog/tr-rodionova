@@ -8,6 +8,7 @@ import { getSetting } from "@/lib/settings";
 import { circleCta } from "@/lib/role-links";
 import { ProductCard } from "@/components/shop/product-card";
 import { isRealPhoto, photoFirst } from "@/lib/photos";
+import { MonogramMark } from "@/components/brand-marks";
 
 const withImages = { images: { orderBy: { order: "asc" as const } }, variants: true } as const;
 
@@ -18,8 +19,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Главная по образцу ACTE: кадр съёмки на весь экран с одной кнопкой, категории картинками, новинки,
- * образ из лукбука, короткая мысль о бренде и одна строка про Circle. Без дублирующих сеток и таблиц уровней.
+ * Главная: кадр съёмки на весь экран с одной кнопкой, категории картинками, новинки, образ из лукбука,
+ * монограмма с фактами о бренде и одна строка про Circle. Без дублирующих сеток и таблиц уровней.
  */
 export default async function Home() {
   const [newest, featured, collection, looks, tiers, user, loyalty, categories] = await Promise.all([
@@ -73,9 +74,9 @@ export default async function Home() {
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
           {/* пока виден баннер cookie, кнопка поднимается над ним (--consent-h ставит баннер) */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-[calc(2.5rem+var(--consent-h,0px))] text-center text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] md:pb-[calc(3.5rem+var(--consent-h,0px))]">
-            <div className="text-[0.75rem] uppercase tracking-[0.2em]">{season}</div>
-            <h2 className="mt-3 text-[1.75rem] font-normal uppercase leading-none tracking-[0.08em] md:text-[3.2rem]">Новая коллекция</h2>
-            <Link href="/catalog?new=1" className="pointer-events-auto mt-7 inline-flex min-h-12 items-center bg-white px-10 text-[0.72rem] font-medium uppercase tracking-[0.14em] text-ink [text-shadow:none] transition-opacity hover:opacity-85">
+            <div className="caps">{season}</div>
+            <h2 className="mt-4 text-[2.6rem] font-light leading-none md:text-[4.5rem]">Новая коллекция</h2>
+            <Link href="/catalog?new=1" className="caps pointer-events-auto mt-8 inline-flex min-h-12 items-center bg-ivory px-10 text-ink [text-shadow:none] transition-colors hover:bg-bronze hover:text-ivory">
               Смотреть коллекцию
             </Link>
           </div>
@@ -90,7 +91,7 @@ export default async function Home() {
                 <div className="relative aspect-[3/4] overflow-hidden bg-sand">
                   <Image src={c.url!} alt="" fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                 </div>
-                <div className="px-1 py-3 text-center text-[0.75rem] uppercase tracking-[0.14em]">{c.name}</div>
+                <div className="caps px-1 py-4 text-center transition-colors group-hover:text-bronze">{c.name}</div>
               </Link>
             ))}
           </div>
@@ -99,7 +100,7 @@ export default async function Home() {
 
       {grid.length > 0 && (
         <section className="mx-auto mt-16 max-w-[1600px] px-1 md:mt-24 md:px-5">
-          <div className="mb-5 flex items-baseline justify-between px-3 md:px-1">
+          <div className="mb-6 flex items-baseline justify-between px-3 md:px-1">
             <h2 className="section-title">{newest.length >= 4 ? "Новинки" : "Ключевые вещи"}</h2>
             <Link href={newest.length >= 4 ? "/catalog?new=1" : "/catalog"} className="nav-link -my-2 py-2 underline underline-offset-4">Смотреть все</Link>
           </div>
@@ -113,26 +114,30 @@ export default async function Home() {
             <Image src={look.coverUrl} alt={look.title} fill sizes="100vw" className="object-cover object-[center_25%] transition-transform duration-[1.2s] group-hover:scale-[1.02]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-10 text-center text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] md:pb-14">
-              <div className="text-[0.75rem] uppercase tracking-[0.2em]">Лукбук</div>
-              <h2 className="mt-3 text-[1.6rem] font-normal uppercase tracking-[0.08em] md:text-[2.2rem]">{look.title}</h2>
-              <span className="mt-6 inline-flex min-h-12 items-center border border-white px-10 text-[0.72rem] font-medium uppercase tracking-[0.14em]">Купить образ</span>
+              <div className="caps">Лукбук</div>
+              <h2 className="mt-4 text-[2.2rem] font-light leading-none md:text-[3.4rem]">{look.title}</h2>
+              <span className="caps mt-8 inline-flex min-h-12 items-center border border-ivory px-10 transition-colors group-hover:bg-ivory group-hover:text-ink">Купить образ</span>
             </div>
           </Link>
         </section>
       )}
 
       <section className="mx-auto mt-20 max-w-3xl px-6 text-center md:mt-28">
-        <p className="text-[1.15rem] leading-relaxed md:text-[1.45rem]">
-          Одежда, которая остаётся с вами дольше одного сезона. Шерсть из&nbsp;Бьеллы, кашемир из&nbsp;Монголии, шёлк из&nbsp;Комо — сшито небольшими тиражами в&nbsp;Европе.
+        <MonogramMark className="mx-auto text-[3.5rem] text-bronze" />
+        <p className="mt-6 font-serif text-[1.4rem] font-light leading-snug md:text-[2rem]">
+          Чёрный и&nbsp;айвори, открытые спины, точная посадка.
         </p>
-        <Link href="/about" className="nav-link mt-4 inline-block py-2 underline underline-offset-4">О бренде</Link>
+        <p className="mx-auto mt-4 max-w-xl text-muted-dark">
+          Шерсть из&nbsp;Бьеллы и&nbsp;шёлк из&nbsp;Комо, пошив в&nbsp;Португалии и&nbsp;Литве. До&nbsp;60&nbsp;единиц каждой модели, без распродаж.
+        </p>
+        <Link href="/about" className="nav-link mt-5 inline-block py-2 underline decoration-bronze underline-offset-[6px]">О бренде</Link>
       </section>
 
       <section className="mx-auto mt-20 max-w-[1600px] px-4 md:mt-28 md:px-5">
         <div className="flex flex-col items-center justify-between gap-4 border-y border-line py-8 text-center md:flex-row md:text-left">
           <div>
             <div className="section-title">T.Rodionova Circle</div>
-            <p className="mt-1.5 text-[0.9rem] text-muted">{loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию{maxCashback ? ` и до ${maxCashback}% возврата баллами с каждой покупки` : ""}.</p>
+            <p className="mt-2 text-muted-dark">{loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию{maxCashback ? ` и до ${maxCashback}% возврата баллами с каждой покупки` : ""}.</p>
           </div>
           <Link href={cta.href} className="btn-primary shrink-0">{cta.label}</Link>
         </div>

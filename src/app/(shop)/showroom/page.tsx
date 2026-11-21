@@ -17,7 +17,7 @@ export default async function Showroom() {
       title={hasShowroom ? seller.showroom : "Примерка там, где удобно вам"}
       intro={hasShowroom ? `${seller.hours}. Вся коллекция в наличии, примерочные с дневным светом, стилист по записи.` : "Шоурум пока не открыт: мы продаём онлайн и привозим вещи на примерку курьером. Оплачиваете только то, что оставили."}
       aside={
-        <div className="border border-line bg-white p-5">
+        <div className="border border-line bg-panel p-5">
           <div className="eyebrow">Связь</div>
           <p className="mt-2">{publicPhone(b.phone) && <>{publicPhone(b.phone)}<br /></>}{b.email}{b.telegram && <><br /><a href={b.telegram} className="underline">Telegram</a></>}</p>
           <div className="eyebrow mt-5">Служба заботы</div>

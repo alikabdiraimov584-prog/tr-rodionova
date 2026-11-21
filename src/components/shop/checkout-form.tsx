@@ -121,7 +121,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   return (
     <form ref={formRef} action={action} className="grid gap-8 md:grid-cols-[1fr_340px] md:gap-10 lg:grid-cols-[1fr_380px]">
       <div className="min-w-0 space-y-6">
-        <ol className="grid grid-cols-3 gap-1 text-center text-[0.62rem] uppercase tracking-[0.12em]">
+        <ol className="grid grid-cols-3 gap-1 text-center text-[0.62rem] font-semibold uppercase tracking-[0.2em]">
           {STEPS.map((s, i) => (
             <li key={s}>
               <button type="button" onClick={() => i < step && setStep(i)} className={`block w-full ${i <= step ? "text-ink" : "text-muted"}`}>
@@ -149,7 +149,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
             <h2 className="mb-4">Доставка</h2>
             <div className="grid gap-2">
               {visibleDelivery.map((m) => (
-                <label key={m} className={`flex cursor-pointer items-start gap-3 border p-4 ${delivery === m ? "border-ink bg-white" : "border-line"}`}>
+                <label key={m} className={`flex cursor-pointer items-start gap-3 border p-4 ${delivery === m ? "border-ink bg-panel" : "border-line"}`}>
                   <input type="radio" name="deliveryMethod" value={m} checked={delivery === m} onChange={() => chooseDelivery(m)} className="mt-1 h-4 w-4 shrink-0 accent-black" />
                   <span>
                     <span className="block text-sm">{DELIVERY_METHOD[m].label}</span>
@@ -158,7 +158,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
                 </label>
               ))}
               {!moreDelivery && visibleDelivery.length < deliveryMethods.length && (
-                <button type="button" onClick={() => setMoreDelivery(true)} className="min-h-10 self-start text-[0.68rem] uppercase tracking-[0.15em] text-muted underline underline-offset-4">Другие способы</button>
+                <button type="button" onClick={() => setMoreDelivery(true)} className="min-h-10 self-start text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted underline underline-offset-4">Другие способы</button>
               )}
             </div>
             {canFit && (
@@ -177,7 +177,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
                   {SLOTS.map((slot, i) => (
                     <label key={slot} className="cursor-pointer">
                       <input type="radio" name="deliverySlot" value={slot} defaultChecked={i === 1} className="peer sr-only" />
-                      <span className="inline-flex min-h-11 items-center border border-line bg-white px-4 text-sm peer-checked:border-ink peer-checked:bg-ink peer-checked:text-ivory">{slot}</span>
+                      <span className="inline-flex min-h-11 items-center border border-line bg-panel px-4 text-sm peer-checked:border-ink peer-checked:bg-ink peer-checked:text-ivory">{slot}</span>
                     </label>
                   ))}
                 </div>
@@ -203,7 +203,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
                       <textarea name="addressText" rows={2} ref={addressRef} defaultValue={addressText} onChange={(e) => onAddressInput(e.target.value)} autoComplete="street-address" className="input" placeholder="Город, улица, дом, квартира, индекс" />
                     </label>
                     {hints.length > 0 && (
-                      <ul className="absolute inset-x-0 z-10 mt-1 border border-line bg-white text-sm shadow-lg">
+                      <ul className="absolute inset-x-0 z-10 mt-1 border border-line bg-panel text-sm shadow-lg">
                         {hints.map((h) => (
                           <li key={h.value}><button type="button" onClick={() => { setAddressText(h.value); if (addressRef.current) addressRef.current.value = h.value; setHints([]); }} className="block w-full px-3 py-2 text-left hover:bg-sand">{h.value}</button></li>
                         ))}
@@ -222,7 +222,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
             <h2 className="mb-4">Оплата</h2>
             <div className="grid gap-2 sm:grid-cols-2">
               {methods.map((m) => (
-                <label key={m} className={`flex cursor-pointer items-center gap-3 border p-4 text-sm ${payment === m ? "border-ink bg-white" : "border-line"}`}>
+                <label key={m} className={`flex cursor-pointer items-center gap-3 border p-4 text-sm ${payment === m ? "border-ink bg-panel" : "border-line"}`}>
                   <input type="radio" name="paymentMethod" value={m} checked={payment === m} onChange={() => setPayment(m)} className="h-4 w-4 shrink-0 accent-black" />
                   {PAYMENT_METHOD[m]}
                 </label>
@@ -230,7 +230,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
             </div>
             {!online && <p className="mt-3 text-xs text-muted">Оплата картой на сайте скоро появится. Сейчас можно оплатить при получении или переводом по реквизитам — они будут на странице заказа.</p>}
           </div>
-          <details className="border border-line bg-white p-4">
+          <details className="border border-line bg-panel p-4">
             <summary className="cursor-pointer text-sm">Промокод или подарочный сертификат</summary>
             <div className="mt-4 space-y-4">
               <div>
@@ -258,7 +258,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
               <span className="label">Оплатить баллами · баланс {profile.pointsBalance.toLocaleString("ru-RU")}</span>
               <div className="flex items-center gap-3">
                 <input type="range" aria-label="Оплатить баллами" aria-valuetext={`${quote.pointsUsed.toLocaleString("ru-RU")} баллов`} min={0} max={quote.pointsMax} step={100} value={Math.min(points, quote.pointsMax)} onChange={(e) => setPoints(Number(e.target.value))} className="flex-1 accent-black" disabled={quote.pointsMax === 0} />
-                <button type="button" className="min-h-10 px-2 text-[0.65rem] uppercase tracking-[0.15em] text-taupe-dark" onClick={() => setPoints(quote.pointsMax)}>Макс.</button>
+                <button type="button" className="min-h-10 px-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-taupe-dark" onClick={() => setPoints(quote.pointsMax)}>Макс.</button>
               </div>
               <p className="mt-1 text-xs text-muted">До {profile.maxPayPct}% заказа на уровне {profile.tierName}. Списать: {quote.pointsUsed.toLocaleString("ru-RU")} из {quote.pointsMax.toLocaleString("ru-RU")}</p>
             </div>
@@ -277,10 +277,10 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
               <li key={l.variantId} className="flex justify-between gap-3"><span className="min-w-0">{l.productName}, {l.size}{l.color ? `, ${l.color}` : ""} × {l.quantity}{l.isPreorder ? " · предзаказ" : ""}</span><span className="shrink-0">{formatMoney(l.price * l.quantity)}</span></li>
             ))}
           </ul>
-          <div className="border border-line bg-white p-4 text-sm">
+          <div className="border border-line bg-panel p-4 text-sm">
             <div><span className="text-muted">Доставка: </span>{DELIVERY_METHOD[delivery].label}{needsAddress ? `, ${addressId ? addresses.find((a) => a.id === addressId)?.text ?? "" : addressText}` : ""}</div>
             <div><span className="text-muted">Оплата: </span>{PAYMENT_METHOD[payment]}</div>
-            <button type="button" onClick={() => setStep(0)} className="mt-2 text-[0.68rem] uppercase tracking-[0.15em] underline underline-offset-4">Изменить</button>
+            <button type="button" onClick={() => setStep(0)} className="mt-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] underline underline-offset-4">Изменить</button>
           </div>
           <div className="md:hidden">{summaryRows}</div>
           {guest && (
@@ -330,7 +330,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
       <div style={{ bottom: "var(--consent-h, 0px)" }} className="fixed inset-x-0 z-30 border-t border-line bg-ivory/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-[0.62rem] uppercase tracking-[0.12em] text-muted">Итого</div>
+            <div className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">Итого</div>
             <div className={`text-lg ${quoting ? "opacity-60" : ""}`}>{formatMoney(quote.total)}</div>
           </div>
           {step < 2 ? (
