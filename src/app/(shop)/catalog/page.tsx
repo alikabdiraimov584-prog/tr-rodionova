@@ -105,7 +105,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   return (
     <div className="mx-auto max-w-[1600px] px-1 md:px-5">
       {plain && products.length > 0 && <JsonLd data={[itemListJsonLd(`${listName} — T.Rodionova`, products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(current ? [{ name: current.name, path: `/catalog?category=${current.slug}` }] : [])])]} />}
-      <div className="px-3 pt-8 text-center md:px-0 md:pt-12">
+      <div className="px-3 pt-12 text-center md:px-0 md:pt-20">
         <h1 className="text-[2.2rem] font-light md:text-[3rem]">{listName}</h1>
         {searching && (
           <form action="/catalog" role="search" className="mx-auto mt-5 flex max-w-md items-center border-b border-ink focus-within:shadow-[0_1px_0_0_var(--ink)]">
@@ -115,7 +115,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
         )}
       </div>
       {/* ряд категорий: по центру, пока помещается, иначе листается от левого края; на телефоне правый край растворяется — видно, что дальше есть пункты */}
-      <nav aria-label="Категории" data-category-row className="scroll-row relative mt-5 overflow-x-auto text-[0.72rem] font-semibold uppercase tracking-[0.2em] max-md:[mask-image:linear-gradient(to_left,transparent,#000_2.5rem)]">
+      <nav aria-label="Категории" data-category-row className="scroll-row relative mt-8 overflow-x-auto text-[0.72rem] font-semibold uppercase tracking-[0.2em] max-md:[mask-image:linear-gradient(to_left,transparent,#000_2.5rem)]">
         <div className="mx-auto flex w-max gap-6 px-3 max-md:pr-10 md:w-auto md:max-w-5xl md:flex-wrap md:justify-center md:gap-y-0 md:px-0">
           <Link href="/catalog" className={tab(!category && !onlyNew && !searching)} aria-current={!category && !onlyNew && !searching ? "page" : undefined}>Все</Link>
           <Link href="/catalog?new=1" className={tab(onlyNew && !category)} aria-current={onlyNew && !category ? "page" : undefined}>Новинки</Link>
@@ -123,7 +123,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
         </div>
       </nav>
       <ActiveTabIntoView active={category ?? (onlyNew ? "new" : "")} />
-      <div className="mt-2 flex items-center justify-between border-y border-line px-3 py-2 text-[0.72rem] uppercase tracking-[0.1em] md:px-1">
+      <div className="mb-8 mt-6 flex items-center justify-between px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] md:mb-12 md:px-5">
         <span className="text-muted">{models(products.length)}{filtered && <> · <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="underline">сбросить фильтр</Link></>}</span>
         {/* key: при смене категории, поиска или сортировки список пересоздаётся закрытым; PickList закрывает его и при выборе текущего варианта */}
         <details key={link({})} className="relative">
@@ -137,7 +137,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
         {products.length === 0 ? (
           <Empty title={q ? "Ничего не нашлось" : "Здесь пока пусто"} action={<Link href="/catalog" className="btn-outline">Весь каталог</Link>}>{q ? "Попробуйте другое слово: «платье», «кашемир», «шёлк»." : "Загляните в другие категории."}</Empty>
         ) : (
-          <div className="grid grid-cols-2 gap-x-1 md:grid-cols-3 xl:grid-cols-4">{products.map((p, i) => <ProductCard key={p.id} p={p} priority={i < 4} />)}</div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-10 px-3 md:grid-cols-3 md:gap-x-6 md:gap-y-16 md:px-5 xl:grid-cols-4">{products.map((p, i) => <ProductCard key={p.id} p={p} priority={i < 4} />)}</div>
         )}
         {current && !q && !onlyNew && !filtered && (current.seoText || faq.length > 0) && (
           <section className="mx-auto mt-20 max-w-3xl border-t border-line px-3 pt-10 md:px-0">

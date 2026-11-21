@@ -37,7 +37,7 @@ export function SiteMenu({ categories, account, cartCount }: { categories: Item[
     };
   }, [open]);
   const close = () => setOpenedAt(null);
-  const big = "block py-2 font-serif text-[1.6rem] font-light leading-tight transition-colors hover:text-bronze";
+  const big = "block py-2 font-serif text-[1.6rem] font-light leading-tight transition-colors hover:opacity-60";
   const small = "block py-2.5 text-[0.82rem] text-muted hover:text-ink";
   return (
     <>

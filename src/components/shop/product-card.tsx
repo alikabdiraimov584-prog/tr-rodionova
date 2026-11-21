@@ -63,7 +63,7 @@ export function ProductCard({ p, priority = false }: { p: CardProduct; priority?
         {label && <span className="absolute left-2.5 top-2.5 bg-ivory/90 px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-bronze-ink">{label}</span>}
       </div>
       <div className="px-2 pb-6 pt-3 text-center md:px-1">
-        <div className="line-clamp-2 font-serif text-[1rem] font-light leading-snug transition-colors group-hover:text-bronze md:text-[1.08rem]">{p.name}</div>
+        <div className="line-clamp-2 font-serif text-[1rem] font-light leading-snug transition-colors group-hover:opacity-60 md:text-[1.08rem]">{p.name}</div>
         <div className="mt-1.5 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-muted-dark">
           {p.compareAt && <s className="mr-2 text-muted"><span className="sr-only">Было </span>{formatMoney(p.compareAt)}</s>}
           {formatMoney(p.price)}

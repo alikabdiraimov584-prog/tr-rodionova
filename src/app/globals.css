@@ -8,22 +8,25 @@
   — CRM (.crm): рабочий интерфейс (серый фон, белые карточки со скруглением и тенью, цветные статусы, Manrope).
 */
 :root {
-  --bg: #f7f3ec; /* айвори */
-  --panel: #fffdf9;
-  --ink: #2b2a29; /* цвет надписи в логотипе */
-  --muted: #6b645b; /* контраст ≥ 5:1 на айвори */
-  --muted-dark: #4d4842;
-  --line: #e0d8cb;
-  --line-soft: #ece6dc;
-  --sand: #eee7dc; /* подложка под фото, пока они грузятся */
-  --accent: #1d1c1b; /* кнопки: вечерний чёрный */
-  --accent-fg: #f7f3ec;
-  --bronze: #857054; /* монограмма TR */
-  --taupe: #8b7f71; /* первая серия графиков CRM */
-  --bronze-ink: #6b5940; /* бронза для мелкого текста: контраст ≥ 4.5:1 на айвори */
-  --champagne: #cdb58f; /* только для Circle */
-  --champagne-ink: #705b39; /* шампань для текста: контраст ≥ 4.5:1 на светлом фоне и на бейдже в CRM */
-  --success: #276b44; /* контраст ≥ 4.5:1 на светлом фоне для мелкого текста */
+  /* витрина: только белый, чёрный и нейтральный серый — без бежевых и золотых оттенков */
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --ink: #111111;
+  --muted: #6f6f6f; /* контраст ≥ 4.5:1 на белом */
+  --muted-dark: #474747;
+  --line: #e6e6e6;
+  --line-soft: #f1f1f1;
+  --sand: #f5f5f5; /* подложка под фото, пока они грузятся */
+  --accent: #111111;
+  --accent-fg: #ffffff;
+  --bronze: #111111; /* монограмма на сайте — в цвет текста */
+  --bronze-ink: #474747;
+  --taupe: #8c8c8c;
+  --taupe-dark: #555555;
+  --champagne: #d6d6d6; /* уровни Circle на витрине — оттенки серого */
+  --champagne-dark: #9a9a9a;
+  --champagne-ink: #474747;
+  --success: #276b44;
   --danger: #b3261e;
   --warning: #8a5a00;
   --info: #2d4fb5;
@@ -47,6 +50,12 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   --font-ui: var(--font-manrope), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-brand: var(--font-ui); /* CRM остаётся на гротеске */
+  /* CRM сохраняет прежние цвета статусов, графиков и уровней Circle */
+  --taupe: #8b7f71;
+  --taupe-dark: #6f655a;
+  --champagne: #cdb58f;
+  --champagne-dark: #a98f66;
+  --champagne-ink: #705b39;
   font-family: var(--font-ui);
 }
 
@@ -57,15 +66,15 @@
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-taupe: #8b7f71;
+  --color-taupe: var(--taupe);
   --color-accent: var(--accent);
   --color-panel: var(--panel);
   --color-bronze: var(--bronze);
   --color-bronze-ink: var(--bronze-ink);
-  --color-taupe-dark: #6f655a;
+  --color-taupe-dark: var(--taupe-dark);
   --color-champagne: var(--champagne);
   --color-muted-dark: var(--muted-dark);
-  --color-champagne-dark: #a98f66;
+  --color-champagne-dark: var(--champagne-dark);
   --color-champagne-ink: var(--champagne-ink);
   --color-success: var(--success);
   --color-danger: var(--danger);
@@ -87,7 +96,7 @@ body {
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: lining-nums;
 }
-::selection { background: var(--bronze); color: var(--accent-fg); }
+::selection { background: var(--ink); color: var(--accent-fg); }
 /* CRM остаётся плотнее: в таблицах и формах больше данных; шрифт CRM — Manrope (--font-ui внутри .crm). */
 .crm { font-size: 13px; line-height: 1.5; }
 
@@ -116,14 +125,14 @@ body {
 
 /* Пункты шапки витрины: мелкие заглавные с разрядкой */
 .nav-link { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; transition: color 0.2s; }
-.nav-link:hover { color: var(--bronze); }
+.nav-link:hover { opacity: 0.55; }
 /* Заголовок раздела витрины: антиква, как надпись логотипа */
 .section-title { font-family: var(--font-brand); font-size: 1.6rem; font-weight: 300; line-height: 1.15; }
 @media (min-width: 768px) { .section-title { font-size: 2rem; } }
 /* Аккордеоны карточки вещи и подвала */
 .acc { display: flex; min-height: 3.25rem; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; }
 .acc::-webkit-details-marker { display: none; }
-.acc-mark { color: var(--bronze); font-size: 1rem; transition: transform 0.2s; }
+.acc-mark { color: var(--muted); font-size: 1rem; transition: transform 0.2s; }
 details[open] > .acc .acc-mark { transform: rotate(45deg); }
 
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
@@ -151,11 +160,11 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
     font-weight: 600;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--bronze-ink);
+    color: var(--muted);
   }
   .crm .eyebrow { letter-spacing: 0.04em; text-transform: none; font-size: 0.78rem; font-weight: 600; }
   .btn-primary { @apply btn; background: var(--accent); color: var(--accent-fg); }
-  .btn-primary:hover { background: var(--bronze); color: var(--accent-fg); }
+  .btn-primary:hover { background: #333; color: var(--accent-fg); }
   .crm .btn-primary:hover { background: #000; color: #fff; }
   .btn-outline { @apply btn border; border-color: var(--ink); color: var(--ink); background: transparent; }
   .btn-outline:hover { background: var(--ink); color: var(--accent-fg); }
@@ -176,7 +185,7 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
   }
   .crm .input { border-radius: 8px; }
   .input::placeholder { color: var(--muted); opacity: 0.8; }
-  .input:focus { border-color: var(--bronze); }
+  .input:focus { border-color: var(--ink); }
   .crm .input:focus { border-color: var(--ink); }
   .label { @apply mb-1 block text-[0.64rem] font-semibold uppercase tracking-[0.2em]; color: var(--muted); }
   .crm .label { text-transform: none; letter-spacing: 0; font-size: 0.75rem; font-weight: 600; }

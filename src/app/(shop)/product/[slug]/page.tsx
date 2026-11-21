@@ -115,7 +115,6 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             {rating && <a href="#reviews" className="-my-2 py-2 text-[0.75rem] text-muted underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
           </div>
           {installments && <div className="mt-1 text-[0.78rem]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
-          <div className="mt-1 text-[0.75rem] text-muted">+{pts.toLocaleString("ru-RU")} баллов Circle</div>
           {p.isPreorder && <p className="mt-4 border-l-2 border-ink pl-3 text-[0.8rem]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
           <div className="mt-5"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
           <div className="mt-5">
@@ -127,13 +126,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               </form>
             </AddToCart>
           </div>
-          <ul className="mt-5 grid grid-cols-3 gap-2 border-y border-line py-4 text-center text-[0.68rem] font-semibold uppercase leading-snug tracking-[0.2em] text-muted">
-            <li>Примерка<br />курьером</li>
-            {/* коротко и с условием, как в корзине: порог считается от суммы заказа после скидки; в разметке Offer тот же тариф */}
-            <li>{delivery.freeFrom > 0 ? <>Доставка 0 ₽<br />от {formatMoney(delivery.freeFrom)}</> : <>Доставка<br />от 1 дня</>}</li>
-            <li>Возврат<br />14 дней</li>
-          </ul>
-          <div className="divide-y divide-line border-b border-line">
+          <div className="mt-8 divide-y divide-line border-y border-line">
             <details className="group" open>
               <summary className="acc">Описание<span aria-hidden className="acc-mark">+</span></summary>
               <p className="pb-5 text-[0.9rem] leading-relaxed text-ink/85">{p.description}</p>
