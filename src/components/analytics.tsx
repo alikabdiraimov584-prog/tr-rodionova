@@ -60,8 +60,13 @@ export function Analytics() {
     };
   }, [visible]);
 
+  // адрес, о котором уже сообщили: ответ на баннер cookie меняет consent, но это тот же просмотр — второй раз не отправляется
+  const sent = useRef<string | null>(null);
   useEffect(() => {
     if (consent === "pending") return;
+    const key = `${path}?${params.toString()}`;
+    if (sent.current === key) return;
+    sent.current = key;
     const utm: Record<string, string> = {};
     for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
       const v = params.get(k);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { isStaff } from "@/lib/auth";
 import { checkRate, clientIp } from "@/lib/ratelimit";
 import { recordHit, VISITOR_COOKIE, SESSION_COOKIE_A, CONSENT_COOKIE } from "@/lib/web-analytics";
 
@@ -74,6 +75,8 @@ export async function POST(req: NextRequest) {
   const parsedReferrer = rawReferrer ? urlParts(rawReferrer) : null;
   const safeReferrer = parsedReferrer && !/^\/reset(?:\/|$)/.test(parsedReferrer.pathname) ? parsedReferrer.referrer : null;
   const auth = await getSession();
+  // сотрудники, открывшие витрину под своим входом (проверка карточек, цен, оформления), — не посетители: в статистику не идут
+  if (auth && isStaff(auth.role)) return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   const utm = body.utm ?? {};
   const res = await recordHit(
     {
