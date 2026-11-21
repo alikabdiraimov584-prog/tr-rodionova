@@ -10,11 +10,11 @@ import type { Prisma } from "@/generated/prisma/client";
 /**
  * МАКЕТЫ НА СОГЛАСОВАНИИ (только в рабочей ветке, на сайт не выкладываются): варианты главной и каталога
  * для коллекции из 3–4 вещей на настоящих фото. /maket/b — вещь на весь экран, /maket/c — кадр, сетка и история,
- * /maket/d — выпуск коллекции, /maket/looks — каталог-лукбук. Вариант A — текущая главная макета.
+ * /maket/d — выпуск коллекции, /maket/looks — каталог-лукбук, /maket/row — каталог по образцу therow.com. Вариант A — текущая главная макета.
  */
 export const metadata: Metadata = { title: "Макет", robots: { index: false, follow: false } };
 
-const VARIANTS = ["b", "c", "d", "looks"] as const;
+const VARIANTS = ["b", "c", "d", "looks", "row"] as const;
 type V = (typeof VARIANTS)[number];
 
 const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
@@ -36,6 +36,7 @@ export default async function Maket({ params }: PageProps<"/maket/[v]">) {
   if (v === "b") return <FullScreen items={items} />;
   if (v === "c") return <GridStory items={items} />;
   if (v === "d") return <Drop items={items} />;
+  if (v === "row") return <RowCatalog items={items} />;
   return <Looks items={items} />;
 }
 
@@ -179,6 +180,51 @@ function Drop({ items }: { items: Item[] }) {
           <span className="btn-primary">Подписаться</span>
         </div>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Каталог по образцу therow.com: строка «Коллекция · сезон» и справа «Фильтр +», сетка 4 колонки с полями 20px,
+ * кадры 2:3, под кадром название слева и цена справа обычным гротеском, «Предзаказ» серым в углу кадра.
+ * Ниже — образы коллекции той же сеткой с подписью «Образ 1…», как их страница сезона.
+ */
+function RowCatalog({ items }: { items: Item[] }) {
+  const sans = { fontFamily: "var(--font-manrope), system-ui, sans-serif" };
+  const looks = items.map((p) => p.shots[2] ?? p.shots[1] ?? p.shots[0]);
+  return (
+    <div style={sans} className="text-[0.82rem] md:text-[0.84rem]">
+      <h1 className="sr-only">Коллекция T.Rodionova</h1>
+      <div className="flex items-baseline justify-between px-5 pb-6 pt-8 md:pt-10">
+        <div className="flex gap-2"><span>Коллекция</span><span>·</span><span>Осень–зима 2026</span></div>
+        <span>Фильтр +</span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-2 gap-y-14 md:grid-cols-4 md:gap-x-10 md:gap-y-32 md:px-5">
+        {items.map((p) => (
+          <Link key={p.id} href={`/product/${p.slug}`} className="group block">
+            <div className="relative aspect-[2/3] overflow-hidden bg-[#f6f5f3]">
+              <Image src={p.shots[0].url} alt={p.name} fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover transition-opacity duration-300 group-hover:opacity-0" />
+              {p.shots[1] && <Image src={p.shots[1].url} alt="" fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100" />}
+              {p.isPreorder && <span className="absolute left-2.5 top-2 text-[#9a9a9a]">Предзаказ</span>}
+            </div>
+            <div className="flex flex-col gap-1 px-4 pt-4 md:flex-row md:justify-between md:px-0 md:pt-6">
+              <span>{p.name}</span>
+              <span>{formatMoney(p.price)}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+      <div className="px-5 pb-6 pt-24 md:pt-40"><span>Образы</span></div>
+      <div className="grid grid-cols-2 gap-x-2 gap-y-14 md:grid-cols-4 md:gap-x-10 md:px-5">
+        {looks.map((s, i) => (
+          <div key={s.url}>
+            <div className="relative aspect-[2/3] overflow-hidden bg-[#f6f5f3]">
+              <Image src={s.url} alt="" fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover" />
+            </div>
+            <div className="px-4 pt-4 md:px-0 md:pt-6">Образ {i + 1}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
