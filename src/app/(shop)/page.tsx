@@ -2,11 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { withLookCovers } from "@/lib/looks";
-import { ProductCard } from "@/components/shop/product-card";
+import { formatMoney } from "@/lib/money";
 import { isRealPhoto, photoFirst } from "@/lib/photos";
 
 const withImages = { images: { orderBy: { order: "asc" as const } }, variants: true } as const;
+// сколько вещей показывает главная: коллекция маленькая, каждая вещь получает свой экран
+const SHOWN = 6;
 
 // canonical: адреса с метками рекламы (?utm_…, ?yclid=…) поисковики склеивают с главной, а не считают копиями
 export const metadata: Metadata = {
@@ -14,81 +15,95 @@ export const metadata: Metadata = {
   alternates: { canonical: "/", types: { "application/rss+xml": "/journal/feed.xml" } },
 };
 
+const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "ONE SIZE"];
+const bySize = (a: string, b: string) => {
+  const ia = SIZE_ORDER.indexOf(a.toUpperCase());
+  const ib = SIZE_ORDER.indexOf(b.toUpperCase());
+  if (ia >= 0 && ib >= 0) return ia - ib;
+  return ia >= 0 ? -1 : ib >= 0 ? 1 : a.localeCompare(b, "ru", { numeric: true });
+};
+
+/** Первое предложение описания — коротко, без перечня деталей (полное описание на странице вещи). */
+function lead(text: string | null) {
+  if (!text) return "";
+  const first = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+  return first.length > 220 ? `${first.slice(0, 217).trimEnd()}…` : first;
+}
+
 /**
- * Главная: кадр съёмки на весь экран с одной кнопкой, новинки и образ из лукбука — больше ничего.
- * Категории, о бренде и Circle — в меню и подвале.
+ * Главная для маленькой коллекции (3–6 вещей): первый экран и каждая вещь своим крупным блоком —
+ * два кадра, название, одна строка описания, состав, цена, размеры и кнопка. Без каталога, разделов и витрин.
  */
 export default async function Home() {
-  const [newest, featured, collection, looks] = await Promise.all([
-    db.product.findMany({ where: { status: "ACTIVE", isNew: true, isPreloved: false }, include: withImages, take: 8, orderBy: { createdAt: "desc" } }),
-    db.product.findMany({ where: { status: "ACTIVE", isFeatured: true, isPreloved: false }, include: withImages, take: 8, orderBy: { createdAt: "desc" } }),
+  const [products, collection] = await Promise.all([
+    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, include: withImages, take: SHOWN, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }] }),
     db.collection.findFirst({ where: { isActive: true }, orderBy: { slug: "desc" } }),
-    db.look.findMany({ where: { isPublished: true }, orderBy: { order: "asc" }, take: 4 }).then(withLookCovers),
   ]);
-  // первым в hero идёт вещь из первого образа лукбука: свежая съёмка открывает главную без правки кода
-  const lead = await db.lookItem.findFirst({ where: { look: { isPublished: true } }, orderBy: [{ look: { order: "asc" } }, { order: "asc" }], select: { productId: true, lookId: true } });
-  const hero = [...featured].sort((a, b) => (a.id === lead?.productId ? -1 : b.id === lead?.productId ? 1 : 0))[0] ?? newest[0];
-  const heroShots = hero ? [hero.images[0], hero.images[1] ?? featured.find((p) => p.id !== hero.id)?.images[0]].filter((i) => !!i) : [];
-  // один и тот же кадр не повторяется на главной: плитки категорий и образ берут то, чего нет в hero
-  const used = new Set(heroShots.map((i) => i.url));
-  const look = looks.find((l) => l.id !== lead?.lookId && l.coverUrl && !used.has(l.coverUrl)) ?? looks.find((l) => l.coverUrl && !used.has(l.coverUrl));
-  // сетка новинок — только вещи со съёмкой и полными рядами (4 или 8); заглушки остаются в каталоге
-  const pool = photoFirst(newest.length >= 4 ? newest : featured);
-  const real = pool.filter((p) => isRealPhoto(p.images[0]?.url));
-  const grid = real.length >= 4 ? real.slice(0, real.length >= 8 ? 8 : 4) : pool.slice(0, 4);
+  const items = photoFirst(products);
+  const hero = items.find((p) => isRealPhoto(p.images[0]?.url)) ?? items[0];
+  const heroShots = hero ? [hero.images[0], items.find((p) => p.id !== hero.id)?.images[0] ?? hero.images[1]].filter((i) => !!i) : [];
   const season = collection?.name ?? "Осень–зима 2026";
+  const count = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "вещь" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "вещи" : "вещей"}`;
 
   return (
     <div>
       <h1 className="sr-only">T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка</h1>
       {hero && heroShots.length > 0 && (
-        <section aria-label="Новая коллекция" className="relative h-[calc(100svh-3.5rem)] min-h-[520px] md:h-[calc(100svh-4rem)]">
+        <section aria-label="Коллекция" className="relative h-[calc(100svh-3.5rem)] min-h-[520px] md:h-[calc(100svh-4rem)]">
           <div className="grid h-full md:grid-cols-2">
             {heroShots.map((img, i) => (
               <div key={img.url} className={`relative h-full overflow-hidden bg-sand ${i > 0 ? "hidden md:block" : ""}`}>
-                {/* предзагрузка только у первого кадра: второй на телефоне скрыт, на компьютере он и так в окне */}
                 <Image src={img.url} alt={i === 0 ? `${hero.name} — ${season}` : ""} fill preload={i === 0} sizes="(min-width: 768px) 50vw, 100vw" className="object-cover object-top" />
               </div>
             ))}
           </div>
-          {/* весь кадр кликается: дублирующая ссылка скрыта от Tab и диктора, основная — кнопка ниже */}
-          <Link href="/catalog?new=1" tabIndex={-1} aria-hidden className="absolute inset-0" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
           {/* пока виден баннер cookie, кнопка поднимается над ним (--consent-h ставит баннер) */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-[calc(2.5rem+var(--consent-h,0px))] text-center text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] md:pb-[calc(3.5rem+var(--consent-h,0px))]">
-            <div className="caps">{season}</div>
-            <h2 className="mt-4 text-[2.6rem] font-light leading-none md:text-[4.5rem]">Новая коллекция</h2>
-            <Link href="/catalog?new=1" className="caps pointer-events-auto mt-8 inline-flex min-h-12 items-center bg-ivory px-10 text-ink [text-shadow:none] transition-colors hover:bg-ink hover:text-ivory">
-              Смотреть коллекцию
-            </Link>
+          <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-[calc(2.5rem+var(--consent-h,0px))] text-center text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.25)] md:pb-[calc(3.5rem+var(--consent-h,0px))]">
+            <div className="caps">{season} · {count(items.length)}</div>
+            <h2 className="mt-4 text-[2.6rem] font-light leading-none md:text-[4.5rem]">Коллекция</h2>
+            <a href="#collection" className="caps mt-8 inline-flex min-h-12 items-center bg-white px-10 text-ink [text-shadow:none] transition-colors hover:bg-ink hover:text-white">Смотреть</a>
           </div>
         </section>
       )}
 
-      {grid.length > 0 && (
-        <section className="mx-auto mt-24 max-w-[1600px] px-4 md:mt-40 md:px-10">
-          <div className="mb-10 flex items-baseline justify-between md:mb-14">
-            <h2 className="section-title">{newest.length >= 4 ? "Новинки" : "Ключевые вещи"}</h2>
-            <Link href={newest.length >= 4 ? "/catalog?new=1" : "/catalog"} className="nav-link -my-2 py-2 underline underline-offset-4">Смотреть все</Link>
-          </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-10 md:grid-cols-4 md:gap-x-6 md:gap-y-16">{grid.map((p) => <ProductCard key={p.id} p={p} />)}</div>
-        </section>
-      )}
-
-      {look?.coverUrl && (
-        <section className="mt-24 md:mt-40">
-          <Link href={`/lookbook/${look.slug}`} className="group relative block h-[80svh] min-h-[480px] overflow-hidden bg-sand">
-            <Image src={look.coverUrl} alt={look.title} fill sizes="100vw" className="object-cover object-[center_25%] transition-transform duration-[1.2s] group-hover:scale-[1.02]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-4 pb-10 text-center text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.3)] md:pb-14">
-              <div className="caps">Лукбук</div>
-              <h2 className="mt-4 text-[2.2rem] font-light leading-none md:text-[3.4rem]">{look.title}</h2>
-              <span className="caps mt-8 inline-flex min-h-12 items-center border border-ivory px-10 transition-colors group-hover:bg-ivory group-hover:text-ink">Купить образ</span>
-            </div>
-          </Link>
-        </section>
-      )}
-
+      <div id="collection" className="scroll-mt-16">
+        {items.map((p, i) => {
+          const shots = p.images.slice(0, 2);
+          const sizes = [...new Set(p.variants.map((v) => v.size))].sort(bySize);
+          const inStock = new Set(p.variants.filter((v) => v.stock - v.reserved > 0).map((v) => v.size));
+          const soldOut = !p.isPreorder && inStock.size === 0;
+          const flip = i % 2 === 1;
+          return (
+            <section key={p.id} aria-labelledby={`item-${p.slug}`} className="mx-auto mt-24 max-w-[1400px] px-4 md:mt-40 md:px-10">
+              <div className={`grid items-center gap-8 md:gap-16 ${flip ? "md:grid-cols-[1fr_1.4fr]" : "md:grid-cols-[1.4fr_1fr]"}`}>
+                <Link href={`/product/${p.slug}`} tabIndex={-1} aria-hidden className={`grid gap-2 ${shots.length > 1 ? "grid-cols-2" : ""} ${flip ? "md:order-2" : ""}`}>
+                  {shots.map((img, k) => (
+                    <div key={img.url} className={`relative aspect-[3/4] overflow-hidden bg-sand ${k === 1 ? "mt-16 md:mt-24" : ""}`}>
+                      <Image src={img.url} alt="" fill sizes="(min-width: 768px) 30vw, 50vw" className="object-cover" />
+                    </div>
+                  ))}
+                </Link>
+                <div className={`md:max-w-md ${flip ? "md:order-1 md:justify-self-end" : ""}`}>
+                  <div className="caps text-muted">{String(i + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}</div>
+                  <h2 id={`item-${p.slug}`} className="mt-5 text-[2.2rem] font-light leading-tight md:text-[3rem]">
+                    <Link href={`/product/${p.slug}`} className="transition-opacity hover:opacity-60">{p.name}</Link>
+                  </h2>
+                  {p.description && <p className="mt-5 leading-relaxed text-muted-dark">{lead(p.description)}</p>}
+                  {p.composition && <p className="mt-3 text-[0.85rem] text-muted">{p.composition}</p>}
+                  <div className="mt-6 text-[1.05rem]">{formatMoney(p.price)}</div>
+                  {sizes.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem] font-semibold uppercase tracking-[0.2em]">
+                      {sizes.map((sz) => <span key={sz} className={inStock.has(sz) || p.isPreorder ? "" : "text-muted line-through"}>{sz}</span>)}
+                    </div>
+                  )}
+                  <Link href={`/product/${p.slug}`} className={`${soldOut ? "btn-outline" : "btn-primary"} mt-8`}>{soldOut ? "Узнать о поступлении" : p.isPreorder ? "Предзаказ" : "Выбрать размер"}</Link>
+                </div>
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

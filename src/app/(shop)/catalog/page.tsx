@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentCustomer } from "@/lib/auth";
 import { ProductCard } from "@/components/shop/product-card";
-import { ActiveTabIntoView } from "@/components/shop/active-tab";
-import { PickList } from "@/components/shop/pick-list";
 import { photoFirst } from "@/lib/photos";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
@@ -101,7 +99,6 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   const listName = q ? `Поиск: «${q}»` : searching ? "Поиск" : onlyNew ? "Новинки" : current?.name ?? "Каталог";
   // структура ассортимента для краулеров: список вещей и путь к категории; при поиске и фильтрах — без разметки, это не самостоятельные страницы
   const plain = !searching && !filtered;
-  const tab = (on: boolean) => `shrink-0 whitespace-nowrap py-3.5 ${on ? "text-ink underline underline-offset-[6px]" : "text-muted hover:text-ink"}`;
   return (
     <div className="mx-auto max-w-[1600px] px-1 md:px-5">
       {plain && products.length > 0 && <JsonLd data={[itemListJsonLd(`${listName} — T.Rodionova`, products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(current ? [{ name: current.name, path: `/catalog?category=${current.slug}` }] : [])])]} />}
@@ -114,24 +111,8 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
           </form>
         )}
       </div>
-      {/* ряд категорий: по центру, пока помещается, иначе листается от левого края; на телефоне правый край растворяется — видно, что дальше есть пункты */}
-      <nav aria-label="Категории" data-category-row className="scroll-row relative mt-8 overflow-x-auto text-[0.72rem] font-semibold uppercase tracking-[0.2em] max-md:[mask-image:linear-gradient(to_left,transparent,#000_2.5rem)]">
-        <div className="mx-auto flex w-max gap-6 px-3 max-md:pr-10 md:w-auto md:max-w-5xl md:flex-wrap md:justify-center md:gap-y-0 md:px-0">
-          <Link href="/catalog" className={tab(!category && !onlyNew && !searching)} aria-current={!category && !onlyNew && !searching ? "page" : undefined}>Все</Link>
-          <Link href="/catalog?new=1" className={tab(onlyNew && !category)} aria-current={onlyNew && !category ? "page" : undefined}>Новинки</Link>
-          {categories.map((c) => <Link key={c.id} href={`/catalog?category=${c.slug}`} className={tab(category === c.slug)} aria-current={category === c.slug ? "page" : undefined}>{c.name}</Link>)}
-        </div>
-      </nav>
-      <ActiveTabIntoView active={category ?? (onlyNew ? "new" : "")} />
       <div className="mb-8 mt-6 flex items-center justify-between px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] md:mb-12 md:px-5">
         <span className="text-muted">{models(products.length)}{filtered && <> · <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="underline">сбросить фильтр</Link></>}</span>
-        {/* key: при смене категории, поиска или сортировки список пересоздаётся закрытым; PickList закрывает его и при выборе текущего варианта */}
-        <details key={link({})} className="relative">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5">{SORTS[sort].label}<span aria-hidden className="text-muted">▾</span></summary>
-          <PickList className="absolute right-0 z-20 mt-1 w-48 border border-line bg-ivory py-1 normal-case tracking-normal shadow-sm">
-            {Object.entries(SORTS).map(([k, v]) => <Link key={k} href={link({ sort: k === "new" ? undefined : k })} aria-current={sort === k ? "true" : undefined} className={`block px-4 py-3 text-[0.82rem] hover:bg-sand ${sort === k ? "text-ink" : "text-muted"}`}>{v.label}</Link>)}
-          </PickList>
-        </details>
       </div>
       <div className="pt-1">
         {products.length === 0 ? (

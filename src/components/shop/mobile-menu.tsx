@@ -7,10 +7,9 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/ui";
 import { IconClose, IconMenu } from "@/components/shop/icons";
 
-type Item = readonly [string, string];
 
 /** Меню витрины для всех экранов: кнопка «Меню» в шапке и выезжающая слева панель с разделами (как у ACTE). */
-export function SiteMenu({ categories, account, cartCount }: { categories: Item[]; account: readonly [string, string]; cartCount: number }) {
+export function SiteMenu({ account, cartCount }: { account: readonly [string, string]; cartCount: number }) {
   // панель «привязана» к адресу, на котором её открыли: переход на другую страницу закрывает её сам
   const path = usePathname();
   const [openedAt, setOpenedAt] = useState<string | null>(null);
@@ -64,25 +63,16 @@ export function SiteMenu({ categories, account, cartCount }: { categories: Item[
               <Logo className="py-3" />
               <button type="button" data-autofocus aria-label="Закрыть меню" onClick={close} className="-mr-2 flex h-11 w-11 items-center justify-center"><IconClose /></button>
             </div>
-            <nav aria-label="Разделы" className="flex-1 px-4 pb-8 pt-2 md:px-6">
-              <Link href="/catalog?new=1" className={big}>Новинки</Link>
-              <Link href="/catalog" className={big}>Каталог</Link>
-              <div className="mb-3 ml-0.5 border-l border-line pl-4">
-                {categories.map(([href, label]) => <Link key={href} href={href} className={small}>{label}</Link>)}
-              </div>
-              <Link href="/lookbook" className={big}>Лукбук</Link>
-              <Link href="/gift" className={big}>Подарочная карта</Link>
-              <div className="mt-6 border-t border-line pt-4">
-                <Link href="/circle" className={small}>Программа лояльности Circle</Link>
+            <nav aria-label="Разделы" className="flex-1 px-4 pb-8 pt-4 md:px-6">
+              <Link href="/#collection" className={big}>Коллекция</Link>
+              <Link href="/about" className={big}>О бренде</Link>
+              <div className="mt-8 border-t border-line pt-4">
                 <Link href="/delivery" className={small}>Доставка и возврат</Link>
-                <Link href="/about" className={small}>О бренде</Link>
-                <Link href="/collections" className={small}>Коллекции</Link>
-                <Link href="/journal" className={small}>Журнал</Link>
-                <Link href="/showroom" className={small}>Шоурум и контакты</Link>
+                <Link href="/sizes" className={small}>Размеры</Link>
+                <Link href="/faq" className={small}>Вопросы и ответы</Link>
               </div>
               <div className="mt-4 border-t border-line pt-4">
                 <Link href={account[0]} className={small}>{account[1]}</Link>
-                <Link href="/account/wishlist" className={small}>Избранное</Link>
                 <Link href="/cart" className={small}>Корзина · {cartCount}</Link>
               </div>
             </nav>

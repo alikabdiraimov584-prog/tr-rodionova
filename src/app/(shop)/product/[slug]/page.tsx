@@ -105,8 +105,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
         <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />
         <div id="buy" className="min-w-0 scroll-mt-20 px-4 pt-6 md:sticky md:top-24 md:self-start md:px-0 md:pt-10 lg:max-w-[460px]">
           <nav aria-label="Навигация" className="hidden text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-muted md:block [&_a]:hover:text-ink">
-            <Link href="/catalog">Каталог</Link>
-            {category && <> / <Link href={`/catalog?category=${category.slug}`}>{category.name}</Link></>}
+            <Link href="/#collection">← Коллекция</Link>
           </nav>
           <h1 className="mt-1 text-[2rem] font-light leading-tight md:mt-4 md:text-[2.5rem]">{p.name}</h1>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
