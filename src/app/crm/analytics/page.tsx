@@ -57,8 +57,8 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
         <div className="card min-w-0 p-5">
           <Eyebrow>Визиты и заказы по дням</Eyebrow>
-          <div className="mt-4"><BarChart money={false} data={daily.map((d) => ({ label: days > 30 ? "" : d.label, value: d.visits, sub: d.orders }))} /></div>
-          <div className="mt-2 flex gap-4 text-xs text-muted"><span><span className="mr-1 inline-block h-2 w-2 bg-taupe" />визиты</span><span><span className="mr-1 inline-block h-2 w-2 bg-champagne" />заказы</span></div>
+          <div className="mt-4"><BarChart money={false} data={daily.map((d) => ({ label: d.label, value: d.visits, sub: d.orders, href: `/crm/analytics/day/${d.date}`, title: `${d.label}: визиты и действия за день` }))} /></div>
+          <div className="mt-2 flex gap-4 text-xs text-muted"><span><span className="mr-1 inline-block h-2 w-2 bg-taupe" />визиты</span><span><span className="mr-1 inline-block h-2 w-2 bg-champagne" />заказы</span><span className="ml-auto">нажмите на день, чтобы открыть визиты</span></div>
         </div>
         <div className="card p-5">
           <Eyebrow>Воронка</Eyebrow>
@@ -71,6 +71,28 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="card overflow-x-auto" tabIndex={0}>
+        <div className="p-5 pb-2"><Eyebrow>По дням</Eyebrow><p className="mt-1 text-xs text-muted">Целевые действия — число визитов, в которых действие было. Нажмите на дату, чтобы увидеть каждый визит и его действия.</p></div>
+        <table className="table">
+          <thead><tr><th>День</th><th className="text-right">Визиты</th><th className="text-right">Посетители</th><th className="text-right">Смотрели товар</th><th className="text-right">В корзину</th><th className="text-right">Оформление</th><th className="text-right">Регистрации</th><th className="text-right">Заказы</th><th className="text-right">Выручка</th></tr></thead>
+          <tbody>
+            {[...daily].reverse().map((d) => (
+              <tr key={d.date}>
+                <td><Link href={`/crm/analytics/day/${d.date}`} className="underline-offset-4 hover:underline">{new Date(`${d.date}T12:00:00`).toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "short" })}</Link></td>
+                <td className="text-right">{d.visits}</td>
+                <td className="text-right text-muted">{d.visitors}</td>
+                <td className="text-right">{d.views || <span className="text-muted">—</span>}</td>
+                <td className="text-right">{d.carts || <span className="text-muted">—</span>}</td>
+                <td className="text-right">{d.checkouts || <span className="text-muted">—</span>}</td>
+                <td className="text-right">{d.registers || <span className="text-muted">—</span>}</td>
+                <td className="text-right">{d.orders || <span className="text-muted">—</span>}</td>
+                <td className="text-right">{d.revenue ? formatMoney(d.revenue) : <span className="text-muted">—</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className="card overflow-x-auto" tabIndex={0}>

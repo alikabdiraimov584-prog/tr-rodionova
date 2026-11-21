@@ -18,14 +18,68 @@ export async function overview(p: Period) {
   return { visits, visitors, pageviews, orders: orders._count, revenue, conversion: visits ? Math.round((orders._count / visits) * 1000) / 10 : 0, revenuePerVisit: visits ? Math.round(revenue / visits) : 0, prevVisits: prev };
 }
 
+/** Дата дня как в адресе страницы дня: 2026-11-20 (по часовому поясу сервера, как и границы дней в запросах). */
+export function dayKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** По дням: визиты, посетители, целевые действия (число визитов, где действие было), оплаченные заказы и выручка. */
 export async function byDay(p: Period) {
-  const rows = await db.$queryRaw<{ d: Date; visits: bigint; orders: bigint }[]>`
+  const rows = await db.$queryRaw<{ d: Date; visits: bigint; visitors: bigint; views: bigint; carts: bigint; checkouts: bigint; registers: bigint; orders: bigint; revenue: bigint | null }[]>`
     SELECT d::date AS d,
       (SELECT count(*) FROM "VisitorSession" s WHERE s."startedAt" >= d AND s."startedAt" < d + interval '1 day')::bigint AS visits,
+      (SELECT count(DISTINCT s."visitorId") FROM "VisitorSession" s WHERE s."startedAt" >= d AND s."startedAt" < d + interval '1 day')::bigint AS visitors,
+      (SELECT count(DISTINCT e."sessionId") FROM "AnalyticsEvent" e WHERE e.type = 'PRODUCT_VIEW' AND e."createdAt" >= d AND e."createdAt" < d + interval '1 day')::bigint AS views,
+      (SELECT count(DISTINCT e."sessionId") FROM "AnalyticsEvent" e WHERE e.type = 'ADD_TO_CART' AND e."createdAt" >= d AND e."createdAt" < d + interval '1 day')::bigint AS carts,
+      (SELECT count(DISTINCT e."sessionId") FROM "AnalyticsEvent" e WHERE e.type = 'CHECKOUT_START' AND e."createdAt" >= d AND e."createdAt" < d + interval '1 day')::bigint AS checkouts,
+      (SELECT count(DISTINCT e."sessionId") FROM "AnalyticsEvent" e WHERE e.type = 'REGISTER' AND e."createdAt" >= d AND e."createdAt" < d + interval '1 day')::bigint AS registers,
       (SELECT count(*) FROM "Order" o WHERE o."sessionId" IS NOT NULL AND o."createdAt" >= d AND o."createdAt" < d + interval '1 day'
-         AND o.status IN ('PAID','CONFIRMED','PACKING','SHIPPED','DELIVERED','COMPLETED'))::bigint AS orders
+         AND o.status IN ('PAID','CONFIRMED','PACKING','SHIPPED','DELIVERED','COMPLETED'))::bigint AS orders,
+      (SELECT sum(o.total) FROM "Order" o WHERE o."sessionId" IS NOT NULL AND o."createdAt" >= d AND o."createdAt" < d + interval '1 day'
+         AND o.status IN ('PAID','CONFIRMED','PACKING','SHIPPED','DELIVERED','COMPLETED'))::bigint AS revenue
     FROM generate_series(${p.from}::date, (${p.to}::date - interval '1 day'), interval '1 day') d ORDER BY d`;
-  return rows.map((r) => ({ label: r.d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }), visits: Number(r.visits), orders: Number(r.orders) }));
+  return rows.map((r) => ({
+    date: dayKey(r.d),
+    label: r.d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+    visits: Number(r.visits),
+    visitors: Number(r.visitors),
+    views: Number(r.views),
+    carts: Number(r.carts),
+    checkouts: Number(r.checkouts),
+    registers: Number(r.registers),
+    orders: Number(r.orders),
+    revenue: Number(r.revenue ?? 0),
+  }));
+}
+
+/** Визиты одного дня с их действиями по порядку; goalsOnly — только визиты, где было что-то кроме просмотра страниц. */
+export async function dayVisits(p: Period, opts: { goalsOnly: boolean; skip: number; take: number }) {
+  const where = {
+    startedAt: { gte: p.from, lt: p.to },
+    ...(opts.goalsOnly ? { events: { some: { type: { not: "PAGEVIEW" as const } } } } : {}),
+  };
+  const [total, sessions] = await Promise.all([
+    db.visitorSession.count({ where }),
+    db.visitorSession.findMany({
+      where,
+      orderBy: { startedAt: "desc" },
+      skip: opts.skip,
+      take: opts.take,
+      select: {
+        id: true, visitorId: true, startedAt: true, lastSeenAt: true, pageviews: true, landingPath: true, referrerHost: true,
+        channel: true, source: true, medium: true, campaign: true, device: true, browser: true, os: true,
+        user: { select: { id: true, firstName: true, lastName: true } },
+        events: { orderBy: { createdAt: "asc" }, select: { id: true, type: true, path: true, productId: true, orderId: true, value: true, createdAt: true } },
+      },
+    }),
+  ]);
+  const productIds = [...new Set(sessions.flatMap((s) => s.events.map((e) => e.productId).filter((x): x is string => !!x)))];
+  const orderIds = [...new Set(sessions.flatMap((s) => s.events.map((e) => e.orderId).filter((x): x is string => !!x)))];
+  const [products, orders] = await Promise.all([
+    productIds.length ? db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } }) : [],
+    orderIds.length ? db.order.findMany({ where: { id: { in: orderIds } }, select: { id: true, number: true, total: true, status: true } }) : [],
+  ]);
+  return { total, sessions, products: new Map(products.map((x) => [x.id, x.name])), orders: new Map(orders.map((o) => [o.id, o])) };
 }
 
 export type Dim = "channel" | "source" | "campaign" | "landingPath" | "referrerHost" | "device" | "trackingLinkId";
