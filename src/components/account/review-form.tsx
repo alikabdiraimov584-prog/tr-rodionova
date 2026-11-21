@@ -9,7 +9,7 @@ export function ReviewForm({ productId, productName }: { productId: string; prod
   const [rating, setRating] = useState(5);
   if (state?.ok) return <p className="text-xs text-success">{state.message}</p>;
   if (!open) {
-    return <button type="button" onClick={() => setOpen(true)} className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-taupe-dark hover:text-ink">Оставить отзыв · +300 баллов</button>;
+    return <button type="button" onClick={() => setOpen(true)} className="text-[0.65rem] uppercase tracking-[0.18em] text-taupe-dark hover:text-ink">Оставить отзыв · +300 баллов</button>;
   }
   return (
     <form action={action} className="mt-2 space-y-2 border border-line bg-ivory p-3">

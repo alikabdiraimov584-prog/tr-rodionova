@@ -6,7 +6,7 @@ import { pendingPoints, tierProgress } from "@/lib/loyalty";
 import { formatDate, formatMoney } from "@/lib/money";
 import { ORDER_STATUS } from "@/lib/labels";
 import { TierCard } from "@/components/account/tier-card";
-import { Alert, Badge, Empty, Eyebrow, Star } from "@/components/ui";
+import { Alert, Badge, Empty, Eyebrow } from "@/components/ui";
 import { MetrikaGoal } from "@/components/metrika-goal";
 
 export const metadata: Metadata = { title: "Личный кабинет" };
@@ -48,7 +48,7 @@ export default async function AccountHome({ searchParams }: PageProps<"/account"
           <Eyebrow>Ваши привилегии</Eyebrow>
           <ul className="mt-4 space-y-2 text-sm">
             {(user.loyaltyTier?.perks ?? []).map((p) => (
-              <li key={p} className="flex gap-2.5"><Star />{p}</li>
+              <li key={p} className="flex gap-2"><span className="text-taupe">✦</span>{p}</li>
             ))}
           </ul>
           {expiring[0] && (
@@ -69,14 +69,14 @@ export default async function AccountHome({ searchParams }: PageProps<"/account"
       <section>
         <div className="mb-4 flex items-end justify-between gap-3">
           <h2>Последние заказы</h2>
-          <Link href="/account/orders" className="shrink-0 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted hover:text-ink">Все заказы</Link>
+          <Link href="/account/orders" className="shrink-0 py-1 text-[0.68rem] uppercase tracking-[0.18em] text-muted hover:text-ink">Все заказы</Link>
         </div>
         {orders.length === 0 ? (
           <Empty title="Заказов пока нет" action={<Link href="/catalog" className="btn-primary">В каталог</Link>} />
         ) : (
           <div className="divide-y divide-line border-y border-line">
             {orders.map((o) => (
-              <Link key={o.id} href={`/account/orders/${o.id}`} className="flex flex-wrap items-center justify-between gap-3 py-4 hover:bg-panel">
+              <Link key={o.id} href={`/account/orders/${o.id}`} className="flex flex-wrap items-center justify-between gap-3 py-4 hover:bg-white">
                 <div>
                   <div className="text-sm">Заказ №{o.number}</div>
                   <div className="text-xs text-muted">{formatDate(o.createdAt)} · {o.items.map((i) => i.productName).join(", ")}</div>

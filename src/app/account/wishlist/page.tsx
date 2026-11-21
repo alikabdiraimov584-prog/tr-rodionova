@@ -28,7 +28,7 @@ export default async function WishlistPage() {
               <form action={toggleWishlistAction} className="mt-2">
                 <input type="hidden" name="productId" value={i.productId} />
                 <input type="hidden" name="back" value="/account/wishlist" />
-                <button className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted hover:text-danger">Убрать</button>
+                <button className="text-[0.62rem] uppercase tracking-[0.18em] text-muted hover:text-danger">Убрать</button>
               </form>
             </div>
           ))}

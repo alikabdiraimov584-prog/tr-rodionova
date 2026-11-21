@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { Manrope, Noto_Serif_Display, Spectral } from "next/font/google";
+import { Cormorant_Garamond, Golos_Text, Libre_Caslon_Text, Manrope } from "next/font/google";
 import "./globals.css";
 import { activeIntegration } from "@/lib/integrations/store";
 import { verificationCode } from "@/lib/site-verification";
 
-// Шрифты витрины подобраны по логотипу: заголовки — Noto Serif Display (узкая контрастная антиква, как знак T.Rodionova),
-// текст и подписи — Spectral (заглавные с разрядкой повторяют дескриптор PREMIUM WOMENSWEAR). Оба с полной кириллицей.
-const display = Noto_Serif_Display({ variable: "--font-display", subsets: ["latin", "cyrillic"], weight: ["300", "400", "500"], style: ["normal", "italic"] });
-const text = Spectral({ variable: "--font-text", subsets: ["latin", "cyrillic"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
-// CRM — рабочий интерфейс с таблицами, остаётся на гротеске
+// Витрина: Golos Text — гротеск с полной кириллицей (прежний Hanken Grotesk кириллицы не имел, и русский текст шёл системным Arial)
+const golos = Golos_Text({ variable: "--font-golos", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600"] });
+// Фирменная антиква (брендбук: дескриптор логотипа — Libre Caslon Text) для заголовков витрины. В Libre Caslon Text нет кириллицы,
+// поэтому русские буквы берутся из Cormorant Garamond (близкий рисунок, как у знака T.Rodionova). Запасной шрифт next/font
+// у Caslon отключён: он без unicode-range и перехватывал бы кириллицу системным Times раньше Cormorant.
+const caslon = Libre_Caslon_Text({ variable: "--font-caslon", subsets: ["latin", "latin-ext"], weight: ["400", "700"], adjustFontFallback: false, fallback: [] });
+const cormorant = Cormorant_Garamond({ variable: "--font-cormorant", subsets: ["cyrillic"], weight: ["500", "600", "700"] });
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"] });
 
 // CSP с nonce на каждый запрос: ни одна страница не может быть статической, иначе её скрипты останутся без nonce
@@ -36,7 +38,7 @@ const baseMetadata: Metadata = {
   title: { default: "T.Rodionova — Premium womenswear", template: "%s — T.Rodionova" },
   description: "Женская одежда из шерсти, кашемира и шёлка. Сшито в Европе. Доставка по России, примерка курьером.",
   applicationName: "T.Rodionova",
-  keywords: ["женская одежда премиум", "вечерние платья", "кашемир", "шёлк", "T.Rodionova", "жакет", "платье", "боди", "брюки палаццо"],
+  keywords: ["женская одежда премиум", "quiet luxury", "кашемир", "шёлк", "T.Rodionova", "жакет", "платье", "боди", "брюки палаццо"],
   // без url: иначе все страницы без своего openGraph выдавали бы в og:url адрес главной
   openGraph: { type: "website", siteName: "T.Rodionova", locale: "ru_RU", images: [{ url: "/images/brand/looks/look-01.jpg", width: 700, height: 1000, alt: "T.Rodionova — premium womenswear" }] },
   twitter: { card: "summary_large_image" },
@@ -46,7 +48,7 @@ const baseMetadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" data-scroll-behavior="smooth" className={`${display.variable} ${text.variable} ${manrope.variable} h-full antialiased`}>
+    <html lang="ru" data-scroll-behavior="smooth" className={`${golos.variable} ${manrope.variable} ${caslon.variable} ${cormorant.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

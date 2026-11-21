@@ -94,7 +94,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
       })())}
 
       {stepIdx >= 0 && (
-        <ol className="grid grid-cols-3 gap-x-1 gap-y-3 text-center text-[0.6rem] font-semibold uppercase tracking-[0.2em] sm:grid-cols-6">
+        <ol className="grid grid-cols-3 gap-x-1 gap-y-3 text-center text-[0.6rem] uppercase tracking-[0.12em] sm:grid-cols-6">
           {STEPS.map((s, i) => (
             <li key={s}>
               <div className={`h-1 ${i <= stepIdx ? "bg-ink" : "bg-line"}`} />

@@ -18,7 +18,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
   return (
     <div>
       <JsonLd data={breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "T.Rodionova Circle", path: "/circle" }])} />
-      <section className="border-b border-line bg-panel py-14 text-center">
+      <section className="border-b border-line bg-white py-14 text-center">
         {early && <p className="mx-auto mb-6 max-w-lg border border-champagne bg-champagne/20 px-4 py-3 text-sm">Эта вещь пока доступна только участницам уровней Maison и Privé в рамках раннего доступа. Вступите в Circle: уровень растёт с покупками.</p>}
         <Monogram className="text-6xl text-bronze" />
         <Eyebrow className="mt-6">Программа лояльности</Eyebrow>
@@ -41,7 +41,7 @@ export default async function CirclePage({ searchParams }: PageProps<"/circle">)
               <div className="text-xs opacity-70">возвращается баллами</div>
               <ul className="mt-8 space-y-3 text-sm">
                 {t.perks.map((p) => (
-                  <li key={p} className="flex gap-2.5"><Star className={t.code === "PRIVE" ? "bg-champagne" : ""} />{p}</li>
+                  <li key={p} className="flex gap-2"><Star className={t.code === "PRIVE" ? "text-champagne" : ""} />{p}</li>
                 ))}
               </ul>
             </div>

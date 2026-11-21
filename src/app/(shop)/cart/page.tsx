@@ -84,7 +84,7 @@ export default async function CartPage() {
                       <form action={updateCartAction}>
                         <input type="hidden" name="variantId" value={i.variantId} />
                         <input type="hidden" name="quantity" value="0" />
-                        <button className="min-h-10 px-1 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-muted hover:text-danger">Удалить</button>
+                        <button className="min-h-10 px-1 text-[0.7rem] uppercase tracking-[0.12em] text-muted hover:text-danger">Удалить</button>
                       </form>
                     </div>
                   </div>

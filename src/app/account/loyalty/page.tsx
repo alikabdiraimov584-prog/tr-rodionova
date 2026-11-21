@@ -42,7 +42,7 @@ export default async function LoyaltyPage() {
 
       <div className="grid gap-px border border-line bg-line md:grid-cols-3">
         {tiers.map((t) => (
-          <div key={t.id} className={`p-5 ${t.id === user.loyaltyTierId ? "bg-panel" : "bg-ivory"}`}>
+          <div key={t.id} className={`p-5 ${t.id === user.loyaltyTierId ? "bg-white" : "bg-ivory"}`}>
             <div className="flex items-baseline justify-between">
               <span className="serif text-xl">{t.name}</span>
               <span className="text-sm text-taupe-dark">{t.cashbackPct}%</span>

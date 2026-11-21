@@ -2,34 +2,32 @@
 
 /*
   Два визуальных контура на одних классах:
-  — сайт и кабинет: по логотипу и концепции бренда — вечерний минимализм, айвори и чёрный, бронза монограммы TR
-    для акцентов; заголовки — контрастная антиква (Noto Serif Display, как знак T.Rodionova), текст — Spectral,
-    подписи — заглавные Spectral с широкой разрядкой, как дескриптор PREMIUM WOMENSWEAR. Без скруглений и теней.
-  — CRM (.crm): рабочий интерфейс (серый фон, белые карточки со скруглением и тенью, цветные статусы, Manrope).
+  — сайт и кабинет: минималистичный, по образцу ACTE (белый фон, Golos Text, тонкие линейки, без скруглений,
+    крупные фото, мелкие заглавные подписи; заголовки — фирменная антиква Libre Caslon Text / Cormorant Garamond);
+  — CRM (.crm): коммерческий (серый фон, белые карточки со скруглением и тенью, цветные статусы).
 */
 :root {
-  --bg: #f7f3ec; /* айвори */
-  --panel: #fffdf9;
-  --ink: #2b2a29; /* цвет надписи в логотипе */
-  --muted: #6b645b; /* контраст ≥ 5:1 на айвори */
-  --muted-dark: #4d4842;
-  --line: #e0d8cb;
-  --line-soft: #ece6dc;
-  --sand: #eee7dc; /* подложка под фото, пока они грузятся */
-  --accent: #1d1c1b; /* кнопки: вечерний чёрный */
-  --accent-fg: #f7f3ec;
-  --bronze: #857054; /* монограмма TR */
-  --bronze-ink: #6b5940; /* бронза для мелкого текста: контраст ≥ 4.5:1 на айвори */
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --ink: #111111;
+  --muted: #6b6b6b; /* контраст 5.3:1 на белом */
+  --muted-dark: #555555;
+  --line: #e5e5e5;
+  --line-soft: #f0f0f0;
+  --sand: #f4f3f1; /* подложка под фото, пока они грузятся */
+  --accent: #111111; /* кнопки и активные элементы */
+  --accent-fg: #ffffff;
   --champagne: #cdb58f; /* только для Circle */
   --champagne-ink: #705b39; /* шампань для текста: контраст ≥ 4.5:1 на светлом фоне и на бейдже в CRM */
-  --success: #276b44; /* контраст ≥ 4.5:1 на светлом фоне для мелкого текста */
+  --success: #276b44; /* контраст ≥ 4.5:1 на светлом фоне для мелкого текста */;
   --danger: #b3261e;
   --warning: #8a5a00;
   --info: #2d4fb5;
   --radius: 0px;
   --shadow: none;
-  --font-ui: var(--font-text), Georgia, "Times New Roman", serif;
-  --font-brand: var(--font-display), var(--font-text), Georgia, "Times New Roman", serif;
+  --font-ui: var(--font-golos), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* фирменная антиква: латиница — Libre Caslon Text (брендбук), кириллица — Cormorant Garamond */
+  --font-brand: var(--font-caslon), var(--font-cormorant), Georgia, "Times New Roman", serif;
 }
 
 .crm {
@@ -46,7 +44,6 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   --font-ui: var(--font-manrope), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-brand: var(--font-ui); /* CRM остаётся на гротеске */
-  font-family: var(--font-ui);
 }
 
 @theme inline {
@@ -57,10 +54,7 @@
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-taupe: #8b7f71;
-  --color-accent: var(--accent);
-  --color-panel: var(--panel);
-  --color-bronze: var(--bronze);
-  --color-bronze-ink: var(--bronze-ink);
+  --color-bronze: #857054; /* монограмма TR в логотипе */
   --color-taupe-dark: #6f655a;
   --color-champagne: var(--champagne);
   --color-muted-dark: var(--muted-dark);
@@ -80,49 +74,47 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  font-variant-numeric: lining-nums;
 }
-::selection { background: var(--bronze); color: var(--accent-fg); }
-/* CRM остаётся плотнее: в таблицах и формах больше данных; шрифт CRM — Manrope (--font-ui внутри .crm). */
-.crm { font-size: 13px; line-height: 1.5; }
+/* CRM остаётся плотнее: в таблицах и формах больше данных. Основной текст CRM наследует шрифт body (Golos Text,
+   по ширине близок к прежнему системному шрифту — таблицы не раздвигаются); заголовки CRM — Manrope через --font-ui. */
+.crm { font-size: 13px; }
 
 /* Базовые заголовки — в слое base: классы размера и разрядки (text-*, tracking-*) на конкретном заголовке
    их перекрывают. Вне слоя эти правила побеждали любые утилиты, и заданные в разметке размеры не работали. */
 @layer base {
+  /* font-size-adjust: from-font выравнивает высоту строчных Cormorant по Caslon — русские и латинские буквы одного роста */
   h1, h2, h3 {
     font-family: var(--font-brand);
-    font-weight: 300;
-    letter-spacing: -0.005em;
-    line-height: 1.12;
+    font-size-adjust: from-font;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1.15;
   }
-  h1 { font-size: 2rem; }
-  h2 { font-size: 1.5rem; }
-  h3 { font-size: 1.15rem; font-weight: 400; }
-  @media (min-width: 768px) { h1 { font-size: 2.6rem; } }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; }
+  h3 { font-size: 1rem; }
 }
 .serif {
   font-family: var(--font-brand);
-  font-weight: 300;
+  font-size-adjust: from-font;
+  font-weight: 400;
   letter-spacing: 0;
   line-height: 1.15;
 }
-/* Заглавные с широкой разрядкой — как дескриптор логотипа: шапка, подписи разделов, кнопки, метки */
-.caps { font-family: var(--font-ui); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em; }
 
 /* Пункты шапки витрины: мелкие заглавные с разрядкой */
-.nav-link { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; transition: color 0.2s; }
-.nav-link:hover { color: var(--bronze); }
-/* Заголовок раздела витрины: антиква, как надпись логотипа */
-.section-title { font-family: var(--font-brand); font-size: 1.6rem; font-weight: 300; line-height: 1.15; }
-@media (min-width: 768px) { .section-title { font-size: 2rem; } }
+.nav-link { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; }
+.nav-link:hover { opacity: 0.6; }
+/* Заголовок раздела витрины */
+.section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; }
 /* Аккордеоны карточки вещи и подвала */
-.acc { display: flex; min-height: 3.25rem; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; }
+.acc { display: flex; min-height: 3.25rem; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; }
 .acc::-webkit-details-marker { display: none; }
-.acc-mark { color: var(--bronze); font-size: 1rem; transition: transform 0.2s; }
+.acc-mark { color: var(--muted); font-size: 1rem; transition: transform 0.2s; }
 details[open] > .acc .acc-mark { transform: rotate(45deg); }
 
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
@@ -136,9 +128,11 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
 .crm .serif { font-family: var(--font-ui); font-size-adjust: none; font-weight: 700; letter-spacing: -0.02em; }
 
 
+/* цвет монограмме не задаётся: она наследует цвет текста, а водяной знак на карточке Circle красят утилиты */
+
 /* Размеры кнопок как до редизайна витрины: на них свёрстаны панели CRM. Витрина укрупняет кнопки ниже, в слое components. */
 @utility btn {
-  @apply inline-flex cursor-pointer items-center justify-center gap-2 px-5 py-2.5 text-[0.68rem] font-semibold uppercase tracking-[0.2em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 px-5 py-2.5 text-[0.7rem] uppercase tracking-[0.12em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   border-radius: var(--radius);
 }
 .crm .btn { text-transform: none; letter-spacing: 0; font-size: 0.8rem; font-weight: 600; border-radius: 8px; }
@@ -147,27 +141,23 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
   /* в слое components, чтобы утилиты вроде text-champagne могли переопределить цвет (например, на тёмной карточке Privé) */
   .eyebrow {
     font-size: 0.66rem;
-    font-weight: 600;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--bronze-ink);
+    color: var(--muted);
   }
   .crm .eyebrow { letter-spacing: 0.04em; text-transform: none; font-size: 0.78rem; font-weight: 600; }
   .btn-primary { @apply btn; background: var(--accent); color: var(--accent-fg); }
-  .btn-primary:hover { background: var(--bronze); color: var(--accent-fg); }
-  .crm .btn-primary:hover { background: #000; color: #fff; }
-  .btn-outline { @apply btn border; border-color: var(--ink); color: var(--ink); background: transparent; }
-  .btn-outline:hover { background: var(--ink); color: var(--accent-fg); }
-  .crm .btn-outline { background: var(--panel); }
-  .crm .btn-outline:hover { background: var(--sand); color: var(--ink); }
+  .btn-primary:hover { background: #000; color: #fff; }
+  .btn-outline { @apply btn border; border-color: var(--ink); color: var(--ink); background: var(--panel); }
+  .btn-outline:hover { background: var(--sand); }
   .crm .btn-outline { border-color: var(--line); box-shadow: var(--shadow); }
   .btn-ghost { @apply btn; color: var(--ink); }
   .btn-ghost:hover { background: var(--sand); }
   .btn-sm { @apply px-3.5 py-1.5 text-[0.65rem]; }
-  /* Витрина и кабинет (всё вне CRM): кнопки высотой 48 px, подпись заглавными с разрядкой, как дескриптор логотипа.
+  /* Витрина и кабинет (всё вне CRM): кнопки по образцу ACTE — высота 48 px, шире и плотнее начертание.
      Правило в слое components, поэтому утилиты на конкретной кнопке (w-full, !px-5) его перекрывают. */
-  :is(.btn-primary, .btn-outline, .btn-ghost):not(.crm *):not(.btn-sm) { min-height: 48px; padding: 0.75rem 1.75rem; font-size: 0.68rem; }
-  .btn-sm:not(.crm *) { min-height: 36px; }
+  :is(.btn-primary, .btn-outline, .btn-ghost):not(.crm *):not(.btn-sm) { min-height: 48px; padding: 0.75rem 1.5rem; font-size: 0.72rem; font-weight: 500; }
+  .btn-sm:not(.crm *) { min-height: 36px; font-weight: 500; }
 
   .input {
     @apply w-full border px-3 py-2.5 text-sm outline-none;
@@ -175,24 +165,25 @@ details[open] > .acc .acc-mark { transform: rotate(45deg); }
   }
   .crm .input { border-radius: 8px; }
   .input::placeholder { color: var(--muted); opacity: 0.8; }
-  .input:focus { border-color: var(--bronze); }
-  .crm .input:focus { border-color: var(--ink); }
-  .label { @apply mb-1 block text-[0.64rem] font-semibold uppercase tracking-[0.2em]; color: var(--muted); }
+  .input:focus { border-color: var(--ink); }
+  .label { @apply mb-1 block text-[0.66rem] uppercase tracking-[0.12em]; color: var(--muted); }
   .crm .label { text-transform: none; letter-spacing: 0; font-size: 0.75rem; font-weight: 600; }
 
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
   .crm .card { border-color: transparent; }
 
   .table { @apply w-full text-sm; }
-  .table th { @apply px-3 py-2 text-left text-[0.64rem] font-semibold uppercase tracking-[0.18em]; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .table th { @apply px-3 py-2 text-left text-[0.66rem] font-normal uppercase tracking-[0.1em]; color: var(--muted); border-bottom: 1px solid var(--line); }
   .crm .table th { text-transform: none; letter-spacing: 0; font-size: 0.75rem; font-weight: 600; }
   .table td { @apply px-3 py-2.5 align-middle; border-bottom: 1px solid var(--line-soft); }
   .table tr:hover td { background: var(--sand); }
   .crm .table tr:hover td { background: #fafafb; }
 
-  .badge { @apply inline-flex items-center border px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em]; border-radius: var(--radius); }
+  .badge { @apply inline-flex items-center border px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.08em]; border-radius: var(--radius); }
   .crm .badge { text-transform: none; letter-spacing: 0; font-size: 0.72rem; font-weight: 600; border-radius: 999px; padding: 2px 9px; }
 
+  .divider-star { @apply flex items-center gap-3; color: var(--muted); }
+  .divider-star::before, .divider-star::after { content: ""; @apply h-px flex-1; background: var(--line); }
   .hairline { border-top: 1px solid var(--line); }
 }
 

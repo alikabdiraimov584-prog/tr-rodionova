@@ -21,9 +21,12 @@ export function Eyebrow({ children, className = "" }: { children: ReactNode; cla
   return <div className={`eyebrow ${className}`}>{children}</div>;
 }
 
-/** Маркер пункта списка: короткая бронзовая черта вместо декоративных звёздочек. */
 export function Star({ className = "" }: { className?: string }) {
-  return <span className={`mt-[0.7em] inline-block h-px w-3 shrink-0 bg-bronze ${className}`} aria-hidden />;
+  return (
+    <span className={`inline-block text-taupe ${className}`} aria-hidden>
+      ✦
+    </span>
+  );
 }
 
 const toneClass: Record<Tone, string> = {

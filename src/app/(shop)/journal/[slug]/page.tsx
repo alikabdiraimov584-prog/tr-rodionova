@@ -77,13 +77,13 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
         {a.category && <> / <Link href={`/journal?category=${encodeURIComponent(a.category)}`}>{a.category}</Link></>}
       </nav>
       <header className="mx-auto max-w-3xl text-center">
-        <div className="flex justify-center gap-3 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">
+        <div className="flex justify-center gap-3 text-[0.62rem] uppercase tracking-[0.16em] text-muted">
           {a.category && <span>{a.category}</span>}
           <span>{formatDate(a.publishedAt)}</span>
         </div>
         <h1 className="mt-3">{a.title}</h1>
         {a.excerpt && <p className="mt-4 text-sm leading-relaxed text-ink/80"><span className="eyebrow mr-2 !text-[0.62rem]">Коротко</span>{a.excerpt}</p>}
-        <p className="mt-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted">
+        <p className="mt-4 text-[0.68rem] uppercase tracking-[0.12em] text-muted">
           Текст: <Link href="/about#founder" className="underline underline-offset-4">{brand.founder || `Редакция ${brand.name}`}</Link>
           {a.updatedAt.getTime() - (a.publishedAt?.getTime() ?? 0) > 86_400_000 && <> · обновлено {formatDate(a.updatedAt)}</>}
         </p>
@@ -115,7 +115,7 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
                 <div className="relative aspect-[4/3] overflow-hidden bg-sand">
                   {r.coverUrl && <Image src={r.coverUrl} alt={r.title} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
                 </div>
-                <div className="mt-3 flex items-center gap-3 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">
+                <div className="mt-3 flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.16em] text-muted">
                   {r.category && <span>{r.category}</span>}
                   <span>{formatDate(r.publishedAt)}</span>
                 </div>

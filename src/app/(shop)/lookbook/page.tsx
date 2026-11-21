@@ -27,7 +27,7 @@ export default async function LookbookPage() {
               </div>
               <div className="mt-3 flex items-baseline justify-between gap-3">
                 <span className="text-sm">{l.title}</span>
-                <span className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">{l.season ?? ""}</span>
+                <span className="text-[0.62rem] uppercase tracking-[0.16em] text-muted">{l.season ?? ""}</span>
               </div>
               <div className="mt-1 text-xs text-muted">{l._count.items} {l._count.items === 1 ? "вещь" : l._count.items < 5 ? "вещи" : "вещей"}</div>
             </Link>

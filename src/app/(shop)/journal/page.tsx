@@ -60,7 +60,7 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
     <div className="mx-auto max-w-7xl px-4 py-12 md:px-8">
       <PageTitle eyebrow="Журнал" title="Заметки ателье">О тканях, уходе за вещами и людях, которые их создают.</PageTitle>
       {categories.length > 0 && (
-        <nav className="mb-10 flex flex-wrap gap-x-5 gap-y-2 border-y border-line py-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em]">
+        <nav className="mb-10 flex flex-wrap gap-x-5 gap-y-2 border-y border-line py-4 text-[0.68rem] uppercase tracking-[0.18em]">
           <Link href="/journal" className={!category ? "text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>Все</Link>
           {categories.map((c) => (
             <Link key={c.category} href={href({ category: c.category!, page: 1 })} className={category === c.category ? "text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>
@@ -78,7 +78,7 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
               <div className="relative aspect-[4/3] overflow-hidden bg-sand">
                 {a.coverUrl && <Image src={a.coverUrl} alt={a.title} fill sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
               </div>
-              <div className="mt-4 flex items-center gap-3 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">
+              <div className="mt-4 flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.16em] text-muted">
                 {a.category && <span>{a.category}</span>}
                 <span>{formatDate(a.publishedAt)}</span>
               </div>
@@ -89,7 +89,7 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
         </div>
       )}
       {pages > 1 && (
-        <nav aria-label="Страницы журнала" className="mt-16 flex items-center justify-between gap-4 border-t border-line pt-6 text-[0.68rem] font-semibold uppercase tracking-[0.2em]">
+        <nav aria-label="Страницы журнала" className="mt-16 flex items-center justify-between gap-4 border-t border-line pt-6 text-[0.68rem] uppercase tracking-[0.16em]">
           {page > 1 ? <Link href={href({ category, page: page - 1 })} className="hover:opacity-60">← Новее</Link> : <span />}
           <span className="text-muted">Страница {page} из {pages}</span>
           {page < pages ? <Link href={href({ category, page: page + 1 })} className="hover:opacity-60">Ранее →</Link> : <span />}

@@ -28,7 +28,7 @@ export function RegisterForm({ next, refCode, referrerName }: { next?: string; r
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next ?? ""} />
       <input type="hidden" name="ref" value={refCode ?? ""} />
-      {referrerName && <p className="border border-champagne bg-champagne/20 px-4 py-3 text-sm">Вас пригласила {referrerName}</p>}
+      {referrerName && <p className="border border-champagne bg-champagne/20 px-4 py-3 text-sm">Вас пригласила {referrerName} ✦</p>}
       <div className="grid grid-cols-2 gap-3">
         <label className="block"><span className="label">Имя</span><input name="firstName" required className="input" /></label>
         <label className="block"><span className="label">Фамилия</span><input name="lastName" className="input" /></label>

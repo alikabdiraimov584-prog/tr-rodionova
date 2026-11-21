@@ -45,10 +45,10 @@ export function SizeAdvisor({ product, user, sizes }: { product: AdvisorProduct;
         <div>
           Ваш размер: <span className="serif text-xl">{advice.size}</span>
         </div>
-        <span className={`text-[0.62rem] font-semibold uppercase tracking-[0.2em] ${tone}`}>{fit}</span>
+        <span className={`text-[0.62rem] uppercase tracking-[0.18em] ${tone}`}>{fit}</span>
       </div>
       <p className="mt-1 text-xs text-muted">{missing ? `${advice.size} в этой модели нет${near ? `: ближайший — ${near}, сверьтесь с таблицей или закажите примерку` : ""}.` : advice.note}</p>
-      <p className="mt-2 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">
+      <p className="mt-2 text-[0.62rem] uppercase tracking-[0.16em] text-muted">
         По меркам из <Link href="/account/profile" className="underline underline-offset-4 hover:text-ink">профиля</Link> · <Link href="/sizes" className="hover:text-ink">таблица {chart.title.toLowerCase()}</Link>
       </p>
     </div>
