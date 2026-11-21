@@ -10,11 +10,11 @@ import type { Prisma } from "@/generated/prisma/client";
 /**
  * МАКЕТЫ НА СОГЛАСОВАНИИ (только в рабочей ветке, на сайт не выкладываются): варианты главной и каталога
  * для коллекции из 3–4 вещей на настоящих фото. /maket/b — вещь на весь экран, /maket/c — кадр, сетка и история,
- * /maket/d — выпуск коллекции, /maket/looks — каталог-лукбук, /maket/row — каталог по образцу therow.com. Вариант A — текущая главная макета.
+ * /maket/d — выпуск коллекции, /maket/looks — каталог-лукбук, /maket/row — каталог по образцу therow.com, /maket/row-home — главная по образцу therow.com. Вариант A — текущая главная макета.
  */
 export const metadata: Metadata = { title: "Макет", robots: { index: false, follow: false } };
 
-const VARIANTS = ["b", "c", "d", "looks", "row"] as const;
+const VARIANTS = ["b", "c", "d", "looks", "row", "row-home"] as const;
 type V = (typeof VARIANTS)[number];
 
 const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
@@ -22,8 +22,9 @@ const bySize = (a: string, b: string) => SIZE_ORDER.indexOf(a.toUpperCase()) - S
 const lead = (t: string | null) => (t ? (t.split(/(?<=[.!?])\s+/)[0] ?? t) : "");
 const nn = (i: number, n: number) => `${String(i + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
 
-export default async function Maket({ params }: PageProps<"/maket/[v]">) {
+export default async function Maket({ params, searchParams }: PageProps<"/maket/[v]">) {
   const { v } = await params;
+  const bw = (await searchParams).bw === "1";
   if (!VARIANTS.includes(v as V)) notFound();
   const found = await db.product.findMany({
     where: { status: "ACTIVE", isPreloved: false },
@@ -37,6 +38,7 @@ export default async function Maket({ params }: PageProps<"/maket/[v]">) {
   if (v === "c") return <GridStory items={items} />;
   if (v === "d") return <Drop items={items} />;
   if (v === "row") return <RowCatalog items={items} />;
+  if (v === "row-home") return <RowHome items={items} bw={bw} />;
   return <Looks items={items} />;
 }
 
@@ -184,6 +186,53 @@ function Drop({ items }: { items: Item[] }) {
   );
 }
 
+/** Сетка вещей в манере therow.com: 4 колонки, кадры 2:3, название слева, цена справа, второй кадр при наведении. */
+function RowGrid({ items }: { items: Item[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-2 gap-y-14 md:grid-cols-4 md:gap-x-10 md:gap-y-32 md:px-5">
+      {items.map((p) => (
+        <Link key={p.id} href={`/product/${p.slug}`} className="group block">
+          <div className="relative aspect-[2/3] overflow-hidden bg-[#f6f5f3]">
+            <Image src={p.shots[0].url} alt={p.name} fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover transition-opacity duration-300 group-hover:opacity-0" />
+            {p.shots[1] && <Image src={p.shots[1].url} alt="" fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100" />}
+            {p.isPreorder && <span className="absolute left-2.5 top-2 text-[#9a9a9a]">Предзаказ</span>}
+          </div>
+          <div className="flex flex-col gap-1 px-4 pt-4 md:flex-row md:justify-between md:px-0 md:pt-6">
+            <span>{p.name}</span>
+            <span>{formatMoney(p.price)}</span>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Главная по образцу therow.com: один большой кадр без надписей и кнопок (только строка сезона в углу),
+ * под ним сразу вся коллекция сеткой. ?bw=1 — тот же кадр в чёрно-белом, как у них.
+ */
+function RowHome({ items, bw }: { items: Item[]; bw: boolean }) {
+  const sans = { fontFamily: "var(--font-manrope), system-ui, sans-serif" };
+  const all = items.flatMap((p) => p.shots);
+  const hero = all.find((s) => s.url.includes("halter-04")) ?? items[0].shots[0];
+  return (
+    <div style={sans} className="text-[0.82rem] md:text-[0.84rem]">
+      <h1 className="sr-only">T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка</h1>
+      <section className="relative h-[calc(100svh-3.5rem)] min-h-[520px] overflow-hidden bg-[#f6f5f3] md:h-[calc(100svh-4rem)]">
+        <Image src={hero.url} alt="Коллекция осень–зима 2026" fill preload sizes="100vw" className={`object-cover object-[50%_22%] ${bw ? "grayscale" : ""}`} />
+        <a href="#collection" className="absolute bottom-5 left-5 text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.3)]">Осень–зима 2026</a>
+      </section>
+      <div id="collection" className="scroll-mt-16">
+        <div className="flex items-baseline justify-between px-5 pb-6 pt-10 md:pt-14">
+          <div className="flex gap-2"><span>Коллекция</span><span>·</span><span>{items.length} вещи</span></div>
+          <Link href="/about">О бренде</Link>
+        </div>
+        <RowGrid items={items} />
+      </div>
+    </div>
+  );
+}
+
 /**
  * Каталог по образцу therow.com: строка «Коллекция · сезон» и справа «Фильтр +», сетка 4 колонки с полями 20px,
  * кадры 2:3, под кадром название слева и цена справа обычным гротеском, «Предзаказ» серым в углу кадра.
@@ -199,21 +248,7 @@ function RowCatalog({ items }: { items: Item[] }) {
         <div className="flex gap-2"><span>Коллекция</span><span>·</span><span>Осень–зима 2026</span></div>
         <span>Фильтр +</span>
       </div>
-      <div className="grid grid-cols-2 gap-x-2 gap-y-14 md:grid-cols-4 md:gap-x-10 md:gap-y-32 md:px-5">
-        {items.map((p) => (
-          <Link key={p.id} href={`/product/${p.slug}`} className="group block">
-            <div className="relative aspect-[2/3] overflow-hidden bg-[#f6f5f3]">
-              <Image src={p.shots[0].url} alt={p.name} fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover transition-opacity duration-300 group-hover:opacity-0" />
-              {p.shots[1] && <Image src={p.shots[1].url} alt="" fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100" />}
-              {p.isPreorder && <span className="absolute left-2.5 top-2 text-[#9a9a9a]">Предзаказ</span>}
-            </div>
-            <div className="flex flex-col gap-1 px-4 pt-4 md:flex-row md:justify-between md:px-0 md:pt-6">
-              <span>{p.name}</span>
-              <span>{formatMoney(p.price)}</span>
-            </div>
-          </Link>
-        ))}
-      </div>
+      <RowGrid items={items} />
       <div className="px-5 pb-6 pt-24 md:pt-40"><span>Образы</span></div>
       <div className="grid grid-cols-2 gap-x-2 gap-y-14 md:grid-cols-4 md:gap-x-10 md:px-5">
         {looks.map((s, i) => (
