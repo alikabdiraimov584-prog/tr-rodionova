@@ -80,7 +80,7 @@ export function ProductGallery({ images, name }: { images: Img[]; name: string }
             <div className="flex rounded-full bg-black/35 px-1.5">
               {images.map((img, i) => (
                 <button key={img.id} type="button" tabIndex={-1} aria-label={`Показать фото ${i + 1}`} aria-current={i === index ? "true" : undefined} onClick={() => go(i)} className="flex h-6 min-w-6 items-center justify-center px-0.5">
-                  <span className={`block h-[2px] rounded-full transition-all ${i === index ? "w-5 bg-white" : "w-3 bg-white/55"}`} />
+                  <span className={`block h-[2px] rounded-full transition-all ${i === index ? "w-5 bg-panel" : "w-3 bg-white/55"}`} />
                 </button>
               ))}
             </div>

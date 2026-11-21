@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { formatMoney } from "@/lib/money";
 import { isRealPhoto } from "@/lib/photos";
+import { MonogramMark } from "@/components/brand-marks";
 
 export type CardProduct = {
   slug: string;
@@ -17,9 +18,9 @@ export type CardProduct = {
 };
 
 /**
- * Карточка в сетке, как у ACTE: только фото, название и цена. На телефоне фото листаются свайпом прямо в сетке,
- * на компьютере при наведении показывается второй кадр. Размеры, цвета и рамки убраны — они в карточке вещи.
- * Вещь без съёмки показывается спокойной плиткой с монограммой, без полосок листания.
+ * Карточка в сетке: фото, название антиквой и цена заглавными с разрядкой — как надпись и дескриптор логотипа.
+ * На телефоне фото листаются свайпом прямо в сетке, на компьютере при наведении показывается второй кадр.
+ * Вещь без съёмки — плитка айвори с бронзовой монограммой TR, без полосок листания.
  */
 export function ProductCard({ p, priority = false }: { p: CardProduct; priority?: boolean }) {
   const soldOut = !p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0);
@@ -30,8 +31,9 @@ export function ProductCard({ p, priority = false }: { p: CardProduct; priority?
     <Link href={`/product/${p.slug}`} className="group block">
       <div className="relative aspect-[3/4] overflow-hidden bg-sand">
         {shots.length === 0 ? (
-          // монограмма — украшение, поэтому псевдоэлементом: не читается диктором и не считается текстом для проверки контраста
-          <div className="flex h-full items-center justify-center text-[1.4rem] tracking-[0.3em] text-ink/15 before:content-['TR']" aria-hidden />
+          <div className="flex h-full items-center justify-center" aria-hidden>
+            <MonogramMark className="text-[4.5rem] text-bronze/30" />
+          </div>
         ) : (
           <>
             {/* телефон: кадры листаются свайпом. Лента скрыта от Tab и экранного диктора — имя ссылки берётся из подписи,
@@ -58,12 +60,12 @@ export function ProductCard({ p, priority = false }: { p: CardProduct; priority?
             )}
           </>
         )}
-        {label && <span className="absolute left-2 top-2 bg-ivory/90 px-1.5 py-0.5 text-[0.62rem] uppercase tracking-[0.1em]">{label}</span>}
+        {label && <span className="absolute left-2.5 top-2.5 bg-ivory/90 px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-bronze-ink">{label}</span>}
       </div>
-      <div className="px-2 pb-5 pt-2.5 text-[0.8rem] leading-snug md:px-1">
-        <div className="line-clamp-2">{p.name}</div>
-        <div className="mt-0.5">
-          {p.compareAt && <s className="mr-1.5 text-muted"><span className="sr-only">Было </span>{formatMoney(p.compareAt)}</s>}
+      <div className="px-2 pb-6 pt-3 text-center md:px-1">
+        <div className="line-clamp-2 font-serif text-[1rem] font-light leading-snug transition-colors group-hover:text-bronze md:text-[1.08rem]">{p.name}</div>
+        <div className="mt-1.5 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-muted-dark">
+          {p.compareAt && <s className="mr-2 text-muted"><span className="sr-only">Было </span>{formatMoney(p.compareAt)}</s>}
           {formatMoney(p.price)}
         </div>
       </div>

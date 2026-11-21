@@ -69,7 +69,7 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
               type="button"
               onClick={() => setVariantId(s.id)}
               aria-pressed={variantId === s.id}
-              className={`min-w-12 min-h-11 border px-3 py-2 text-[0.85rem] transition-colors ${variantId === s.id ? "border-ink bg-ink text-ivory" : "border-line bg-white hover:border-ink"} ${s.available <= 0 && !preorder ? "text-muted line-through" : ""}`}
+              className={`min-w-12 min-h-11 border px-3 py-2 text-[0.85rem] transition-colors ${variantId === s.id ? "border-ink bg-ink text-ivory" : "border-line bg-panel hover:border-ink"} ${s.available <= 0 && !preorder ? "text-muted line-through" : ""}`}
             >
               {s.size}
             </button>

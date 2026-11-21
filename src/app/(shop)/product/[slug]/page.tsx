@@ -104,11 +104,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       <div className="grid md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] md:gap-10 lg:gap-16">
         <ProductGallery images={p.images.map((img) => ({ id: img.id, url: img.url, alt: img.alt }))} name={p.name} />
         <div id="buy" className="min-w-0 scroll-mt-20 px-4 pt-6 md:sticky md:top-24 md:self-start md:px-0 md:pt-10 lg:max-w-[460px]">
-          <nav aria-label="Навигация" className="hidden text-[0.66rem] uppercase tracking-[0.12em] text-muted md:block [&_a]:hover:text-ink">
+          <nav aria-label="Навигация" className="hidden text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-muted md:block [&_a]:hover:text-ink">
             <Link href="/catalog">Каталог</Link>
             {category && <> / <Link href={`/catalog?category=${category.slug}`}>{category.name}</Link></>}
           </nav>
-          <h1 className="mt-0 text-[1.15rem] uppercase tracking-[0.08em] md:mt-4 md:text-[1.35rem]">{p.name}</h1>
+          <h1 className="mt-1 text-[2rem] font-light leading-tight md:mt-4 md:text-[2.5rem]">{p.name}</h1>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="text-[1.05rem]">{formatMoney(p.price)}</span>
             {p.compareAt && <span className="text-muted line-through">{formatMoney(p.compareAt)}</span>}
@@ -127,7 +127,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               </form>
             </AddToCart>
           </div>
-          <ul className="mt-5 grid grid-cols-3 gap-2 border-y border-line py-4 text-center text-[0.68rem] uppercase leading-snug tracking-[0.06em] text-muted">
+          <ul className="mt-5 grid grid-cols-3 gap-2 border-y border-line py-4 text-center text-[0.68rem] font-semibold uppercase leading-snug tracking-[0.2em] text-muted">
             <li>Примерка<br />курьером</li>
             {/* коротко и с условием, как в корзине: порог считается от суммы заказа после скидки; в разметке Offer тот же тариф */}
             <li>{delivery.freeFrom > 0 ? <>Доставка 0 ₽<br />от {formatMoney(delivery.freeFrom)}</> : <>Доставка<br />от 1 дня</>}</li>

@@ -18,7 +18,7 @@ export default async function About() {
   return (
     <TextPage
       eyebrow="О бренде"
-      title="A woman who chooses more"
+      title={brand.name}
       intro={`${brand.name} — марка женской одежды из шерсти, кашемира и шёлка. Мы шьём небольшими партиями в Европе и продаём напрямую: без универмагов, без сезонных распродаж, без вещей «на один раз».`}
       crumbs={[{ name: "О бренде", path: "/about" }]}
     >
@@ -32,7 +32,7 @@ export default async function About() {
         {hero ? <Image src={hero} alt={`${brand.name}: съёмка коллекции`} fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover object-top" /> : <Image src="/images/placeholder/hero.svg" alt="" fill unoptimized className="object-cover" />}
       </div>
       <Section id="founder" title="Основательница">
-        <p>{brand.founder || "Татьяна Родионова"} начинала как дизайнер в ателье индивидуального пошива. Десять лет работы с клиентками научили главному: женщине нужна не мода, а вещь, которая сидит и служит. Так в {brand.foundedYear || "2019"} году появилась марка с коротким списком правил.</p>
+        <p>{brand.founder || "Татьяна Родионова"} начинала дизайнером в ателье индивидуального пошива. В {brand.foundedYear || "2019"} году она основала марку и перенесла в неё порядок ателье: каждая модель дважды проходит примерку на живой модели, прежде чем уйти в пошив.</p>
         <p className="text-muted-dark">Основательница и дизайнер {brand.name}; автор статей журнала о тканях, уходе и посадке.</p>
       </Section>
       <Section id="facts" title="Коротко">

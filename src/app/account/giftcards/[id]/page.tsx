@@ -53,7 +53,7 @@ export default async function GiftCardPage({ params, searchParams }: PageProps<"
           {card.status === "ACTIVE" && (
             <div>
               <div className="eyebrow mb-2">Текст для получателя</div>
-              <p className="border border-line bg-white p-4 text-sm leading-relaxed">{recipientText}</p>
+              <p className="border border-line bg-panel p-4 text-sm leading-relaxed">{recipientText}</p>
               <CopyLink value={recipientText} label="Текст для получателя" />
             </div>
           )}

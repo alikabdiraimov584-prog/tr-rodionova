@@ -23,7 +23,7 @@ export async function ShopHeader() {
     shopCategories(),
   ]);
   const count = cartCount || 0;
-  const icon = "flex h-11 w-11 items-center justify-center hover:opacity-60 transition-opacity";
+  const icon = "flex h-11 w-11 items-center justify-center transition-colors hover:text-bronze";
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-ivory">
       <div className="mx-auto grid h-14 max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center px-2 md:h-16 md:px-5">
@@ -66,43 +66,44 @@ export async function ShopFooter() {
     ["Circle", [["/circle", "Программа лояльности"], ["/account", "Личный кабинет"], ["/account/stylist", "Персональный стилист"]]],
     ["Документы", [["/offer", "Оферта"], ["/privacy", "Политика конфиденциальности"], ["/privacy#consent", "Согласие на обработку данных"], ["/seller", "Информация о продавце"]]],
   ];
-  const head = "text-[0.72rem] uppercase tracking-[0.12em]";
+  const head = "caps";
   const list = (links: [string, string][]) => (
-    <ul className="space-y-0.5 pb-4 text-[0.82rem] md:pb-0">
-      {links.map(([href, label]) => <li key={href}><Link href={href} className="inline-block py-1.5 text-muted hover:text-ink">{label}</Link></li>)}
+    <ul className="space-y-0.5 pb-4 text-[0.9rem] md:pb-0">
+      {links.map(([href, label]) => <li key={href}><Link href={href} className="inline-block py-1.5 text-ivory/65 transition-colors hover:text-ivory">{label}</Link></li>)}
     </ul>
   );
   return (
-    <footer className="mt-24 border-t border-line">
+    // подвал — вечерний чёрный с бронзовой монограммой, как тёмная версия логотипа
+    <footer className="mt-24 bg-accent text-ivory">
       <div className="mx-auto grid max-w-[1600px] gap-x-8 px-4 py-6 md:grid-cols-3 md:gap-y-10 md:px-5 md:py-12 xl:grid-cols-6">
         {cols.map(([title, links]) => (
-          <div key={title} className="border-b border-line md:border-0">
+          <div key={title} className="border-b border-white/10 md:border-0">
             {/* компьютер и планшет: списки открыты всегда */}
             <div className="hidden md:block">
-              <div className={`pb-3 ${head}`}>{title}</div>
+              <div className={`pb-4 text-ivory ${head}`}>{title}</div>
               {list(links)}
             </div>
             {/* телефон: раскрываются по нажатию */}
             <details className="group md:hidden">
               <summary className={`flex min-h-12 cursor-pointer list-none items-center justify-between ${head}`}>
-                {title}<span className="text-muted transition-transform group-open:rotate-45" aria-hidden>+</span>
+                {title}<span className="text-bronze transition-transform group-open:rotate-45" aria-hidden>+</span>
               </summary>
               {list(links)}
             </details>
           </div>
         ))}
-        <div className="pt-6 text-[0.82rem] md:pt-0">
-          <div className={`pb-3 ${head}`}>Связь</div>
-          <p className="text-muted">
-            <a href={`mailto:${brand.email}`} className="break-words hover:text-ink">{brand.email}</a><br />
+        <div className="pt-6 text-[0.9rem] md:pt-0">
+          <div className={`pb-4 ${head}`}>Связь</div>
+          <p className="text-ivory/65">
+            <a href={`mailto:${brand.email}`} className="break-words hover:text-ivory">{brand.email}</a><br />
             {publicPhone(brand.phone) && <><span className="whitespace-nowrap">{publicPhone(brand.phone)}</span><br /></>}
             {seller.hours}
           </p>
-          {seller.showroom && <p className="mt-3 text-muted">{seller.showroom}</p>}
+          {seller.showroom && <p className="mt-3 text-ivory/65">{seller.showroom}</p>}
         </div>
       </div>
-      <div className="flex flex-col items-center gap-4 border-t border-line px-4 py-8 text-center text-[0.68rem] text-muted md:px-5">
-        <BrandLockup className="h-auto w-[200px] text-ink md:w-[240px]" />
+      <div className="flex flex-col items-center gap-5 border-t border-white/10 px-4 py-10 text-center text-[0.72rem] text-ivory/55 md:px-5">
+        <BrandLockup className="h-auto w-[210px] text-ivory md:w-[260px]" />
         <span>© {new Date().getFullYear()} {brand.name}</span>
       </div>
     </footer>
