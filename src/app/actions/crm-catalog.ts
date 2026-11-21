@@ -29,6 +29,7 @@ const ProductSchema = z.object({
   categoryId: z.string().optional(),
   collectionId: z.string().optional(),
   status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]),
+  preorderShipAt: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Отшив к")]).optional(),
   description: z.string().optional(),
   composition: z.string().optional(),
   care: z.string().optional(),
@@ -62,6 +63,9 @@ export async function saveProductAction(_: ActionState, formData: FormData): Pro
     madeIn: d.madeIn || null,
     isNew: formData.get("isNew") === "on",
     isFeatured: formData.get("isFeatured") === "on",
+    isPreorder: formData.get("isPreorder") === "on",
+    // дата отшива хранится полднем МСК выбранного дня: в любом часовом поясе показывается тот же день
+    preorderShipAt: formData.get("isPreorder") === "on" && d.preorderShipAt ? new Date(`${d.preorderShipAt}T12:00:00+03:00`) : null,
   };
   const images = (d.images ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
   let productId = id;

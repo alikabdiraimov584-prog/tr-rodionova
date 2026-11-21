@@ -13,9 +13,12 @@ type P = {
   id?: string; name?: string; sku?: string; slug?: string; price?: number; compareAt?: number | null; costPrice?: number | null;
   categoryId?: string | null; collectionId?: string | null; status?: string; description?: string | null; composition?: string | null;
   care?: string | null; madeIn?: string | null; isNew?: boolean; isFeatured?: boolean; images?: string[]; hiddenWithCategory?: boolean;
+  isPreorder?: boolean; preorderShipAt?: Date | string | null;
 };
 
 const rub = (k?: number | null) => (k ? String(k / 100) : "");
+// дата для поля <input type="date"> по московскому календарю (в базе — полдень МСК выбранного дня)
+const ymd = (d?: Date | string | null) => (d ? new Date(d).toLocaleDateString("sv-SE", { timeZone: "Europe/Moscow" }) : "");
 
 export function ProductForm({ p, categories, collections }: { p?: P; categories: { id: string; name: string; isActive?: boolean }[]; collections: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(saveProductAction, undefined);
@@ -53,6 +56,13 @@ export function ProductForm({ p, categories, collections }: { p?: P; categories:
       {/* у существующей вещи фото ведутся в блоке «Фотографии» (загрузка, порядок, удаление): поле со ссылками
           там перезаписывало бы только что загруженные кадры при сохранении карточки */}
       {!p?.id && <label className="md:col-span-2"><span className="label">Фото — по одному URL в строке (необязательно, можно загрузить после создания)</span><textarea name="images" rows={3} className="input font-mono text-xs" /></label>}
+      {/* предзаказ: вещь можно заказать без остатка на складе, на сайте — «Предзаказ» и срок отшива */}
+      <fieldset className="grid gap-3 border border-line p-4 sm:grid-cols-[auto_1fr] sm:items-end md:col-span-2">
+        <legend className="label px-1">Предзаказ</legend>
+        <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="isPreorder" defaultChecked={p?.isPreorder} className="accent-black" /> Продавать по предзаказу</label>
+        <label><span className="label">Отшив к (необязательно)</span><input type="date" name="preorderShipAt" defaultValue={ymd(p?.preorderShipAt)} className="input sm:max-w-56" /></label>
+        <p className="text-xs text-muted sm:col-span-2">Включено — вещь можно купить, даже если на складе 0: кнопка «Оформить предзаказ», в карточке срок отшива (без даты — «4–6 недель»). Остаток при заказе не списывается. Выключите, когда партия поступит на склад.</p>
+      </fieldset>
       <div className="flex flex-wrap items-center gap-6 md:col-span-2">
         <label className="flex gap-2 text-sm"><input type="checkbox" name="isNew" defaultChecked={p?.isNew} className="accent-black" /> Новинка</label>
         <label className="flex gap-2 text-sm"><input type="checkbox" name="isFeatured" defaultChecked={p?.isFeatured} className="accent-black" /> На главной</label>
