@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentCustomer } from "@/lib/auth";
-import { ProductCard } from "@/components/shop/product-card";
+import { PLAIN_HEADING, RowGrid, SANS } from "@/components/shop/row-grid";
 import { photoFirst } from "@/lib/photos";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
@@ -40,7 +40,8 @@ const arr = (v: string | string[] | undefined) => (typeof v === "string" ? v.spl
 const models = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "модель" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "модели" : "моделей"}`;
 
 /**
- * Каталог по образцу ACTE: заголовок, одна строка категорий и сетка крупных фото. Боковые фильтры убраны;
+ * Каталог по образцу therow.com: строка «Коллекция · раздел» и число вещей над сеткой 2/4 колонки, название и цена под кадром.
+ * Разделов, сортировки и боковых фильтров нет;
  * старые ссылки с size/color/material/price продолжают работать, чтобы не терять переходы из рассылок и поиска.
  */
 export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
@@ -100,25 +101,26 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   // структура ассортимента для краулеров: список вещей и путь к категории; при поиске и фильтрах — без разметки, это не самостоятельные страницы
   const plain = !searching && !filtered;
   return (
-    <div className="mx-auto max-w-[1600px] px-1 md:px-5">
+    <div>
       {plain && products.length > 0 && <JsonLd data={[itemListJsonLd(`${listName} — T.Rodionova`, products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(current ? [{ name: current.name, path: `/catalog?category=${current.slug}` }] : [])])]} />}
-      <div className="px-3 pt-12 text-center md:px-0 md:pt-20">
-        <h1 className="text-[2.2rem] font-light md:text-[3rem]">{listName}</h1>
-        {searching && (
-          <form action="/catalog" role="search" className="mx-auto mt-5 flex max-w-md items-center border-b border-ink focus-within:shadow-[0_1px_0_0_var(--ink)]">
-            <input name="q" defaultValue={q} placeholder="Что вы ищете?" aria-label="Поиск по каталогу" autoFocus={!q} className="min-w-0 flex-1 bg-transparent py-3 text-[0.95rem] outline-none" />
-            <button className="nav-link min-h-11 pl-3">Найти</button>
-          </form>
-        )}
+      {/* строка над сеткой по образцу therow.com: путь слева, число вещей и сброс фильтра справа */}
+      <div style={SANS} className="flex items-baseline justify-between gap-4 px-5 pb-6 pt-8 text-[0.82rem] md:pt-10 md:text-[0.84rem]">
+        <h1 style={PLAIN_HEADING} className="flex flex-wrap gap-2">
+          {current || onlyNew || searching ? <><Link href="/catalog" className="hover:opacity-60">Коллекция</Link><span aria-hidden>·</span><span>{listName}</span></> : <span>Коллекция</span>}
+        </h1>
+        <span className="shrink-0 text-[#6f6f6f]">{models(products.length)}{filtered && <> · <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="underline">сбросить фильтр</Link></>}</span>
       </div>
-      <div className="mb-8 mt-6 flex items-center justify-between px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] md:mb-12 md:px-5">
-        <span className="text-muted">{models(products.length)}{filtered && <> · <Link href={link({ size: undefined, color: undefined, material: undefined, price: undefined })} className="underline">сбросить фильтр</Link></>}</span>
-      </div>
+      {searching && (
+        <form action="/catalog" role="search" className="mx-5 mb-10 flex max-w-md items-center border-b border-ink">
+          <input name="q" defaultValue={q} placeholder="Что вы ищете?" aria-label="Поиск по каталогу" autoFocus={!q} className="min-w-0 flex-1 bg-transparent py-3 text-[0.95rem] outline-none" />
+          <button className="nav-link min-h-11 pl-3">Найти</button>
+        </form>
+      )}
       <div className="pt-1">
         {products.length === 0 ? (
           <Empty title={q ? "Ничего не нашлось" : "Здесь пока пусто"} action={<Link href="/catalog" className="btn-outline">Весь каталог</Link>}>{q ? "Попробуйте другое слово: «платье», «кашемир», «шёлк»." : "Загляните в другие категории."}</Empty>
         ) : (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-10 px-3 md:grid-cols-3 md:gap-x-6 md:gap-y-16 md:px-5 xl:grid-cols-4">{products.map((p, i) => <ProductCard key={p.id} p={p} priority={i < 4} />)}</div>
+          <RowGrid items={products} priority={4} />
         )}
         {current && !q && !onlyNew && !filtered && (current.seoText || faq.length > 0) && (
           <section className="mx-auto mt-20 max-w-3xl border-t border-line px-3 pt-10 md:px-0">
