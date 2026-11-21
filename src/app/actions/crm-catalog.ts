@@ -242,6 +242,24 @@ export async function toggleCategoryAction(formData: FormData) {
   await pingIndexNow(["/catalog", "/yml.xml"]);
 }
 
+/**
+ * Переключатель «На сайте» в списке товаров: снятая вещь уходит в черновики (с витрины, из каталога, выгрузки и поиска),
+ * включённая — снова «в продаже». Вещь из скрытой категории не включается: она вернётся вместе с категорией.
+ */
+export async function toggleProductAction(formData: FormData) {
+  const me = await requireSection("products");
+  const id = String(formData.get("id"));
+  const show = formData.get("show") === "1";
+  const p = await db.product.findUnique({ where: { id }, select: { slug: true, name: true, status: true, category: { select: { isActive: true } } } });
+  // повторное нажатие в устаревшей вкладке ничего не ломает
+  if (!p || (p.status === "ACTIVE") === show || (show && p.category && !p.category.isActive)) return revalidatePath("/crm/products");
+  await db.product.update({ where: { id }, data: { status: show ? "ACTIVE" : "DRAFT", hiddenWithCategory: false } });
+  await audit(me.id, show ? "product.show" : "product.hide", "Product", id, { name: p.name });
+  revalidatePath("/crm/products");
+  revalidatePath("/", "layout");
+  await pingIndexNow([`/product/${p.slug}`, "/catalog", "/yml.xml"]);
+}
+
 /** Порядок в меню: категория меняется местами с соседней, номера переписываются подряд. */
 export async function moveCategoryAction(formData: FormData) {
   await requireSection("products");
