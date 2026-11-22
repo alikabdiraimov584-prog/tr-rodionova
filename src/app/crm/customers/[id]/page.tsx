@@ -25,7 +25,7 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
       notes: { orderBy: { createdAt: "desc" } },
       tasks: { orderBy: [{ status: "asc" }, { dueAt: "asc" }], include: { assignee: { select: { firstName: true } } } },
       wishlist: { include: { product: true } },
-      stockAlerts: { include: { variant: { include: { product: true } } } },
+      stockAlerts: { where: { variant: { archivedAt: null } }, include: { variant: { include: { product: true } } } },
       addresses: true,
       reviews: { include: { product: true } },
     },

@@ -18,7 +18,7 @@ export async function ShopHeader() {
   const user = await getCurrentUser();
   const customer = user && !isStaff(user.role) ? user : null; // счётчик корзины: у сотрудника на витрине гостевая корзина
   const cabinet = cabinetLink(user);
-  const cartCount = await (customer ? db.cartItem.aggregate({ where: { userId: customer.id }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount));
+  const cartCount = await (customer ? db.cartItem.aggregate({ where: { userId: customer.id, variant: { archivedAt: null } }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount));
   const count = cartCount || 0;
   const icon = "flex h-11 w-11 items-center justify-center transition-colors hover:opacity-60";
   return (

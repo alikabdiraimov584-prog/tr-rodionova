@@ -23,7 +23,7 @@ export type CardProduct = {
  * Вещь без съёмки — плитка айвори с бронзовой монограммой TR, без полосок листания.
  */
 export function ProductCard({ p, priority = false }: { p: CardProduct; priority?: boolean }) {
-  const soldOut = !p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0);
+  const soldOut = p.variants.length === 0 || (!p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0));
   const label = soldOut ? "Нет в наличии" : p.isPreorder ? "Предзаказ" : null;
   const shots = p.images.filter((i) => isRealPhoto(i.url)).slice(0, 4);
   const sizes = "(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw";

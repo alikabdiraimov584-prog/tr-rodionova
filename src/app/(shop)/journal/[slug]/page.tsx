@@ -12,7 +12,7 @@ import { JsonLd, articleJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 async function load(slug: string) {
   return db.article.findUnique({
     where: { slug },
-    include: { products: { where: { status: "ACTIVE" }, include: { images: { orderBy: { order: "asc" } }, variants: true } } },
+    include: { products: { where: { status: "ACTIVE" }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } } } },
   });
 }
 

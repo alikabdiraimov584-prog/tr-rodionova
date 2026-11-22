@@ -16,7 +16,7 @@ export default async function Products({ searchParams }: PageProps<"/crm/product
   const q = str(sp.q);
   const products = await db.product.findMany({
     where: q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { sku: { contains: q, mode: "insensitive" } }] } : {},
-    include: { category: true, variants: true, images: { take: 1, orderBy: { order: "asc" } } },
+    include: { category: true, variants: { where: { archivedAt: null } }, images: { take: 1, orderBy: { order: "asc" } } },
     orderBy: [{ status: "asc" }, { name: "asc" }],
   });
   const sold = await db.$queryRaw<{ productId: string; qty: bigint }[]>`

@@ -12,7 +12,7 @@ export default async function WishlistPage() {
   const user = await requireUser("/account/wishlist");
   const items = await db.wishlistItem.findMany({
     where: { userId: user.id },
-    include: { product: { include: { images: { orderBy: { order: "asc" } }, variants: true } } },
+    include: { product: { include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } } } },
     orderBy: { createdAt: "desc" },
   });
   return (

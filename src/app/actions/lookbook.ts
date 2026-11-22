@@ -50,7 +50,7 @@ export async function addLookToCartAction(_: ActionState, formData: FormData): P
     revalidatePath("/", "layout");
     redirect("/cart");
   }
-  const variants = await db.productVariant.findMany({ where: { id: { in: variantIds } }, include: { product: true } });
+  const variants = await db.productVariant.findMany({ where: { id: { in: variantIds }, archivedAt: null }, include: { product: true } });
   const inCart = await db.cartItem.findMany({ where: { userId: user.id, variantId: { in: variantIds } } });
   const cartQty = new Map(inCart.map((c) => [c.variantId, c.quantity]));
 

@@ -28,7 +28,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
   if (sp.paid && (await db.order.count({ where: { id, userId: user.id } }))) await syncOrderPayment(id).catch((e) => console.error("sync payment", id, e));
   const order = await db.order.findUnique({
     where: { id },
-    include: { items: { include: { variant: { include: { product: { include: { variants: { select: { size: true, color: true, stock: true, reserved: true } } } } } } } }, payments: true, history: { orderBy: { createdAt: "asc" } }, address: true },
+    include: { items: { include: { variant: { include: { product: { include: { variants: { where: { archivedAt: null }, select: { size: true, color: true, stock: true, reserved: true } } } } } } } }, payments: true, history: { orderBy: { createdAt: "asc" } }, address: true },
   });
   if (!order || order.userId !== user.id) notFound();
   const reviewed = new Set((await db.review.findMany({ where: { userId: user.id }, select: { productId: true } })).map((r) => r.productId));

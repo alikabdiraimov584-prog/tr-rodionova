@@ -41,7 +41,7 @@ export function LookCart({ slug, items }: { slug: string; items: LookCartItem[] 
       <input type="hidden" name="slug" value={slug} />
       <ul className="divide-y divide-line border-y border-line">
         {items.map((it) => {
-          const inStock = !!it.preorder || it.variants.some((v) => v.available > 0);
+          const inStock = it.variants.some((v) => it.preorder || v.available > 0);
           return (
             <li key={it.productId} className="flex gap-4 py-4">
               <Link href={`/product/${it.slug}`} className="relative block h-24 w-20 shrink-0 overflow-hidden bg-sand">

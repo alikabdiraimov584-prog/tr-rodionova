@@ -8,7 +8,7 @@ export const RETURN_WINDOW_DAYS = 14;
 import { audit } from "@/lib/audit";
 import { currentSession, trackEvent } from "@/lib/web-analytics";
 import { notifyOrder, notifyStaffOrder } from "@/lib/notifications";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { OrderStatus, DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 
 type Tx = Prisma.TransactionClient;
@@ -67,7 +67,7 @@ export type CartLine = {
 
 export async function loadCart(userId: string): Promise<CartLine[]> {
   const items = await db.cartItem.findMany({
-    where: { userId },
+    where: { userId, variant: { archivedAt: null } },
     include: { variant: { include: { product: true } } },
     orderBy: { id: "asc" },
   });
@@ -245,6 +245,14 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
 
   const session = await currentSession();
   const order = await db.$transaction(async (tx) => {
+    // Предзаказ не резервирует остаток, поэтому отдельно проверяем и блокируем варианты до конца оформления.
+    const variantIds = [...new Set(quote.lines.map((line) => line.variantId))];
+    const activeVariants = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "ProductVariant"
+      WHERE id IN (${Prisma.join(variantIds)}) AND "archivedAt" IS NULL
+      ORDER BY id FOR NO KEY UPDATE
+    `;
+    if (activeVariants.length !== variantIds.length) throw new Error("Размер больше не продаётся. Обновите корзину.");
     // Сертификат перепроверяем внутри транзакции: остаток мог измениться
     let giftUsed = 0;
     let giftCardId: string | null = null;
@@ -537,7 +545,7 @@ export type ManualOrderInput = {
 export async function createManualOrder(input: ManualOrderInput) {
   const lines = input.lines.filter((l) => l.variantId && l.quantity > 0);
   if (lines.length === 0) throw new Error("Добавьте хотя бы одну позицию");
-  const variants = await db.productVariant.findMany({ where: { id: { in: lines.map((l) => l.variantId) } }, include: { product: true } });
+  const variants = await db.productVariant.findMany({ where: { id: { in: lines.map((l) => l.variantId) }, archivedAt: null }, include: { product: true } });
   const byId = new Map(variants.map((v) => [v.id, v]));
   const items = lines.map((l) => {
     const v = byId.get(l.variantId);

@@ -11,7 +11,7 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/crm/ord
   const sp = await searchParams;
   const [customers, variants] = await Promise.all([
     db.user.findMany({ where: { role: "CUSTOMER" }, orderBy: { firstName: "asc" } }),
-    db.productVariant.findMany({ where: { product: { status: "ACTIVE" } }, include: { product: true }, orderBy: [{ product: { name: "asc" } }, { sku: "asc" }] }),
+    db.productVariant.findMany({ where: { archivedAt: null, product: { status: "ACTIVE" } }, include: { product: true }, orderBy: [{ product: { name: "asc" } }, { sku: "asc" }] }),
   ]);
   return (
     <div>

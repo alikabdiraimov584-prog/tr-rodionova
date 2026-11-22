@@ -24,7 +24,7 @@ const things = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "вещь
  */
 export default async function Home() {
   const [products, collection] = await Promise.all([
-    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: SHOWN, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }] }),
+    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, take: SHOWN, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }] }),
     db.collection.findFirst({ where: { isActive: true }, orderBy: { slug: "desc" } }),
   ]);
   const items = photoFirst(products);

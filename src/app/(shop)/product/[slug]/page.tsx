@@ -24,11 +24,11 @@ async function load(slug: string) {
     where: { slug },
     include: {
       images: { orderBy: { order: "asc" } },
-      variants: { orderBy: { sku: "asc" } },
+      variants: { where: { archivedAt: null }, orderBy: { sku: "asc" } },
       category: true,
       reviews: { where: { isPublic: true }, include: { user: { select: { firstName: true, height: true, preferredSize: true } } }, orderBy: { createdAt: "desc" } },
       articles: { where: { publishedAt: { lte: new Date() } }, select: { slug: true, title: true } },
-      lookItems: { where: { look: { isPublished: true } }, include: { look: { include: { items: { include: { product: { include: { images: { orderBy: { order: "asc" } }, variants: true } } }, orderBy: { order: "asc" } } } } }, take: 2 },
+      lookItems: { where: { look: { isPublished: true } }, include: { look: { include: { items: { include: { product: { include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } } } }, orderBy: { order: "asc" } } } } }, take: 2 },
     },
   });
 }
@@ -60,7 +60,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const user = await getCurrentCustomer();
   const [inWishlist, related, delivery, seller, installments] = await Promise.all([
     user ? db.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } }) : null,
-    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4 }),
+    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, take: 4 }),
     getSetting("delivery"),
     getSetting("seller"),
     // «4 платежа» обещаем, только если оплата Долями подключена и цена в её пределах
@@ -128,7 +128,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           <div className="mt-5 hidden md:block">{price}</div>
           {rating && <a href="#reviews" className="mt-1 inline-block text-[#6f6f6f] underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
           {installments && <div className="mt-1 text-[#6f6f6f]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
-          {p.isPreorder && <p className="mt-6 text-[#6f6f6f]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении.</p>}
+          {p.isPreorder && p.variants.length > 0 && <p className="mt-6 text-[#6f6f6f]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении.</p>}
           <div className="mt-8"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
           <div className="mt-2">
             <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} defaultSize={wantedSize ?? (advice?.fit === "точно" ? advice.size : null)} defaultColor={wantedColor} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
@@ -214,7 +214,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       )}
 
       {/* подпись не зависит от того, выбран ли размер: панель только возвращает к блоку покупки */}
-      <MobileBuyBar name={p.name} price={formatMoney(p.price)} label={p.isPreorder ? "Предзаказ" : p.variants.some((v) => v.stock - v.reserved > 0) ? "Купить" : "Сообщить о поступлении"} />
+      {p.variants.length > 0 && <MobileBuyBar name={p.name} price={formatMoney(p.price)} label={p.isPreorder ? "Предзаказ" : p.variants.some((v) => v.stock - v.reserved > 0) ? "Купить" : "Сообщить о поступлении"} />}
     </div>
   );
 }

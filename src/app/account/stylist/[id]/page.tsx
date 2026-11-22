@@ -17,7 +17,7 @@ export default async function SelectionView({ params }: PageProps<"/account/styl
     where: { id, userId: user.id, status: { in: ["SENT", "VIEWED"] } },
     include: {
       stylist: { select: { firstName: true } },
-      items: { orderBy: [{ order: "asc" }, { id: "asc" }], include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 }, variants: true } } } },
+      items: { orderBy: [{ order: "asc" }, { id: "asc" }], include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 }, variants: { where: { archivedAt: null } } } } } },
     },
   });
   if (!s) notFound();

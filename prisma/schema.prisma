@@ -203,6 +203,7 @@ model ProductVariant {
   stock      Int         @default(0)
   reserved   Int         @default(0) // зарезервировано под неоплаченные заказы
   barcode    String?
+  archivedAt DateTime?
   movements  StockMovement[]
   orderItems OrderItem[]
   cartItems  CartItem[]

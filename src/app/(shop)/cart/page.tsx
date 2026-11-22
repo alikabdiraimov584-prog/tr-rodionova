@@ -18,7 +18,7 @@ export default async function CartPage() {
   const user = await getCurrentCustomer();
   const items = user
     ? await db.cartItem.findMany({
-        where: { userId: user.id },
+        where: { userId: user.id, variant: { archivedAt: null } },
         include: { variant: { include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 } } } } } },
         orderBy: { id: "asc" },
       })
@@ -26,7 +26,7 @@ export default async function CartPage() {
   const delivery = await getSetting("delivery");
   // пустая корзина — не тупик: показываем новинки со съёмкой
   const suggestions = items.length === 0
-    ? (await db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, isNew: true }, include: { images: { orderBy: { order: "asc" } }, variants: true }, orderBy: { createdAt: "desc" }, take: 12 })).filter((p) => isRealPhoto(p.images[0]?.url)).slice(0, 4)
+    ? (await db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, isNew: true }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, orderBy: { createdAt: "desc" }, take: 12 })).filter((p) => isRealPhoto(p.images[0]?.url)).slice(0, 4)
     : [];
   const subtotal = items.reduce((s, i) => s + (i.variant.price ?? i.variant.product.price) * i.quantity, 0);
   const installments = subtotal > 0 && (await dolyameAvailableFor(subtotal).catch(() => false));

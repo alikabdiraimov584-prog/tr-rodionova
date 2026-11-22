@@ -26,14 +26,14 @@ export async function ensureGuestToken() {
 
 export async function guestCartCount(token: string | null) {
   if (!token) return 0;
-  const r = await db.guestCartItem.aggregate({ where: { token }, _sum: { quantity: true } });
+  const r = await db.guestCartItem.aggregate({ where: { token, variant: { archivedAt: null } }, _sum: { quantity: true } });
   return r._sum.quantity ?? 0;
 }
 
 export async function guestCartItems(token: string | null) {
   if (!token) return [];
   return db.guestCartItem.findMany({
-    where: { token },
+    where: { token, variant: { archivedAt: null } },
     include: { variant: { include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 } } } } } },
     orderBy: { id: "asc" },
   });
@@ -45,7 +45,7 @@ export async function guestCartItems(token: string | null) {
  */
 export async function addToGuestCart(token: string, variantId: string) {
   const variant = await db.productVariant.findUnique({ where: { id: variantId }, include: { product: true } });
-  if (!variant || variant.product.status !== "ACTIVE") throw new Error("Товар недоступен");
+  if (!variant || variant.archivedAt || variant.product.status !== "ACTIVE") throw new Error("Товар недоступен");
   const inCart = await db.guestCartItem.findUnique({ where: { token_variantId: { token, variantId } } });
   const have = inCart?.quantity ?? 0;
   if (have + 1 > cartLimit(variant)) {
@@ -84,7 +84,7 @@ export async function mergeGuestCart(userId: string) {
   const store = await cookies();
   const token = store.get(GUEST_CART_COOKIE)?.value;
   if (!token) return 0;
-  const items = await db.guestCartItem.findMany({ where: { token }, include: { variant: { include: { product: true } } } });
+  const items = await db.guestCartItem.findMany({ where: { token, variant: { archivedAt: null } }, include: { variant: { include: { product: true } } } });
   let moved = 0;
   for (const i of items) {
     if (i.variant.product.status !== "ACTIVE") continue;

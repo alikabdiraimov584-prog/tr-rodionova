@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { formatMoney } from "@/lib/money";
 import { Eyebrow, PageTitle } from "@/components/ui";
-import { ProductForm, VariantForm } from "@/components/crm/catalog-forms";
+import { DeleteVariantForm, ProductForm, VariantForm } from "@/components/crm/catalog-forms";
 import { SubmitButton } from "@/components/form";
 import { updateVariantAction } from "@/app/actions/crm-catalog";
 import { ImageUpload } from "@/components/crm/image-upload";
@@ -15,7 +15,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
   await requireSection("products");
   const { id } = await params;
   const [p, categories, collections] = await Promise.all([
-    db.product.findUnique({ where: { id }, include: { images: { orderBy: { order: "asc" } }, variants: { orderBy: { sku: "asc" }, include: { _count: { select: { alerts: { where: { notifiedAt: null } } } } } } } }),
+    db.product.findUnique({ where: { id }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null }, orderBy: { sku: "asc" }, include: { _count: { select: { alerts: { where: { notifiedAt: null } } } } } } } }),
     db.category.findMany({ orderBy: { order: "asc" } }),
     db.collection.findMany(),
   ]);
@@ -50,7 +50,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
       <div className="card overflow-x-auto" tabIndex={0}>
         <div className="p-5 pb-2"><Eyebrow>Варианты (размер × цвет)</Eyebrow></div>
         <table className="table">
-          <thead><tr><th>Артикул</th><th>Размер</th><th>Цвет</th><th className="text-right">Остаток</th><th className="text-right">Резерв</th><th className="text-right">Ждут</th><th>Цена / штрихкод / цвет</th></tr></thead>
+          <thead><tr><th>Артикул</th><th>Размер</th><th>Цвет</th><th className="text-right">Остаток</th><th className="text-right">Резерв</th><th className="text-right">Ждут</th><th>Цена / штрихкод / цвет</th><th /></tr></thead>
           <tbody>
             {p.variants.map((v) => (
               <tr key={v.id}>
@@ -69,6 +69,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
                     <SubmitButton className="min-h-9 px-2 text-xs underline">ок</SubmitButton>
                   </form>
                 </td>
+                <td><DeleteVariantForm id={v.id} label={[v.size, v.color, v.sku].filter(Boolean).join(" · ")} /></td>
               </tr>
             ))}
           </tbody>

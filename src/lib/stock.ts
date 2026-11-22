@@ -11,9 +11,10 @@ export async function reserveStock(tx: Tx, variantId: string, qty: number, order
   if (qty <= 0) throw new Error("Количество должно быть больше нуля");
   const updated = await tx.$executeRaw`
     UPDATE "ProductVariant" SET "reserved" = "reserved" + ${qty}
-    WHERE "id" = ${variantId} AND "stock" - "reserved" >= ${qty}`;
+    WHERE "id" = ${variantId} AND "archivedAt" IS NULL AND "stock" - "reserved" >= ${qty}`;
   if (updated === 0) {
     const v = await tx.productVariant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
+    if (v.archivedAt) throw new Error(`«${v.product.name}», размер ${v.size} больше не продаётся`);
     throw new Error(`«${v.product.name}», размер ${v.size}: доступно только ${Math.max(0, v.stock - v.reserved)} шт.`);
   }
   await tx.stockMovement.create({ data: { variantId, type: "RESERVE", quantity: -qty, orderId } });
@@ -61,7 +62,7 @@ export async function writeOffStock(
   if (qty <= 0) throw new Error("Количество должно быть больше нуля");
   const updated = await tx.$executeRaw`
     UPDATE "ProductVariant" SET "stock" = "stock" - ${qty}
-    WHERE "id" = ${variantId} AND "stock" - "reserved" >= ${qty}`;
+    WHERE "id" = ${variantId} AND "archivedAt" IS NULL AND "stock" - "reserved" >= ${qty}`;
   if (updated === 0) throw new Error("Нельзя списать больше, чем свободно на складе");
   await tx.stockMovement.create({
     data: { variantId, type: "WRITE_OFF", quantity: -qty, reason: opts.reason, createdBy: opts.createdBy },

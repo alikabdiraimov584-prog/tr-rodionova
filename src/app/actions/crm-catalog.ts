@@ -123,10 +123,47 @@ export async function updateVariantAction(formData: FormData) {
   const id = String(formData.get("id"));
   const price = String(formData.get("price") ?? "").trim();
   const v = await db.productVariant.update({
-    where: { id },
+    where: { id, archivedAt: null },
     data: { price: price ? toKopecks(price) : null, barcode: String(formData.get("barcode") ?? "").trim() || null, colorHex: String(formData.get("colorHex") ?? "").trim() || null },
   });
   revalidatePath(`/crm/products/${v.productId}`);
+}
+
+export async function deleteVariantAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireSection("products");
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "Вариант не найден" };
+
+  let variant;
+  try {
+    variant = await db.$transaction(async (tx) => {
+      const current = await tx.productVariant.findUnique({
+        where: { id },
+        select: { productId: true, sku: true, size: true, color: true, product: { select: { slug: true } } },
+      });
+      if (!current) return null;
+      const changed = await tx.productVariant.updateMany({
+        where: { id, archivedAt: null },
+        data: { archivedAt: new Date() },
+      });
+      if (changed.count) {
+        await audit(me.id, "variant.delete", "ProductVariant", id, {
+          productId: current.productId, sku: current.sku, size: current.size, color: current.color,
+        }, tx);
+      }
+      return current;
+    });
+  } catch (error) {
+    console.error("variant.delete", error);
+    return { error: "Не удалось удалить вариант. Попробуйте ещё раз." };
+  }
+  if (!variant) return { error: "Вариант не найден" };
+
+  revalidatePath("/crm/products");
+  revalidatePath(`/crm/products/${variant.productId}`);
+  revalidatePath("/", "layout");
+  await pingIndexNow([`/product/${variant.product.slug}`, "/catalog", "/yml.xml"]);
+  return { ok: true, message: "Вариант удалён" };
 }
 
 export async function stockOperationAction(_: ActionState, formData: FormData): Promise<ActionState> {

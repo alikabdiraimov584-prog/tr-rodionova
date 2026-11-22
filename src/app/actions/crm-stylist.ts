@@ -52,7 +52,7 @@ export async function addSelectionItemAction(_: ActionState, formData: FormData)
   const variantId = String(formData.get("variantId") ?? "");
   const comment = String(formData.get("comment") ?? "").trim();
   if (!productId) return { error: "Выберите товар" };
-  const product = await db.product.findFirst({ where: { id: productId, status: "ACTIVE" }, select: { id: true, name: true, variants: { select: { id: true } } } });
+  const product = await db.product.findFirst({ where: { id: productId, status: "ACTIVE" }, select: { id: true, name: true, variants: { where: { archivedAt: null }, select: { id: true } } } });
   if (!product) return { error: "Товар недоступен" };
   if (variantId && !product.variants.some((v) => v.id === variantId)) return { error: "Размер не относится к этому товару" };
   const sel = await db.selection.findUnique({ where: { id: selectionId }, select: { id: true, status: true } });

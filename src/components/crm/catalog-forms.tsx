@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addVariantAction, saveProductAction, stockOperationAction } from "@/app/actions/crm-catalog";
+import { addVariantAction, deleteVariantAction, saveProductAction, stockOperationAction } from "@/app/actions/crm-catalog";
+import { ConfirmButton } from "@/components/form";
 
 function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
   if (s?.error) return <span className="text-xs text-danger">{s.error}</span>;
@@ -86,6 +87,19 @@ export function VariantForm({ productId }: { productId: string }) {
       <input aria-label="Остаток" name="stock" type="number" min={0} placeholder="Приход" className="input py-2" />
       <button className="btn-outline btn-sm" disabled={pending}>Добавить</button>
       <div className="md:col-span-7"><Msg s={state} /></div>
+    </form>
+  );
+}
+
+export function DeleteVariantForm({ id, label }: { id: string; label: string }) {
+  const [state, action] = useActionState(deleteVariantAction, undefined);
+  return (
+    <form action={action}>
+      <input type="hidden" name="id" value={id} />
+      <ConfirmButton message={`Удалить вариант «${label}»? Он исчезнет из продажи. Заказы и складские остатки сохранятся.`} className="min-h-9 px-2 text-xs text-danger underline hover:text-ink">
+        удалить
+      </ConfirmButton>
+      {state?.error && <div role="alert"><Msg s={state} /></div>}
     </form>
   );
 }

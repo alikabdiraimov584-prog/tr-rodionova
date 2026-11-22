@@ -191,13 +191,13 @@ export async function notifyReviewRequests(now = new Date()) {
 export async function notifyAbandonedCarts(now = new Date()) {
   const from = new Date(now.getTime() - 3 * 86_400_000);
   const to = new Date(now.getTime() - 20 * 3_600_000);
-  const rows = await db.cartItem.groupBy({ by: ["userId"], where: { updatedAt: { gte: from, lte: to } }, _max: { updatedAt: true } });
+  const rows = await db.cartItem.groupBy({ by: ["userId"], where: { updatedAt: { gte: from, lte: to }, variant: { archivedAt: null } }, _max: { updatedAt: true } });
   if (rows.length === 0) return 0;
   const ids = rows.map((r) => r.userId);
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
   const [recent, users] = await Promise.all([
     db.notification.findMany({ where: { event: "CART_REMINDER", createdAt: { gte: weekAgo }, userId: { in: ids } }, select: { userId: true } }),
-    db.user.findMany({ where: { id: { in: ids }, marketingConsent: true, isActive: true, role: "CUSTOMER" }, select: { id: true, email: true, firstName: true, unsubscribeToken: true, cart: { include: { variant: { include: { product: { select: { name: true, slug: true, price: true } } } } } } } }),
+    db.user.findMany({ where: { id: { in: ids }, marketingConsent: true, isActive: true, role: "CUSTOMER" }, select: { id: true, email: true, firstName: true, unsubscribeToken: true, cart: { where: { variant: { archivedAt: null } }, include: { variant: { include: { product: { select: { name: true, slug: true, price: true } } } } } } } }),
   ]);
   const skip = new Set(recent.map((r) => r.userId));
   const brand = await getSetting("brand");

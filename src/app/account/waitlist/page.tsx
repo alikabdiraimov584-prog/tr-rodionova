@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Лист ожидания" };
 export default async function WaitlistPage() {
   const user = await requireUser("/account/waitlist");
   const subs = await db.stockSubscription.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, variant: { archivedAt: null } },
     include: { variant: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
   });

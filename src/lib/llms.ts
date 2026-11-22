@@ -19,7 +19,7 @@ async function data() {
     getSetting("brand"),
     getSetting("seller"),
     getSetting("delivery"),
-    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, orderBy: { createdAt: "desc" }, include: { category: true, variants: true } }),
+    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, orderBy: { createdAt: "desc" }, include: { category: true, variants: { where: { archivedAt: null } } } }),
     db.article.findMany({ where: { publishedAt: { not: null, lte: now } }, orderBy: { publishedAt: "desc" } }),
     db.look.findMany({ where: { isPublished: true }, orderBy: { order: "asc" } }),
     siteFaq(),

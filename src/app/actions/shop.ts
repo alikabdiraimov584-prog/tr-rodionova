@@ -44,7 +44,7 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
     }
   }
   const variant = await db.productVariant.findUnique({ where: { id: variantId }, include: { product: true } });
-  if (!variant || variant.product.status !== "ACTIVE") return { error: "Товар недоступен", code: variantId };
+  if (!variant || variant.archivedAt || variant.product.status !== "ACTIVE") return { error: "Товар недоступен", code: variantId };
   const inCart = await db.cartItem.findUnique({ where: { userId_variantId: { userId: user.id, variantId } } });
   const have = inCart?.quantity ?? 0;
   if (have + 1 > cartLimit(variant)) {

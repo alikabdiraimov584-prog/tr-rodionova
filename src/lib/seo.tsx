@@ -272,7 +272,7 @@ export function productJsonLd(p: ProductLike, delivery: DeliveryLike, opts: { ha
       url,
       ...common,
       ...(p.isPreloved && p.condition ? { itemCondition: condition } : {}),
-      offers: offer(p.price, p.isPreorder ? 1 : 0, url),
+      offers: offer(p.price, 0, url),
       ...reviews,
     };
   }

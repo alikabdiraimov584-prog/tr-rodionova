@@ -15,7 +15,7 @@ async function load(slug: string) {
     include: {
       items: {
         orderBy: { order: "asc" },
-        include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 }, variants: { orderBy: { sku: "asc" } }, category: { select: { slug: true } } } } },
+        include: { product: { include: { images: { orderBy: { order: "asc" }, take: 1 }, variants: { where: { archivedAt: null }, orderBy: { sku: "asc" } }, category: { select: { slug: true } } } } },
       },
     },
   });

@@ -27,12 +27,12 @@ export default async function Stock({ searchParams }: PageProps<"/crm/stock">) {
     SELECT i."variantId", sum(i.quantity - i."returnedQty")::bigint AS qty FROM "OrderItem" i JOIN "Order" o ON o.id = i."orderId"
     WHERE o.status IN ('PAID','CONFIRMED','PACKING','SHIPPED','DELIVERED','COMPLETED') AND o."createdAt" > now() - interval '30 days' GROUP BY 1`;
   const sold30 = new Map(sales.map((s) => [s.variantId, Number(s.qty)]));
-  const rows = variants.filter((v) => !low || v.stock - v.reserved <= 1);
+  const rows = variants.filter((v) => !low || (!v.archivedAt && v.stock - v.reserved <= 1));
   const totalUnits = variants.reduce((s, v) => s + v.stock, 0);
   const atCost = variants.reduce((s, v) => s + v.stock * (v.product.costPrice ?? 0), 0);
   const atRetail = variants.reduce((s, v) => s + v.stock * (v.price ?? v.product.price), 0);
   const reserved = variants.reduce((s, v) => s + v.reserved, 0);
-  const waiting = variants.reduce((s, v) => s + v._count.alerts, 0);
+  const waiting = variants.reduce((s, v) => s + (v.archivedAt ? 0 : v._count.alerts), 0);
   const all = await db.productVariant.findMany({ include: { product: true }, orderBy: [{ product: { name: "asc" } }, { sku: "asc" }] });
   return (
     <div className="space-y-6">
@@ -41,12 +41,12 @@ export default async function Stock({ searchParams }: PageProps<"/crm/stock">) {
         <Stat label="Единиц на складе" value={totalUnits} hint={`в резерве ${reserved}`} />
         <Stat label="Стоимость по себестоимости" value={formatMoney(atCost)} />
         <Stat label="Стоимость в розничных ценах" value={formatMoney(atRetail)} />
-        <Stat label="Нет в наличии" value={variants.filter((v) => v.stock - v.reserved <= 0).length} hint="вариантов" tone="danger" />
+        <Stat label="Нет в наличии" value={variants.filter((v) => !v.archivedAt && v.stock - v.reserved <= 0).length} hint="вариантов" tone="danger" />
         <Stat label="Ждут поступления" value={waiting} hint="подписок в листе ожидания" />
       </div>
       <div className="card p-5">
         <div className="eyebrow mb-3">Операция</div>
-        <StockOperationForm key={preset} preset={preset} variants={all.map((v) => ({ id: v.id, label: `${v.product.name} · ${v.color ?? ""} · ${v.size} · ${v.sku} · ост. ${v.stock - v.reserved}` }))} />
+        <StockOperationForm key={preset} preset={preset} variants={all.map((v) => ({ id: v.id, label: `${v.product.name} · ${v.color ?? ""} · ${v.size} · ${v.sku}${v.archivedAt ? " · снят с продажи" : ""} · ост. ${v.stock - v.reserved}` }))} />
       </div>
       <div className="flex flex-wrap gap-2">
         <form className="flex w-full gap-2 sm:w-auto">
@@ -67,12 +67,12 @@ export default async function Stock({ searchParams }: PageProps<"/crm/stock">) {
                 <tr key={v.id}>
                   <td>{v.product.name}<div className="text-xs text-muted">{v.color}</div></td>
                   <td className="text-muted">{v.sku}</td>
-                  <td>{v.size}</td>
+                  <td>{v.size}{v.archivedAt && <div className="text-xs text-muted">Снят с продажи</div>}</td>
                   <td className="text-right">{v.stock}</td>
                   <td className="text-right text-muted">{v.reserved || "—"}</td>
                   <td className={`text-right ${free <= 0 ? "text-danger" : free <= 1 ? "text-warning" : ""}`}>{free}</td>
                   <td className="text-right">{s30 || "—"}{cover !== null && <div className="text-[0.65rem] text-muted">хватит на ~{cover} дн.</div>}</td>
-                  <td className="text-right">{v._count.alerts || "—"}</td>
+                  <td className="text-right">{(!v.archivedAt && v._count.alerts) || "—"}</td>
                   <td className="whitespace-nowrap text-right text-muted">{formatMoney(v.stock * (v.product.costPrice ?? 0))}</td>
                   <td><Link href={qs("/crm/stock", { q, low: low ? 1 : undefined, variant: v.id })} prefetch={false} className="text-xs underline">операция</Link></td>
                 </tr>

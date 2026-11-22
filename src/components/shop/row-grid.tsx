@@ -21,7 +21,7 @@ export function RowGrid({ items, priority = 0 }: { items: CardProduct[]; priorit
     <div style={SANS} className="grid grid-cols-2 gap-x-2 gap-y-14 text-[0.82rem] md:grid-cols-4 md:gap-x-10 md:gap-y-32 md:px-5 md:text-[0.84rem]">
       {items.map((p, i) => {
         const shots = p.images.filter((s) => isRealPhoto(s.url));
-        const soldOut = !p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0);
+        const soldOut = p.variants.length === 0 || (!p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0));
         const label = soldOut ? "Нет в наличии" : p.isPreorder ? "Предзаказ" : null;
         return (
           <Link key={p.slug} href={`/product/${p.slug}`} className="group block">

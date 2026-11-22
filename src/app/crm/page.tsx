@@ -29,7 +29,7 @@ export default async function Dashboard() {
       orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { priority: "desc" }],
       take: 6,
     }),
-    db.productVariant.findMany({ where: { product: { status: "ACTIVE" } }, include: { product: true, _count: { select: { alerts: { where: { notifiedAt: null } } } } }, orderBy: { stock: "asc" }, take: 40 }),
+    db.productVariant.findMany({ where: { archivedAt: null, product: { status: "ACTIVE" } }, include: { product: true, _count: { select: { alerts: { where: { notifiedAt: null } } } } }, orderBy: { stock: "asc" }, take: 40 }),
     customerStats(),
     db.user.findMany({ where: { role: "CUSTOMER" }, select: { id: true, lifetimeSpent: true, createdAt: true } }),
     db.$queryRaw<{ id: string; firstName: string; lastName: string | null; birthday: Date }[]>`

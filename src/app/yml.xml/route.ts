@@ -13,7 +13,7 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export async function GET() {
   const [brand, products, categories] = await Promise.all([
     getSetting("brand"),
-    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" }, take: 5 }, variants: true, category: true } }),
+    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" }, take: 5 }, variants: { where: { archivedAt: null } }, category: true } }),
     db.category.findMany({ where: { isActive: true }, orderBy: { order: "asc" } }),
   ]);
   const date = new Date().toISOString().slice(0, 16).replace("T", " ");

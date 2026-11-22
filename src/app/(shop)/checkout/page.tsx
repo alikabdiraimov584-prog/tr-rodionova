@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Оформление заказа" }
 
 export default async function CheckoutPage() {
   const user = await getCurrentCustomer();
-  const count = user ? await db.cartItem.count({ where: { userId: user.id } }) : await guestCartCount(await getGuestToken());
+  const count = user ? await db.cartItem.count({ where: { userId: user.id, variant: { archivedAt: null } } }) : await guestCartCount(await getGuestToken());
   if (count === 0) redirect("/cart");
   const [addresses, seller, dadata, initialQuote, online] = await Promise.all([
     user ? db.address.findMany({ where: { userId: user.id, NOT: { label: "Архив" } }, orderBy: { isDefault: "desc" } }) : [],

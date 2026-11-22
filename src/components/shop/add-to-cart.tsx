@@ -31,6 +31,7 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
   const mine = !!variantId && answerFor === variantId;
   // кнопки по образцу therow.com: тонкая рамка на всю ширину, обычный текст; при наведении заливка
   const btn = "flex min-h-12 w-full items-center justify-center border border-ink px-4 transition-colors hover:bg-ink hover:text-white disabled:border-line disabled:text-[#6f6f6f] disabled:hover:bg-transparent";
+  if (!variants.length) return <div className="space-y-5"><p>Нет доступных размеров</p>{children}</div>;
   return (
     <div className="space-y-5">
       {colors.length > 0 && colors[0].color && (

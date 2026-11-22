@@ -62,14 +62,14 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
     isPreloved: false,
     ...(category ? { category: { slug: category } } : {}),
     ...(onlyNew ? { isNew: true } : {}),
-    ...(sizes.length || colors.length ? { variants: { some: { ...(sizes.length ? { size: { in: sizes } } : {}), ...(colors.length ? { color: { in: colors } } : {}) } } } : {}),
+    ...(sizes.length || colors.length ? { variants: { some: { archivedAt: null, ...(sizes.length ? { size: { in: sizes } } : {}), ...(colors.length ? { color: { in: colors } } : {}) } } } : {}),
     ...(materials.length ? { material: { in: materials } } : {}),
     ...(price ? { price: { gte: price[1], ...(price[2] ? { lt: price[2] } : {}) } } : {}),
     ...(q ? { AND: [{ OR: [{ name: { contains: q, mode: "insensitive" } }, { composition: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] }] } : {}),
   };
   const [categories, found] = await Promise.all([
     db.category.findMany({ orderBy: { order: "asc" }, where: { isActive: true, products: { some: { status: "ACTIVE", isPreloved: false } } } }),
-    db.product.findMany({ where, include: { images: { orderBy: { order: "asc" } }, variants: true }, orderBy: SORTS[sort].orderBy }),
+    db.product.findMany({ where, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, orderBy: SORTS[sort].orderBy }),
   ]);
   // по умолчанию («сначала новые») вещи со съёмкой идут первыми; при сортировке по цене порядок строгий
   const products = sort === "new" ? photoFirst(found) : found;

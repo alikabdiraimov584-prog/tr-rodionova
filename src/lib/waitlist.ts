@@ -7,7 +7,7 @@ import { notifySiteMessage } from "@/lib/notifications";
  */
 export async function notifyWaitlist(variantId: string) {
   const v = await db.productVariant.findUniqueOrThrow({ where: { id: variantId }, include: { product: true } });
-  if (v.stock - v.reserved <= 0) return 0;
+  if (v.archivedAt || v.stock - v.reserved <= 0) return 0;
   const subs = await db.stockSubscription.findMany({ where: { variantId, notifiedAt: null }, include: { user: true } });
   for (const s of subs) {
     const text = `${s.user.firstName}, «${v.product.name}» в размере ${v.size}${v.color ? `, ${v.color}` : ""} снова в наличии. Отложить для вас? Ответьте на это сообщение. https://tr-rodionova.ru/product/${v.product.slug}`;

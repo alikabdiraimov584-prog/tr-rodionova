@@ -13,7 +13,7 @@ export async function subscribeStockAction(_: ActionState, formData: FormData): 
   if (!user) redirect(`/login?next=/product/${slug}`);
   const variantId = String(formData.get("variantId"));
   const variant = await db.productVariant.findUnique({ where: { id: variantId } });
-  if (!variant) return { error: "Размер не найден" };
+  if (!variant || variant.archivedAt) return { error: "Размер не найден" };
   await db.stockSubscription.upsert({
     where: { userId_variantId: { userId: user.id, variantId } },
     update: { notifiedAt: null },

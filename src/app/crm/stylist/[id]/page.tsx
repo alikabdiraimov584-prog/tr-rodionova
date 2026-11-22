@@ -71,7 +71,7 @@ export default async function SelectionPage({ params, searchParams }: PageProps<
   const products = editable
     ? await db.product.findMany({
         where: { status: "ACTIVE", id: { notIn: s.items.map((i) => i.productId) } },
-        select: { id: true, name: true, price: true, variants: { select: { id: true, size: true, color: true, stock: true, reserved: true } } },
+        select: { id: true, name: true, price: true, variants: { where: { archivedAt: null }, select: { id: true, size: true, color: true, stock: true, reserved: true } } },
         orderBy: { name: "asc" },
       })
     : [];

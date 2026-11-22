@@ -19,7 +19,7 @@ export async function brandIssues(): Promise<BrandIssue[]> {
     getSetting("brand"),
     getSetting("seller"),
     db.product.findMany({
-      where: { status: "ACTIVE", OR: [{ price: { lt: SUSPICIOUS_PRICE } }, { variants: { some: { price: { lt: SUSPICIOUS_PRICE } } } }] },
+      where: { status: "ACTIVE", OR: [{ price: { lt: SUSPICIOUS_PRICE } }, { variants: { some: { archivedAt: null, price: { lt: SUSPICIOUS_PRICE } } } }] },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

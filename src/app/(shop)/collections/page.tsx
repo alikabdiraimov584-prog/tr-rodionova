@@ -9,7 +9,7 @@ import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
 export const metadata: Metadata = { title: "Коллекции", alternates: { canonical: "/collections" } };
 
 export default async function Collections() {
-  const collections = await db.collection.findMany({ where: { isActive: true }, orderBy: { slug: "desc" }, include: { products: { where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 8 } } });
+  const collections = await db.collection.findMany({ where: { isActive: true }, orderBy: { slug: "desc" }, include: { products: { where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, take: 8 } } });
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-8 md:px-6">
       <JsonLd data={[breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Коллекции", path: "/collections" }]), ...collections.filter((c) => c.products.length).map((c) => itemListJsonLd(`${c.name}${c.season ? ` (${c.season})` : ""} — T.Rodionova`, c.products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))))]} />
