@@ -137,6 +137,44 @@ export async function updateStaffAction(formData: FormData) {
   revalidatePath("/crm/staff");
 }
 
+export async function deleteStaffAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireSection("staff");
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return { error: "Сотрудник не найден" };
+  if (id === me.id) return { error: "Нельзя удалить свой аккаунт" };
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      // Блокируем обе записи в одном порядке, чтобы два администратора не могли удалить друг друга.
+      const users = await tx.$queryRaw<{ id: string; role: Role; email: string; isActive: boolean; sessionVersion: number }[]>`
+        SELECT id, role, email, "isActive", "sessionVersion"
+        FROM "User"
+        WHERE id IN (${me.id}, ${id})
+        ORDER BY id
+        FOR UPDATE
+      `;
+      const actor = users.find((user) => user.id === me.id);
+      if (actor?.role !== "ADMIN" || !actor.isActive || actor.sessionVersion !== me.sessionVersion) {
+        return { error: "Доступ администратора изменился. Войдите заново." };
+      }
+      const employee = users.find((user) => user.id === id);
+      if (!employee || employee.role === "CUSTOMER") return { error: "Сотрудник не найден" };
+
+      await tx.passwordResetToken.deleteMany({ where: { userId: id } });
+      await tx.loginCode.deleteMany({ where: { email: employee.email } });
+      // Внешние ключи снимают назначения и сохраняют заказы, сообщения, задачи и журнал.
+      await tx.user.delete({ where: { id } });
+      await audit(me.id, "staff.delete", "User", id, { role: employee.role }, tx);
+      return { ok: true };
+    });
+    revalidatePath("/crm/staff");
+    return result;
+  } catch (error) {
+    console.error("staff.delete", error);
+    return { error: "Не удалось удалить сотрудника. Попробуйте ещё раз." };
+  }
+}
+
 export async function resetStaffPasswordAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireSection("staff");
   const id = String(formData.get("id"));

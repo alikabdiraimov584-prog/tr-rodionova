@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/money";
 import { ROLE } from "@/lib/labels";
 import { SECTIONS } from "@/lib/permissions";
 import { Badge, Eyebrow, PageTitle } from "@/components/ui";
-import { ResetPasswordForm, StaffForm } from "@/components/crm/admin-forms";
+import { DeleteStaffForm, ResetPasswordForm, StaffForm } from "@/components/crm/admin-forms";
 import { SubmitButton, ConfirmButton } from "@/components/form";
 import { updateStaffAction } from "@/app/actions/crm-admin";
 import { adminResetTotpAction } from "@/app/actions/totp";
@@ -73,6 +73,7 @@ export default async function Staff() {
                       <ConfirmButton message="Сбросить двухфакторную защиту сотруднику? Все его сессии завершатся." className="text-xs text-muted underline hover:text-ink">сбросить 2FA</ConfirmButton>
                     </form>
                   )}
+                  {s.id !== me.id && <DeleteStaffForm id={s.id} name={[s.firstName, s.lastName].filter(Boolean).join(" ")} />}
                 </td>
               </tr>
             ))}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { addLedgerAction, createStaffAction, resetStaffPasswordAction, saveChannelAction, saveSettingsAction, telegramSetWebhookAction, testEmailChannelAction } from "@/app/actions/crm-admin";
+import { addLedgerAction, createStaffAction, deleteStaffAction, resetStaffPasswordAction, saveChannelAction, saveSettingsAction, telegramSetWebhookAction, testEmailChannelAction } from "@/app/actions/crm-admin";
+import { ConfirmButton } from "@/components/form";
 
 function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
   if (s?.error) return <span className="text-xs text-danger">{s.error}</span>;
@@ -68,6 +69,22 @@ export function StaffForm() {
       </label>
       <button className="btn-primary btn-sm" disabled={pending}>Создать</button>
       <div className="sm:col-span-2 md:col-span-3 xl:col-span-6"><Msg s={state} /></div>
+    </form>
+  );
+}
+
+export function DeleteStaffForm({ id, name }: { id: string; name: string }) {
+  const [state, action] = useActionState(deleteStaffAction, undefined);
+  return (
+    <form action={action} className="inline">
+      <input type="hidden" name="id" value={id} />
+      <ConfirmButton
+        message={`Удалить аккаунт сотрудника «${name}»? Доступ будет закрыт, а назначенные диалоги и задачи останутся без ответственного. Восстановить аккаунт нельзя.`}
+        className="text-xs text-danger underline hover:text-ink"
+      >
+        удалить
+      </ConfirmButton>
+      {state?.error && <div role="alert" className="mt-1 whitespace-normal"><Msg s={state} /></div>}
     </form>
   );
 }
