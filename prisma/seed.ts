@@ -18,78 +18,8 @@ async function main() {
   }
   if (process.env.SEED_DEMO === "1") requireDemoPassword();
 
-  // ── Уровни лояльности «T.Rodionova Circle» (см. docs/01-market-research.md) ──
-  const tiers = [
-    {
-      code: "ATELIER",
-      name: "Atelier",
-      threshold: 0,
-      cashbackPct: 3,
-      maxPayPct: 30,
-      birthdayBonus: 3000,
-      order: 0,
-      freeShipping: false,
-      freeReturns: false,
-      earlyAccess: false,
-      stylist: false,
-      perks: ["3% баллами с каждой покупки", "Оплата баллами до 30% заказа", "Закрытые предпродажи", "3 000 баллов ко дню рождения"],
-    },
-    {
-      code: "MAISON",
-      name: "Maison",
-      threshold: 150_000 * RUB,
-      cashbackPct: 5,
-      maxPayPct: 30,
-      birthdayBonus: 4000,
-      order: 1,
-      freeShipping: true,
-      freeReturns: false,
-      earlyAccess: true,
-      stylist: false,
-      perks: ["5% баллами", "Бесплатная доставка", "Ранний доступ к коллекциям", "4 000 баллов ко дню рождения"],
-    },
-    {
-      code: "PRIVE",
-      name: "Privé",
-      threshold: 400_000 * RUB,
-      cashbackPct: 7,
-      maxPayPct: 30,
-      birthdayBonus: 5000,
-      order: 2,
-      freeShipping: true,
-      freeReturns: true,
-      earlyAccess: true,
-      stylist: true,
-      perks: [
-        "7% баллами",
-        "Персональный стилист и примерка дома",
-        "Приват-показы и предзаказ коллекций",
-        "Бесплатные доставка и возврат",
-        "Уход за изделиями в ателье",
-        "5 000 баллов ко дню рождения",
-      ],
-    },
-  ];
-  for (const t of tiers) {
-    await db.loyaltyTier.upsert({ where: { code: t.code }, update: t, create: t });
-  }
-  const base = await db.loyaltyTier.findUniqueOrThrow({ where: { code: "ATELIER" } });
-  // Старые уровни из ранних версий схемы: переводим клиентов на базовый и удаляем
-  const legacy = await db.loyaltyTier.findMany({ where: { code: { notIn: tiers.map((t) => t.code) } } });
-  if (legacy.length) {
-    await db.user.updateMany({ where: { loyaltyTierId: { in: legacy.map((t) => t.id) } }, data: { loyaltyTierId: base.id } });
-    await db.loyaltyTier.deleteMany({ where: { id: { in: legacy.map((t) => t.id) } } });
-  }
-
   // ── Настройки ──
   const settings: Record<string, unknown> = {
-    loyalty: {
-      welcomePoints: 2000,
-      referralPoints: 2000,
-      reviewPoints: 300,
-      pointsExpireDays: 365,
-      pointValueKopecks: 100, // 1 балл = 1 ₽
-    },
     delivery: {
       freeFrom: 15_000 * RUB,
       courier: 500 * RUB,
@@ -126,7 +56,6 @@ async function main() {
       firstName: "Татьяна",
       lastName: "Родионова",
       role: "ADMIN",
-      loyaltyTierId: base.id,
     },
   });
   await db.user.upsert({
@@ -137,10 +66,9 @@ async function main() {
       passwordHash: await bcrypt.hash(requireDemoPassword(), 10),
       firstName: "Мария",
       role: "MANAGER",
-      loyaltyTierId: base.id,
     },
   });
-  const customer = await db.user.upsert({
+  await db.user.upsert({
     where: { email: "anna@example.com" },
     update: {},
     create: {
@@ -151,19 +79,12 @@ async function main() {
       lastName: "Смирнова",
       birthday: new Date("1990-05-14"),
       role: "CUSTOMER",
-      loyaltyTierId: base.id,
-      pointsBalance: 2000,
       source: "Instagram",
       preferredSize: "S",
       marketingConsent: true,
       tags: ["vip-кандидат"],
     },
   });
-  if ((await db.pointsTransaction.count({ where: { userId: customer.id } })) === 0) {
-    await db.pointsTransaction.create({
-      data: { userId: customer.id, type: "EARN_WELCOME", amount: 2000, comment: "Приветственный бонус" },
-    });
-  }
   }
 
   // ── Категории ──
@@ -475,10 +396,9 @@ async function main() {
   const templates = [
     ["Приветствие", "/привет", "{имя}, здравствуйте! Это T.Rodionova. С радостью помогу."],
     ["Где заказ", "/заказ", "{имя}, заказ {заказ} уже в пути. Трек-номер и статус — в личном кабинете в разделе «Заказы». Если что-то не так — напишите, разберёмся."],
-    ["Доставка", "/доставка", "Доставляем курьером по Москве и Петербургу с примеркой за 1–2 дня, по России — СДЭК 2–7 дней. Бесплатно от 15 000 ₽ и для уровней Maison и Privé."],
+    ["Доставка", "/доставка", "Доставляем курьером по Москве и Петербургу с примеркой за 1–2 дня, по России — СДЭК 2–7 дней. Бесплатно от 15 000 ₽."],
     ["Размер", "/размер", "Подскажите, пожалуйста, ваш рост и обхваты груди, талии и бёдер — подберу размер. Наши модели садятся по размерной сетке, жакеты Aurora чуть свободнее."],
     ["Возврат", "/возврат", "{имя}, вернуть вещь можно в течение 14 дней после получения, если сохранены ярлыки. Оформите возврат в личном кабинете или пришлите номер заказа — я всё сделаю за вас. Деньги вернутся в течение 10 дней."],
-    ["Баллы", "/баллы", "{имя}, у вас {баллы} баллов, уровень {уровень}. Баллами можно оплатить до 30% заказа, 1 балл = 1 ₽."],
     ["Стилист", "/стилист", "Запишу вас к стилисту в шоурум на Большой Никитской или на примерку дома. Какие дата и время удобны?"],
   ] as const;
   for (const [i, [title, shortcut, text]] of templates.entries()) {
@@ -488,7 +408,7 @@ async function main() {
   await seedBrand(db);
 
   if (process.env.SEED_DEMO === "1") {
-    await seedDemo(base.id);
+    await seedDemo();
     await seedSupportDemo();
     await seedA(db);
     await seedB(db);
@@ -515,7 +435,7 @@ function rng(seed: number) {
   };
 }
 
-async function seedDemo(baseTierId: string) {
+async function seedDemo() {
   if ((await db.order.count()) > 0) return; // демо уже загружено
   const rand = rng(42);
   const pick = <T,>(arr: readonly T[]) => arr[Math.floor(rand() * arr.length)];
@@ -547,7 +467,6 @@ async function seedDemo(baseTierId: string) {
         firstName: fn,
         lastName: ln,
         birthday: new Date(1972 + Math.floor(rand() * 30), Math.floor(rand() * 12), 1 + Math.floor(rand() * 28)),
-        loyaltyTierId: baseTierId,
         source: pick(sources),
         preferredSize: pick(sizes),
         marketingConsent: rand() > 0.3,
@@ -556,21 +475,16 @@ async function seedDemo(baseTierId: string) {
     });
     const r = rand();
     customers.push({ id: u.id, profile: r < 0.12 ? "vip" : r < 0.42 ? "regular" : r < 0.7 ? "one" : r < 0.85 ? "lapsed" : "none" });
-    await db.pointsTransaction.create({
-      data: { userId: u.id, type: "EARN_WELCOME", amount: 2000, comment: "Приветственный бонус", createdAt, expiresAt: new Date(createdAt.getTime() + 365 * DAY) },
-    });
-    await db.user.update({ where: { id: u.id }, data: { pointsBalance: { increment: 2000 } } });
     await db.address.create({
       data: { userId: u.id, label: "Дом", city: pick(cities), street: pick(["Тверская ул.", "Остоженка", "Большая Никитская ул.", "Невский пр.", "Кутузовский пр.", "ул. Баумана"]), building: String(1 + Math.floor(rand() * 40)), apartment: String(1 + Math.floor(rand() * 120)), isDefault: true },
     });
   }
 
-  const tiers = await db.loyaltyTier.findMany({ orderBy: { threshold: "asc" } });
   const deliveries = ["COURIER", "COURIER", "CDEK", "YANDEX", "PICKUP", "BOXBERRY"] as const;
   const payments = ["CARD", "CARD", "SBP", "INSTALLMENT"] as const;
 
   for (const c of customers) {
-    const user = await db.user.findUniqueOrThrow({ where: { id: c.id }, include: { addresses: true, loyaltyTier: true } });
+    const user = await db.user.findUniqueOrThrow({ where: { id: c.id }, include: { addresses: true } });
     const count = { vip: 5 + Math.floor(rand() * 5), regular: 2 + Math.floor(rand() * 3), one: 1, lapsed: 1 + Math.floor(rand() * 2), none: 0 }[c.profile];
     const dates: number[] = [];
     for (let k = 0; k < count; k++) {
@@ -590,7 +504,6 @@ async function seedDemo(baseTierId: string) {
       }
       const lines = [...chosen.values()];
       const subtotal = lines.reduce((s, v) => s + (v.price ?? v.product.price), 0);
-      const tier = user.loyaltyTier ?? tiers[0];
       const deliveryMethod = pick(deliveries);
       const deliveryCost = deliveryMethod === "PICKUP" || subtotal >= 15_000 * RUB ? 0 : 500 * RUB;
       const discount = rand() < 0.15 ? Math.round(subtotal * 0.1) : 0;
@@ -694,18 +607,7 @@ async function seedDemo(baseTierId: string) {
         });
       }
 
-      // баллы — начисляются при завершении заказа
-      if (status === "COMPLETED") {
-        const pts = Math.floor(((total - deliveryCost) * tier.cashbackPct) / 100 / RUB);
-        const at = new Date(t + 17 * DAY);
-        await db.pointsTransaction.create({
-          data: { userId: user.id, type: "EARN_PURCHASE", amount: pts, orderId: order.id, comment: `Заказ №${order.number}: ${tier.cashbackPct}% баллами`, createdAt: at, expiresAt: new Date(at.getTime() + 365 * DAY) },
-        });
-        await db.order.update({ where: { id: order.id }, data: { pointsEarned: pts } });
-        await db.user.update({ where: { id: user.id }, data: { pointsBalance: { increment: pts } } });
-      }
-
-      // пересчёт уровня
+      // Сумма покупок для CRM
       const yearAgo = new Date(now - 365 * DAY);
       const agg = await db.order.findMany({
         where: { userId: user.id, status: { in: ["PAID", "CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] } },
@@ -713,9 +615,7 @@ async function seedDemo(baseTierId: string) {
       });
       const lifetime = agg.reduce((s, o) => s + o.total - o.deliveryCost, 0);
       const year = agg.filter((o) => o.createdAt >= yearAgo).reduce((s, o) => s + o.total - o.deliveryCost, 0);
-      const newTier = [...tiers].reverse().find((x) => year >= x.threshold) ?? tiers[0];
-      await db.user.update({ where: { id: user.id }, data: { lifetimeSpent: lifetime, yearSpent: year, loyaltyTierId: newTier.id } });
-      user.loyaltyTier = newTier as typeof user.loyaltyTier;
+      await db.user.update({ where: { id: user.id }, data: { lifetimeSpent: lifetime, yearSpent: year } });
     }
   }
 
@@ -735,7 +635,7 @@ async function seedDemo(baseTierId: string) {
 
   // заметки, задачи, отзывы, лист ожидания
   const someCustomers = await db.user.findMany({ where: { role: "CUSTOMER" }, take: 12, orderBy: { lifetimeSpent: "desc" } });
-  const noteTexts = ["Предпочитает приглушённые оттенки, не носит чёрный у лица", "Просила сообщить о поступлении кашемира", "Покупает к деловым поездкам, удобна доставка в офис", "Любит брюки с высокой посадкой, рост 172", "Приходила в шоурум с подругой — приглашена в Circle"];
+  const noteTexts = ["Предпочитает приглушённые оттенки, не носит чёрный у лица", "Просила сообщить о поступлении кашемира", "Покупает к деловым поездкам, удобна доставка в офис", "Любит брюки с высокой посадкой, рост 172", "Приходила в шоурум с подругой"];
   for (const [i, u] of someCustomers.entries()) {
     await db.customerNote.create({ data: { userId: u.id, text: noteTexts[i % noteTexts.length], createdBy: manager.id, createdAt: new Date(now - i * 5 * DAY) } });
   }
@@ -765,7 +665,7 @@ async function seedSupportDemo() {
   if ((await db.conversation.count()) > 0) return;
   const support = await db.user.findUniqueOrThrow({ where: { email: "support@tr-rodionova.ru" } });
   const manager = await db.user.findUniqueOrThrow({ where: { email: "manager@tr-rodionova.ru" } });
-  const customers = await db.user.findMany({ where: { role: "CUSTOMER", orders: { some: {} } }, include: { orders: { orderBy: { createdAt: "desc" }, take: 1 }, loyaltyTier: true }, orderBy: { lifetimeSpent: "desc" }, take: 6 });
+  const customers = await db.user.findMany({ where: { role: "CUSTOMER", orders: { some: {} } }, include: { orders: { orderBy: { createdAt: "desc" }, take: 1 } }, orderBy: { lifetimeSpent: "desc" }, take: 6 });
   const min = 60_000;
   const now = Date.now();
   type Script = { channel: "TELEGRAM" | "WHATSAPP" | "INSTAGRAM" | "VK" | "EMAIL" | "WEBSITE"; who: (typeof customers)[number] | null; name: string; ext: string; status: "OPEN" | "PENDING" | "CLOSED"; assignee: string | null; tags: string[]; priority?: "HIGH"; msgs: [("IN" | "OUT" | "NOTE"), string, number][] };
@@ -775,8 +675,7 @@ async function seedSupportDemo() {
     { channel: "WHATSAPP", who: c[1], name: c[1].firstName, ext: (c[1].phone ?? "79160000000").replace(/\D/g, ""), status: "OPEN", assignee: support.id, tags: ["размер"], msgs: [["IN", "Здравствуйте, пальто Claire большемерит? Рост 168, обычно ношу S", 6]] },
     { channel: "INSTAGRAM", who: null, name: "kate.minimal", ext: "ig_558812", status: "OPEN", assignee: null, tags: ["наличие"], msgs: [["IN", "Привет! Будет ли джемпер Elsa в чёрном размер M?", 3]] },
     { channel: "VK", who: null, name: "Дарья Левина", ext: "2000000017", status: "PENDING", assignee: manager.id, tags: ["оплата"], msgs: [["IN", "Можно ли оплатить в рассрочку?", 180], ["OUT", "Здравствуйте, Дарья! Да, при оформлении выберите «Рассрочка» — оформление онлайн за пару минут, без переплаты на 4 месяца.", 170]] },
-    { channel: "EMAIL", who: c[2], name: `${c[2].firstName} ${c[2].lastName ?? ""}`, ext: c[2].email, status: "OPEN", assignee: support.id, tags: ["возврат"], msgs: [["IN", `Здравствуйте. Хочу вернуть брюки из заказа №${c[2].orders[0]?.number} — не подошёл размер. Как это сделать?`, 40], ["NOTE", "Клиентка Maison — предложить обмен на размер больше, курьер заберёт бесплатно", 35]] },
-    { channel: "WEBSITE", who: c[3], name: `${c[3].firstName} ${c[3].lastName ?? ""}`, ext: c[3].id, status: "CLOSED", assignee: support.id, tags: ["баллы"], msgs: [["IN", "Почему баллы за последний заказ ещё не начислены?", 2 * 24 * 60], ["OUT", `${c[3].firstName}, баллы начисляются через 14 дней после получения — когда закончится срок возврата. Ваши баллы придут автоматически.`, 2 * 24 * 60 - 9], ["IN", "Поняла, спасибо!", 2 * 24 * 60 - 20]] },
+    { channel: "EMAIL", who: c[2], name: `${c[2].firstName} ${c[2].lastName ?? ""}`, ext: c[2].email, status: "OPEN", assignee: support.id, tags: ["возврат"], msgs: [["IN", `Здравствуйте. Хочу вернуть брюки из заказа №${c[2].orders[0]?.number} — не подошёл размер. Как это сделать?`, 40], ["NOTE", "Предложить обмен на размер больше", 35]] },
   ];
   for (const sc of scripts) {
     const contact = await db.contact.create({ data: { channel: sc.channel, externalId: sc.ext, name: sc.name, email: sc.channel === "EMAIL" ? sc.ext : null, phone: sc.channel === "WHATSAPP" ? sc.ext : null, username: sc.channel === "INSTAGRAM" ? `@${sc.name}` : null, userId: sc.who?.id ?? null } });

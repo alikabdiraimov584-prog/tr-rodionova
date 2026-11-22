@@ -26,7 +26,6 @@ function parseSegment(formData: FormData): Segment {
   };
   const str = (k: string) => String(formData.get(k) ?? "").trim() || undefined;
   return {
-    tiers: list("tiers"),
     rfm: list("rfm") as Segment["rfm"],
     tags: str("tags")?.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean),
     sources: list("sources"),
@@ -37,8 +36,6 @@ function parseSegment(formData: FormData): Segment {
     lastOrderMaxDays: num("lastOrderMaxDays"),
     registeredDays: num("registeredDays"),
     birthdayMonth: num("birthdayMonth"),
-    hasPoints: num("hasPoints"),
-    pointsExpiringDays: num("pointsExpiringDays"),
     waitlist: formData.get("waitlist") === "on" || undefined,
     wishlist: formData.get("wishlist") === "on" || undefined,
     cartAbandoned: formData.get("cartAbandoned") === "on" || undefined,
@@ -52,7 +49,7 @@ function parseSegment(formData: FormData): Segment {
 export async function previewAudienceAction(segment: Segment, channel: Channel) {
   await requireSection("campaigns");
   const { rows, total, noAddress } = await buildAudience(segment, channel, { limit: 8 });
-  return { total, noAddress, sample: rows.map((r) => `${r.firstName} ${r.lastName ?? ""} · ${r.tier ?? ""}${r.address ? "" : " · нет адреса"}`) };
+  return { total, noAddress, sample: rows.map((r) => `${r.firstName} ${r.lastName ?? ""}${r.address ? "" : " · нет адреса"}`) };
 }
 
 const Schema = z.object({
@@ -124,7 +121,7 @@ export async function sendTestAction(_: ActionState, formData: FormData): Promis
   const subject = String(formData.get("subject") ?? "") || null;
   if (!text.trim()) return { error: "Введите текст" };
   const link = await baseUrl();
-  const body = personalize(text, { firstName: me.firstName, tier: "Privé", points: 12_500 }, `${link}/go/test`, channel === "EMAIL" ? `Отписаться: ${link}/unsubscribe/…` : channel === "WEBSITE" ? null : "Чтобы отписаться, ответьте СТОП.");
+  const body = personalize(text, { firstName: me.firstName }, `${link}/go/test`, channel === "EMAIL" ? `Отписаться: ${link}/unsubscribe/…` : channel === "WEBSITE" ? null : "Чтобы отписаться, ответьте СТОП.");
   let address: string | null = null;
   if (channel === "EMAIL") address = me.email;
   else if (channel === "WEBSITE") address = me.id;

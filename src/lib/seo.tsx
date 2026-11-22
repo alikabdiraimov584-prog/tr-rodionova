@@ -19,18 +19,16 @@ export async function JsonLd({ data }: { data: Record<string, unknown> | Record<
 }
 
 /**
- * Постоянные идентификаторы сущностей (@id). Один и тот же бренд, основательница, сайт, шоурум и программа
- * лояльности на всех страницах ссылаются на эти адреса — так поисковики и ИИ понимают, что речь об одном объекте.
+ * Постоянные идентификаторы сущностей (@id). Один и тот же бренд, основательница, сайт и шоурум
+ * на всех страницах ссылаются на эти адреса — так поисковики и ИИ понимают, что речь об одном объекте.
  */
 export function ids() {
   const base = siteUrl();
-  return { organization: `${base}/#organization`, brand: `${base}/#brand`, website: `${base}/#website`, founder: `${base}/about#founder`, store: `${base}/showroom#store`, program: `${base}/circle#program` };
+  return { organization: `${base}/#organization`, brand: `${base}/#brand`, website: `${base}/#website`, founder: `${base}/about#founder`, store: `${base}/showroom#store` };
 }
 
 type BrandLike = { name: string; phone: string; email: string; telegram?: string; description?: string; foundedYear?: string; founder?: string; city?: string; instagram?: string; vk?: string; pinterest?: string; youtube?: string; dzen?: string; yandexBusiness?: string; twoGis?: string; wikidata?: string; showroomGeo?: string };
 type SellerLike = { name?: string; inn?: string; address?: string; hours?: string; showroom?: string };
-type TierLike = { code: string; name: string; threshold: number; cashbackPct: number; freeShipping?: boolean; freeReturns?: boolean; earlyAccess?: boolean; stylist?: boolean };
-type LoyaltyLike = { welcomePoints: number; referralPoints: number; pointsExpireDays: number };
 type DeliveryLike = { freeFrom: number; courier: number; cdek: number };
 
 const SCHEMA = "https://schema.org/";
@@ -59,7 +57,7 @@ export function founderJsonLd(brand: BrandLike) {
   };
 }
 
-/** Общие условия возврата: 14 дней, обратная доставка за счёт покупательницы (для Privé — бесплатно, это выше уровня политики). */
+/** Общие условия возврата: 14 дней, обратная доставка за счёт покупательницы. */
 export function returnPolicyJsonLd(hasStore = false) {
   return {
     "@type": "MerchantReturnPolicy",
@@ -75,34 +73,12 @@ export function returnPolicyJsonLd(hasStore = false) {
   };
 }
 
-/** Программа Circle официальным типом MemberProgram: баллы, уровни и порог входа читаются машинно. */
-export function memberProgramJsonLd(tiers: TierLike[], loyalty: LoyaltyLike) {
-  return {
-    "@type": "MemberProgram",
-    "@id": ids().program,
-    name: "T.Rodionova Circle",
-    url: absolute("/circle"),
-    description: `${loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию, 1 балл = 1 ₽, баллами можно оплатить до 30% заказа. Уровни: ${tiers.map((t) => `${t.name} — ${t.cashbackPct}% баллами`).join(", ")}. Баллы действуют ${loyalty.pointsExpireDays} дней.`,
-    hostingOrganization: { "@id": ids().organization },
-    hasTiers: tiers.map((t) => ({
-      "@type": "MemberProgramTier",
-      "@id": `${absolute("/circle")}#${t.code.toLowerCase()}`,
-      name: t.name,
-      url: `${absolute("/circle")}#${t.code.toLowerCase()}`,
-      hasTierBenefit: [`${SCHEMA}TierBenefitLoyaltyPoints`, ...(t.freeShipping ? [`${SCHEMA}TierBenefitLoyaltyShipping`] : []), ...(t.freeReturns ? [`${SCHEMA}TierBenefitLoyaltyReturns`] : [])],
-      membershipPointsEarned: { "@type": "QuantitativeValue", value: t.cashbackPct, unitText: "% от суммы покупки баллами" },
-      hasTierRequirement: t.threshold ? { "@type": "MonetaryAmount", currency: "RUB", value: t.threshold / 100, description: "покупки за 12 месяцев" } : "Регистрация на сайте",
-    })),
-  };
-}
-
-/** Карточка сущности бренда: реквизиты, основательница, площадки, политика возврата, программа лояльности, шоурум. */
 /** Телефон-заглушка из настроек по умолчанию («000-00-00») в разметку не попадает: лучше без номера, чем с выдуманным. */
 export function publicPhone(phone: string | undefined) {
   return phone && !/0{3}-0{2}-0{2}/.test(phone) ? phone : undefined;
 }
 
-export function organizationJsonLd(brand: BrandLike, seller?: SellerLike, extra: { tiers?: TierLike[]; loyalty?: LoyaltyLike } = {}) {
+export function organizationJsonLd(brand: BrandLike, seller?: SellerLike) {
   const founder = founderJsonLd(brand);
   const sameAs = brandSameAs(brand);
   const hasStore = !!seller?.showroom;
@@ -132,7 +108,6 @@ export function organizationJsonLd(brand: BrandLike, seller?: SellerLike, extra:
     sameAs,
     brand: { "@type": "Brand", "@id": ids().brand, name: brand.name, logo: logoJsonLd(), sameAs },
     hasMerchantReturnPolicy: returnPolicyJsonLd(hasStore),
-    ...(extra.tiers?.length && extra.loyalty ? { hasMemberProgram: memberProgramJsonLd(extra.tiers, extra.loyalty) } : {}),
     ...(hasStore ? { location: { "@id": ids().store } } : {}),
   };
 }

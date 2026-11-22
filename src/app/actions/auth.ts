@@ -8,7 +8,6 @@ import { checkRate, clearRate, clientIp } from "@/lib/ratelimit";
 import { startTwoFactor } from "@/lib/two-factor";
 import { twoFactorRequired } from "@/lib/two-factor-policy";
 import { isStaff } from "@/lib/auth";
-import { addPoints, recalcTier } from "@/lib/loyalty";
 import { getSetting } from "@/lib/settings";
 import { audit } from "@/lib/audit";
 import type { ActionState } from "@/lib/action-result";
@@ -61,9 +60,8 @@ const RegisterSchema = z.object({
   phone: z.string().trim().min(10, "Введите телефон").max(20),
   password: z.string().min(8, "Пароль — минимум 8 символов"),
   birthday: z.string().optional(),
-  ref: z.string().trim().optional(),
   consent: z.literal("on", { message: "Нужно согласие на обработку персональных данных" }),
-  offer: z.literal("on", { message: "Нужно принять условия оферты и правила программы Circle" }),
+  offer: z.literal("on", { message: "Нужно принять условия оферты" }),
   marketingConsent: z.string().optional(),
 });
 
@@ -75,8 +73,6 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
   const rl = await checkRate(`register:ip:${ip ?? "unknown"}`, { limit: 10, windowSec: 3600, lockSec: 3600 });
   if (!rl.ok) return { error: "Слишком много регистраций с этого адреса. Попробуйте позже." };
   if (await db.user.findUnique({ where: { email: d.email } })) return { error: "Не удалось создать аккаунт с этим email. Если вы уже регистрировались — войдите." };
-  const referrer = d.ref ? await db.user.findUnique({ where: { referralCode: d.ref } }) : null;
-  const s = await getSetting("loyalty");
   const user = await db.$transaction(async (tx) => {
     const u = await tx.user.create({
       data: {
@@ -86,17 +82,14 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
         lastName: d.lastName || null,
         birthday: d.birthday ? new Date(d.birthday) : null,
         passwordHash: await hashPassword(d.password),
-        referredById: referrer?.id ?? null,
-        source: referrer ? "Реферальная ссылка" : "Сайт",
+        source: "Сайт",
         marketingConsent: formData.get("marketingConsent") === "on",
       },
     });
     await recordConsent(tx, u.id, "PERSONAL_DATA", true);
     await recordConsent(tx, u.id, "OFFER", true);
     if (formData.get("marketingConsent") === "on") await recordConsent(tx, u.id, "MARKETING", true);
-    await recalcTier(tx, u.id);
-    await addPoints(tx, u.id, "EARN_WELCOME", s.welcomePoints, { comment: "Добро пожаловать в T.Rodionova Circle" });
-    await audit(u.id, "auth.register", "User", u.id, { referrer: referrer?.id ?? null }, tx);
+    await audit(u.id, "auth.register", "User", u.id, undefined, tx);
     return u;
   });
   await loginAs(user.id, user.role, user.sessionVersion);

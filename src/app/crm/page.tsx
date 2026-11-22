@@ -15,7 +15,7 @@ export default async function Dashboard() {
   const now = new Date();
   const d30 = new Date(now.getTime() - 30 * 86_400_000);
   const d60 = new Date(now.getTime() - 60 * 86_400_000);
-  const [cur, prev, months, top, repeat, toProcess, tasks, lowStock, stats, customers, tiers, birthdays] = await Promise.all([
+  const [cur, prev, months, top, repeat, toProcess, tasks, lowStock, stats, customers, birthdays] = await Promise.all([
     kpis(d30),
     kpis(d60, d30),
     revenueByMonth(12),
@@ -31,8 +31,7 @@ export default async function Dashboard() {
     }),
     db.productVariant.findMany({ where: { product: { status: "ACTIVE" } }, include: { product: true, _count: { select: { alerts: { where: { notifiedAt: null } } } } }, orderBy: { stock: "asc" }, take: 40 }),
     customerStats(),
-    db.user.findMany({ where: { role: "CUSTOMER" }, select: { id: true, lifetimeSpent: true, createdAt: true, loyaltyTierId: true } }),
-    db.loyaltyTier.findMany({ orderBy: { threshold: "asc" } }),
+    db.user.findMany({ where: { role: "CUSTOMER" }, select: { id: true, lifetimeSpent: true, createdAt: true } }),
     db.$queryRaw<{ id: string; firstName: string; lastName: string | null; birthday: Date }[]>`
       SELECT id, "firstName", "lastName", birthday FROM "User"
       WHERE role = 'CUSTOMER' AND birthday IS NOT NULL
@@ -47,7 +46,7 @@ export default async function Dashboard() {
     segCounts.set(seg.code, (segCounts.get(seg.code) ?? 0) + 1);
   }
   const low = lowStock.filter((v) => v.stock - v.reserved <= 1).slice(0, 8);
-  const [liability, issues] = await Promise.all([db.user.aggregate({ where: { role: "CUSTOMER" }, _sum: { pointsBalance: true } }), brandIssues()]);
+  const issues = await brandIssues();
   return (
     <div className="space-y-8">
       <PageTitle eyebrow={formatDate(now)} title={`Добрый день, ${user.firstName}`} actions={<Link href="/crm/orders/new" className="btn-primary btn-sm">Продажа в шоуруме</Link>} />
@@ -69,7 +68,7 @@ export default async function Dashboard() {
         <Stat label="Заказы" value={cur.count} hint={delta(cur.count, prev.count)} />
         <Stat label="Средний чек" value={formatMoney(cur.aov)} hint={delta(cur.aov, prev.aov)} />
         <Stat label="Повторные покупки" value={`${repeat.rate}%`} hint={`${repeat.repeaters} из ${repeat.buyers} покупательниц`} />
-        <Stat label="Новые клиенты" value={cur.newCustomers} hint={`Баллов на счетах: ${(liability._sum.pointsBalance ?? 0).toLocaleString("ru-RU")}`} />
+        <Stat label="Новые клиенты" value={cur.newCustomers} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
@@ -148,12 +147,6 @@ export default async function Dashboard() {
           </div>
         </div>
         <div className="space-y-6">
-          <div className="card p-5">
-            <Eyebrow>Уровни Circle</Eyebrow>
-            <div className="mt-4">
-              <HBar items={tiers.map((t) => ({ label: t.name, value: customers.filter((c) => c.loyaltyTierId === t.id).length, tone: t.code === "PRIVE" ? "var(--black)" : t.code === "MAISON" ? "var(--champagne-dark)" : "var(--taupe)" }))} />
-            </div>
-          </div>
           <div className="card p-5">
             <Eyebrow>Дни рождения, 14 дней</Eyebrow>
             <ul className="mt-3 space-y-1 text-sm">

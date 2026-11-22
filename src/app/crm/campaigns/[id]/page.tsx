@@ -10,9 +10,8 @@ import { cancelCampaignAction, duplicateCampaignAction, sendCampaignNowAction } 
 import type { Segment } from "@/lib/campaigns";
 import { SEGMENTS } from "@/lib/rfm";
 
-function describe(s: Segment, tierNames: Map<string, string>) {
+function describe(s: Segment) {
   const out: string[] = [];
-  if (s.tiers?.length) out.push(`уровень: ${s.tiers.map((t) => tierNames.get(t) ?? t).join(", ")}`);
   if (s.rfm?.length) out.push(`RFM: ${s.rfm.map((r) => SEGMENTS[r]?.label ?? r).join(", ")}`);
   if (s.tags?.length) out.push(`теги: ${s.tags.join(", ")}`);
   if (s.sources?.length) out.push(`источник: ${s.sources.join(", ")}`);
@@ -23,8 +22,6 @@ function describe(s: Segment, tierNames: Map<string, string>) {
   if (s.lastOrderMaxDays) out.push(`последний заказ ≤ ${s.lastOrderMaxDays} дн.`);
   if (s.registeredDays) out.push(`регистрация за ${s.registeredDays} дн.`);
   if (s.birthdayMonth) out.push(`ДР в ${s.birthdayMonth}-м месяце`);
-  if (s.hasPoints) out.push(`баллов от ${s.hasPoints}`);
-  if (s.pointsExpiringDays) out.push(`баллы сгорают в ${s.pointsExpiringDays} дн.`);
   if (s.waitlist) out.push("ждут поступления");
   if (s.wishlist) out.push("есть избранное");
   if (s.cartAbandoned) out.push("брошенная корзина");
@@ -40,8 +37,7 @@ export default async function CampaignPage({ params }: PageProps<"/crm/campaigns
   const { id } = await params;
   const c = await db.campaign.findUnique({ where: { id }, include: { recipients: { include: { user: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { status: "asc" }, take: 300 } } });
   if (!c) notFound();
-  const [tiers, link] = await Promise.all([
-    db.loyaltyTier.findMany({ select: { code: true, name: true } }),
+  const [link] = await Promise.all([
     c.trackingLinkId ? db.trackingLink.findUnique({ where: { id: c.trackingLinkId }, include: { sessions: { select: { id: true, orders: { where: { status: { notIn: ["NEW", "CANCELLED"] } }, select: { total: true } } } } } }) : null,
   ]);
   const visits = link?.sessions.length ?? 0;
@@ -62,7 +58,7 @@ export default async function CampaignPage({ params }: PageProps<"/crm/campaigns
           </>
         }
       >
-        Аудитория: {describe(c.segment as Segment, new Map(tiers.map((t) => [t.code, t.name])))}
+        Аудитория: {describe(c.segment as Segment)}
       </PageTitle>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <Stat label="Статус" value={c.status === "SENT" ? "Отправлена" : c.status === "SCHEDULED" ? "План" : c.status === "SENDING" ? "Идёт" : c.status === "CANCELLED" ? "Отменена" : "Черновик"} hint={c.sentAt ? formatDate(c.sentAt, true) : c.scheduledAt ? formatDate(c.scheduledAt, true) : undefined} />

@@ -15,7 +15,7 @@ export default async function Promos() {
   const promos = await db.promoCode.findMany({ include: { _count: { select: { uses: true } }, orders: { where: { status: { notIn: ["NEW", "CANCELLED"] } }, select: { total: true, discount: true } } }, orderBy: { createdAt: "desc" } });
   return (
     <div className="space-y-6">
-      <PageTitle title="Промокоды">Промокоды не суммируются между собой. Баллы можно списать дополнительно к промокоду.</PageTitle>
+      <PageTitle title="Промокоды">Промокоды не суммируются между собой.</PageTitle>
       <div className="card p-5"><PromoForm /></div>
       <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">

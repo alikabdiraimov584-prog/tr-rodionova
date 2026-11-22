@@ -1,24 +1,20 @@
 import "server-only";
-import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { formatMoney } from "@/lib/money";
 import { publicPhone } from "@/lib/seo";
 
 /**
  * Вопросы и ответы для покупательниц и для ИИ-ответов: ответ идёт первым предложением, факты берутся из настроек
- * (доставка, бренд, продавец) и справочника уровней Circle, чтобы на сайте не было двух разных цифр.
+ * (доставка, бренд, продавец), чтобы на сайте не было двух разных цифр.
  */
 export type Faq = { q: string; a: string; href?: string };
 
 export async function siteFaq(): Promise<{ group: string; items: Faq[] }[]> {
-  const [delivery, brand, seller, loyalty, tiers] = await Promise.all([
+  const [delivery, brand, seller] = await Promise.all([
     getSetting("delivery"),
     getSetting("brand"),
     getSetting("seller"),
-    getSetting("loyalty"),
-    db.loyaltyTier.findMany({ orderBy: { threshold: "asc" } }),
   ]);
-  const tierText = tiers.map((t) => `${t.name} — ${t.cashbackPct}% баллами${t.threshold ? ` при покупках от ${formatMoney(t.threshold)} за 12 месяцев` : " с первой покупки"}`).join("; ");
   const showroom = seller.showroom ? `Шоурум: ${seller.showroom}${seller.hours ? `, ${seller.hours}` : ""}.` : "Шоурума пока нет: вещи примеряют дома с курьером.";
   return [
     {
@@ -34,8 +30,8 @@ export async function siteFaq(): Promise<{ group: string; items: Faq[] }[]> {
       group: "Возврат и оплата",
       items: [
         { q: "Как вернуть вещь, если не подошла?", a: "Возврат принимается 14 дней с момента получения при сохранённых ярлыках и товарном виде: оформите его в личном кабинете, курьер заберёт вещь или отправьте СДЭК. Вещи по предзаказу и с подгонкой по размеру не возвращаются, брак меняем или возвращаем деньги в любой срок.", href: "/delivery" },
-        { q: "Какие способы оплаты есть?", a: "Банковская карта, СБП, рассрочка банка-партнёра и оплата курьеру при получении. Чек приходит на e-mail. Часть суммы можно оплатить баллами Circle." },
-        { q: "Бывают ли скидки и распродажи?", a: "Нет. Цена не меняется в течение сезона, распродаж не бывает: вещь стоит столько, сколько стоит. Выгода для постоянных покупательниц — баллы Circle." },
+        { q: "Какие способы оплаты есть?", a: "Банковская карта, СБП, рассрочка банка-партнёра и оплата курьеру при получении. Чек приходит на e-mail." },
+        { q: "Бывают ли скидки и распродажи?", a: "Нет. Цена не меняется в течение сезона, распродаж не бывает: вещь стоит столько, сколько стоит." },
       ],
     },
     {
@@ -47,9 +43,8 @@ export async function siteFaq(): Promise<{ group: string; items: Faq[] }[]> {
       ],
     },
     {
-      group: "Circle и сервис",
+      group: "Сервис",
       items: [
-        { q: "Что такое T.Rodionova Circle и сколько баллов дают за регистрацию?", a: `Circle — программа лояльности: ${loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию, 1 балл = 1 ₽, ${loyalty.referralPoints.toLocaleString("ru-RU")} баллов за приглашённую подругу. Уровни: ${tierText}.`, href: "/circle" },
         { q: "Как связаться со службой заботы?", a: `Напишите в чат личного кабинета или на ${brand.email}${publicPhone(brand.phone) ? `, позвоните ${publicPhone(brand.phone)}` : ""}${brand.telegram ? ", напишите в Telegram" : ""}. ${seller.hours ? `Режим работы: ${seller.hours}.` : ""}`.trim(), href: "/account/support" },
       ],
     },
@@ -57,10 +52,10 @@ export async function siteFaq(): Promise<{ group: string; items: Faq[] }[]> {
 }
 
 /**
- * Вопросы-ответы для карточки вещи: размер, уход, ткань и производство, доставка, возврат, цена и баллы, тираж.
+ * Вопросы-ответы для карточки вещи: размер, уход, ткань и производство, доставка, возврат, цена, тираж.
  * Только факты об этой вещи и этой категории; общие вопросы — на /faq.
  */
-export function productFaq(p: { name: string; care: string | null; composition: string | null; madeIn: string | null; price: number; isPreorder: boolean; isPreloved: boolean; condition?: string | null }, sizes: string[], delivery: { freeFrom: number; courier: number }, points: number): Faq[] {
+export function productFaq(p: { name: string; care: string | null; composition: string | null; madeIn: string | null; price: number; isPreorder: boolean; isPreloved: boolean; condition?: string | null }, sizes: string[], delivery: { freeFrom: number; courier: number }): Faq[] {
   const items: Faq[] = [];
   if (sizes.length) items.push({ q: `В каких размерах есть ${p.name}?`, a: `${p.name} выпускается в размерах ${sizes.join(", ")}. Проверьте мерки по таблице размеров; в Москве и Санкт-Петербурге можно заказать два размера на примерку курьером и оставить один.`, href: "/sizes" });
   const madeIn = p.madeIn && !/^europe$/i.test(p.madeIn) ? p.madeIn : null;
@@ -69,11 +64,10 @@ export function productFaq(p: { name: string; care: string | null; composition: 
   }
   if (p.care) items.push({ q: `Как ухаживать за вещью ${p.name}?`, a: p.care, href: "/care" });
   items.push({ q: `Как доставят ${p.name} и можно ли примерить?`, a: `Курьер по Москве и Санкт-Петербургу за 1–2 дня с примеркой до 20 минут (${formatMoney(delivery.courier)}, бесплатно от ${formatMoney(delivery.freeFrom)}), по России — СДЭК 2–7 дней.${p.isPreorder ? " Вещь по предзаказу отшивается 4–6 недель." : ""}`, href: "/delivery#fitting" });
-  items.push({ q: `Можно ли вернуть ${p.name}?`, a: p.isPreorder ? "Вещь по предзаказу возврату по размеру не подлежит; брак меняем или возвращаем деньги в любой срок." : "Да, 14 дней с момента получения при сохранённых ярлыках и товарном виде: возврат оформляется в личном кабинете, обратная доставка за счёт покупательницы, для уровня Privé — бесплатно.", href: "/delivery#returns" });
+  items.push({ q: `Можно ли вернуть ${p.name}?`, a: p.isPreorder ? "Вещь по предзаказу возврату по размеру не подлежит; брак меняем или возвращаем деньги в любой срок." : "Да, 14 дней с момента получения при сохранённых ярлыках и товарном виде: возврат оформляется в личном кабинете, обратная доставка за счёт покупательницы.", href: "/delivery#returns" });
   items.push({
-    q: `Сколько стоит ${p.name} и сколько баллов начислят?`,
-    a: `${formatMoney(p.price)}; цена не меняется в течение сезона, распродаж не бывает. За покупку начислят ${points.toLocaleString("ru-RU")} баллов Circle (1 балл = 1 ₽), доставка бесплатна от ${formatMoney(delivery.freeFrom)}.`,
-    href: "/circle",
+    q: `Сколько стоит ${p.name}?`,
+    a: `${formatMoney(p.price)}; цена не меняется в течение сезона, распродаж не бывает. Доставка бесплатна от ${formatMoney(delivery.freeFrom)}.`,
   });
   items.push({ q: `Сколько единиц ${p.name} выпущено и будет ли допошив?`, a: "Тираж каждой модели T.Rodionova — до 60 единиц, допошив только под предзаказ. Если вашего размера нет в наличии, подпишитесь на уведомление о поступлении в карточке вещи.", href: "/about#rules" });
   return items;

@@ -4,7 +4,7 @@ import { recordCronRun } from "@/lib/cron-runs";
 
 /**
  * Планировщик. Вызывается с Bearer CRON_SECRET:
- *   ежедневно   GET /api/cron            — баллы, уровни, рассылки, сверки, очистка
+ *   ежедневно   GET /api/cron            — рассылки, сверки, очистка
  *   ежечасно    GET /api/cron?job=hourly — напоминания об оплате, снятие резерва через 24 ч, IndexNow для статей по расписанию
  *   ежедневно   GET /api/cron?job=backup — загрузка ночного дампа базы в S3 (ключи в CRM → Интеграции)
  *   каждые 5 мин GET /api/cron?job=mail   — новые письма ящика поддержки (IMAP) в единый inbox

@@ -5,7 +5,7 @@ import { createManualOrderAction } from "@/app/actions/crm-orders";
 import { formatMoney } from "@/lib/money";
 import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
 
-type Customer = { id: string; label: string; points: number; maxPayPct: number };
+type Customer = { id: string; label: string };
 type Variant = { id: string; label: string; price: number; available: number };
 
 export function ManualOrderForm({ customers, variants, presetCustomer }: { customers: Customer[]; variants: Variant[]; presetCustomer?: string }) {
@@ -13,9 +13,7 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
   const [customerId, setCustomerId] = useState(presetCustomer ?? "");
   const [rows, setRows] = useState([{ variantId: "", qty: 1, price: "" }]);
   const [discount, setDiscount] = useState("");
-  const [points, setPoints] = useState("");
   const vmap = useMemo(() => new Map(variants.map((v) => [v.id, v])), [variants]);
-  const customer = customers.find((c) => c.id === customerId);
   const subtotal = rows.reduce((s, r) => {
     const v = vmap.get(r.variantId);
     if (!v) return s;
@@ -23,9 +21,7 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
     return s + price * r.qty;
   }, 0);
   const disc = Math.round((parseFloat(discount.replace(",", ".")) || 0) * 100);
-  const maxPoints = customer ? Math.min(customer.points, Math.floor(((subtotal - disc) * customer.maxPayPct) / 100 / 100)) : 0;
-  const pts = Math.min(maxPoints, Number(points) || 0);
-  const total = Math.max(0, subtotal - disc - pts * 100);
+  const total = Math.max(0, subtotal - disc);
 
   return (
     <form action={action} className="grid gap-6 xl:grid-cols-[1fr_340px]">
@@ -33,7 +29,7 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
         <div className="card space-y-4 p-5">
           <div className="eyebrow">Покупатель</div>
           <select aria-label="Клиентка" name="customerId" value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input">
-            <option value="">Новый / без карты Circle</option>
+            <option value="">Новый клиент</option>
             {customers.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
           {!customerId && (
@@ -79,16 +75,9 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
       </div>
       <aside className="card h-fit space-y-4 p-5">
         <label className="block"><span className="label">Скидка, ₽</span><input name="discount" value={discount} onChange={(e) => setDiscount(e.target.value)} className="input" /></label>
-        {customer && (
-          <label className="block">
-            <span className="label">Списать баллы · доступно {maxPoints.toLocaleString("ru-RU")}</span>
-            <input name="pointsToUse" type="number" min={0} max={maxPoints} value={points} onChange={(e) => setPoints(e.target.value)} className="input" />
-          </label>
-        )}
         <dl className="space-y-1 border-t border-line pt-3 text-sm">
           <div className="flex justify-between"><dt>Товары</dt><dd>{formatMoney(subtotal)}</dd></div>
           {disc > 0 && <div className="flex justify-between"><dt>Скидка</dt><dd>−{formatMoney(disc)}</dd></div>}
-          {pts > 0 && <div className="flex justify-between"><dt>Баллами</dt><dd>−{formatMoney(pts * 100)}</dd></div>}
           <div className="flex justify-between text-lg"><dt className="serif">Итого</dt><dd>{formatMoney(total)}</dd></div>
         </dl>
         <label className="flex gap-2 text-sm"><input type="checkbox" name="markPaid" defaultChecked className="accent-black" /> Оплачено сейчас (касса шоурума)</label>

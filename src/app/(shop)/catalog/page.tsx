@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCurrentCustomer } from "@/lib/auth";
 import { PLAIN_HEADING, RowGrid, SANS } from "@/components/shop/row-grid";
 import { photoFirst } from "@/lib/photos";
 import { Empty } from "@/components/ui";
@@ -46,7 +45,6 @@ const models = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "моде
  */
 export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   const sp = await searchParams;
-  const user = await getCurrentCustomer();
   const category = typeof sp.category === "string" ? sp.category : undefined;
   const sort = typeof sp.sort === "string" && sp.sort in SORTS ? sp.sort : "new";
   const onlyNew = sp.new === "1";
@@ -56,14 +54,12 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
   const colors = arr(sp.color);
   const materials = arr(sp.material);
   const price = typeof sp.price === "string" ? PRICES.find((p) => p[0] === sp.price) : undefined;
-  const earlyOk = !!user?.loyaltyTier?.earlyAccess;
   // удалённая или скрытая в CRM категория: старые ссылки ведут в общий каталог, а не на пустую страницу
   if (category && !(await db.category.findFirst({ where: { slug: category, isActive: true }, select: { id: true } }))) redirect("/catalog");
 
   const where: Prisma.ProductWhereInput = {
     status: "ACTIVE",
     isPreloved: false,
-    ...(earlyOk ? {} : { OR: [{ earlyAccessUntil: null }, { earlyAccessUntil: { lte: new Date() } }] }),
     ...(category ? { category: { slug: category } } : {}),
     ...(onlyNew ? { isNew: true } : {}),
     ...(sizes.length || colors.length ? { variants: { some: { ...(sizes.length ? { size: { in: sizes } } : {}), ...(colors.length ? { color: { in: colors } } : {}) } } } : {}),

@@ -56,7 +56,6 @@ export async function seedB(db: PrismaClient) {
       take: 200,
     });
     const second = delivered[0];
-    const third = delivered.find((i) => i.order.userId !== second?.order.userId) ?? delivered[1];
     if (second) {
       await db.resaleRequest.create({
         data: {
@@ -69,28 +68,6 @@ export async function seedB(db: PrismaClient) {
           offerPoints: Math.floor((second.price * 20) / 100 / 100),
           managerNote: "Спасибо за фото! По состоянию — 20%, катышки уберём в ателье.",
         },
-      });
-    }
-    if (third) {
-      const points = Math.floor((third.price * 30) / 100 / 100);
-      await db.$transaction(async (tx) => {
-        const r = await tx.resaleRequest.create({
-          data: {
-            userId: third.order.userId!,
-            orderItemId: third.id,
-            productId: third.variant.productId,
-            condition: "как новое",
-            description: "Не подошёл фасон, надевала один раз дома. Как новое.",
-            status: "RECEIVED",
-            offerPoints: points,
-            managerNote: "Принято, вещь в идеальном состоянии.",
-          },
-        });
-        await tx.pointsTransaction.create({
-          data: { userId: third.order.userId!, type: "EARN_MANUAL", amount: points, comment: `Выкуп: ${third.productName}, ${third.size}`, createdBy: manager.id, expiresAt: new Date(Date.now() + 365 * 86_400_000) },
-        });
-        await tx.user.update({ where: { id: third.order.userId! }, data: { pointsBalance: { increment: points } } });
-        await tx.auditLog.create({ data: { userId: manager.id, action: "resale.receive", entity: "ResaleRequest", entityId: r.id, payload: { points, demo: true } } });
       });
     }
   }

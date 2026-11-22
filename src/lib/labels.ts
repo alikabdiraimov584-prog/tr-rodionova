@@ -4,7 +4,6 @@ import type {
   PaymentStatus,
   DeliveryMethod,
   StockMovementType,
-  PointsType,
   LedgerType,
   TaskStatus,
   TaskPriority,
@@ -60,18 +59,6 @@ export const STOCK_MOVEMENT: Record<StockMovementType, { label: string; tone: To
   ADJUSTMENT: { label: "Инвентаризация", tone: "neutral" },
   RESERVE: { label: "Резерв", tone: "neutral" },
   RELEASE: { label: "Снятие резерва", tone: "neutral" },
-};
-
-export const POINTS_TYPE: Record<PointsType, string> = {
-  EARN_PURCHASE: "Начисление за покупку",
-  EARN_WELCOME: "Приветственный бонус",
-  EARN_BIRTHDAY: "Подарок ко дню рождения",
-  EARN_REFERRAL: "Бонус за приглашение",
-  EARN_REVIEW: "Бонус за отзыв",
-  EARN_MANUAL: "Начисление менеджером",
-  SPEND_PURCHASE: "Оплата баллами",
-  REVERT: "Отмена начисления",
-  EXPIRE: "Сгорание баллов",
 };
 
 export const LEDGER_TYPE: Record<LedgerType, { label: string; sign: 1 | -1 }> = {

@@ -182,7 +182,7 @@ type OrderPayload = { provider?: string; confirmation_url?: string; dolyameId?: 
 /** payload платежа — JSON в базе; необязательные поля не нравятся типу Prisma, поэтому приводим явно */
 const asJson = (x: object) => x as Prisma.InputJsonObject;
 
-function toItems(order: { items: { productName: string; size: string; quantity: number; price: number; sku: string }[]; deliveryCost: number; discount: number; pointsUsed: number; giftUsed: number; total: number }): { items: DolyameItem[]; amount: number; prepaid: number } {
+function toItems(order: { items: { productName: string; size: string; quantity: number; price: number; sku: string }[]; deliveryCost: number; discount: number; giftUsed: number; total: number }): { items: DolyameItem[]; amount: number; prepaid: number } {
   // Долями считают сумму заказа как Σ price × quantity; скидки учитываем через цены позиций (единицы отдельными строками)
   const goods = order.items.filter((i) => i.quantity > 0);
   const goodsSum = goods.reduce((s, i) => s + i.price * i.quantity, 0);

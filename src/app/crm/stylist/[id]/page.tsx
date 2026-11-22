@@ -11,14 +11,14 @@ import { ConfirmButton, SubmitButton } from "@/components/form";
 import { AddItemForm, SelectionForm } from "@/components/crm/stylist-forms";
 import { archiveSelectionAction, moveSelectionItemAction, removeSelectionItemAction, sendSelectionAction } from "@/app/actions/crm-stylist";
 
-const customerSelect = { id: true, firstName: true, lastName: true, email: true, preferredSize: true, height: true, bust: true, waist: true, hips: true, loyaltyTier: { select: { name: true } } } as const;
+const customerSelect = { id: true, firstName: true, lastName: true, email: true, preferredSize: true, height: true, bust: true, waist: true, hips: true } as const;
 
-function CustomerCard({ c }: { c: { id: string; firstName: string; lastName: string | null; email: string; preferredSize: string | null; height: number | null; bust: number | null; waist: number | null; hips: number | null; loyaltyTier: { name: string } | null } }) {
+function CustomerCard({ c }: { c: { id: string; firstName: string; lastName: string | null; email: string; preferredSize: string | null; height: number | null; bust: number | null; waist: number | null; hips: number | null } }) {
   const hasMeasures = !!(c.bust || c.waist || c.hips);
   return (
     <div className="card p-5 text-sm">
       <Eyebrow>Клиентка</Eyebrow>
-      <div className="mt-2"><Link href={`/crm/customers/${c.id}`} className="underline">{c.firstName} {c.lastName}</Link> · {c.loyaltyTier?.name ?? "—"}</div>
+      <div className="mt-2"><Link href={`/crm/customers/${c.id}`} className="underline">{c.firstName} {c.lastName}</Link></div>
       <div className="text-xs text-muted">{c.email} · размер в профиле: {c.preferredSize ?? "—"}</div>
       {hasMeasures ? (
         <div className="mt-3 text-xs text-muted">

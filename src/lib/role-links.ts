@@ -16,9 +16,3 @@ export function cabinetLink(user: Viewer): readonly [href: string, label: string
   if (!user || isStaffRole(user.role)) return ["/login", "Войти"];
   return ["/account", "Кабинет"];
 }
-
-/** Кнопка «Вступить в Circle». */
-export function circleCta(user: Viewer, welcomePoints: number): { href: string; label: string } {
-  if (user && !isStaffRole(user.role)) return { href: "/account", label: "Ваш кабинет Circle" };
-  return { href: "/register", label: `Вступить и получить ${welcomePoints.toLocaleString("ru-RU")} баллов` };
-}

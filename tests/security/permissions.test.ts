@@ -19,12 +19,9 @@ test("CRM section permissions follow the explicit least-privilege matrix", () =>
     customers: ["SUPPORT", "MANAGER", "ADMIN"],
     customersEdit: ["MANAGER", "ADMIN"],
     customersExport: ["ADMIN"],
-    points: ["MANAGER", "ADMIN"],
     tasks: ["SUPPORT", "MANAGER", "ADMIN"],
     products: ["MANAGER", "ADMIN"],
     stock: ["MANAGER", "ADMIN"],
-    loyalty: ["MANAGER", "ADMIN"],
-    loyaltyEdit: ["ADMIN"],
     promos: ["MANAGER", "ADMIN"],
     reviews: ["SUPPORT", "MANAGER", "ADMIN"],
     finance: ["ADMIN"],
@@ -43,7 +40,7 @@ test("CRM section permissions follow the explicit least-privilege matrix", () =>
 });
 
 test("high-impact CRM capabilities remain admin-only", () => {
-  for (const section of ["adsEdit", "customersExport", "loyaltyEdit", "finance", "staff", "settings", "integrations", "audit"] as const) {
+  for (const section of ["adsEdit", "customersExport", "finance", "staff", "settings", "integrations", "audit"] as const) {
     assert.equal(can("ADMIN" as never, section), true, `ADMIN must access ${section}`);
     assert.equal(can("MANAGER" as never, section), false, `MANAGER must not access ${section}`);
     assert.equal(can("SUPPORT" as never, section), false, `SUPPORT must not access ${section}`);

@@ -23,7 +23,7 @@
   --bronze-ink: #474747;
   --taupe: #8c8c8c;
   --taupe-dark: #555555;
-  --champagne: #d6d6d6; /* уровни Circle на витрине — оттенки серого */
+  --champagne: #d6d6d6;
   --champagne-dark: #9a9a9a;
   --champagne-ink: #474747;
   --success: #276b44;
@@ -50,7 +50,7 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   --font-ui: var(--font-manrope), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-brand: var(--font-ui); /* CRM остаётся на гротеске */
-  /* CRM сохраняет прежние цвета статусов, графиков и уровней Circle */
+  /* CRM сохраняет прежние цвета статусов и графиков */
   --taupe: #8b7f71;
   --taupe-dark: #6f655a;
   --champagne: #cdb58f;
@@ -158,7 +158,7 @@ details[open] > .acc-line .acc-mark { transform: rotate(45deg); }
 .crm .btn { text-transform: none; letter-spacing: 0; font-size: 0.8rem; font-weight: 600; border-radius: 8px; }
 
 @layer components {
-  /* в слое components, чтобы утилиты вроде text-champagne могли переопределить цвет (например, на тёмной карточке Privé) */
+  /* в слое components, чтобы утилиты вроде text-champagne могли переопределить цвет */
   .eyebrow {
     font-size: 0.66rem;
     font-weight: 600;

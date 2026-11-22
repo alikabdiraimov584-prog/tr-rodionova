@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 const items = [
   ["/account", "Обзор"],
   ["/account/orders", "Заказы"],
-  ["/account/loyalty", "Circle и баллы"],
   ["/account/wishlist", "Избранное"],
   ["/account/waitlist", "Лист ожидания"],
   ["/account/stylist", "Мой стилист"],

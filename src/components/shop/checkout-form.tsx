@@ -9,7 +9,7 @@ import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 
 type Address = { id: string; label: string | null; text: string; isDefault: boolean };
-type Profile = { firstName: string; lastName: string | null; email: string; phone: string | null; pointsBalance: number; tierName: string | null; maxPayPct: number };
+type Profile = { firstName: string; lastName: string | null; email: string; phone: string | null };
 
 const SLOTS = ["10:00–14:00", "14:00–18:00", "18:00–22:00"];
 const PRIMARY_DELIVERY: DeliveryMethod[] = ["COURIER", "CDEK"];
@@ -18,7 +18,7 @@ const STEPS = ["Доставка", "Оплата", "Проверка"] as const;
 /**
  * Оформление в три шага: доставка → оплата → проверка. Все поля остаются в одной форме,
  * неактивные шаги скрыты; итог и кнопка закреплены внизу экрана на телефоне.
- * Гость заполняет контакты и даёт согласия: аккаунт Circle создаётся вместе с заказом.
+ * Гость заполняет контакты и даёт согласия: аккаунт создаётся вместе с заказом.
  */
 const ONLINE: PaymentMethod[] = ["CARD", "SBP", "INSTALLMENT"];
 
@@ -41,7 +41,6 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   const [appliedPromo, setAppliedPromo] = useState("");
   const [gift, setGift] = useState("");
   const [appliedGift, setAppliedGift] = useState("");
-  const [points, setPoints] = useState(0);
   const [quote, setQuote] = useState(initialQuote);
   const [quoting, startQuote] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -62,10 +61,10 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
 
   useEffect(() => {
     startQuote(async () => {
-      const q = await quoteAction({ deliveryMethod: delivery, promoCode: appliedPromo || undefined, pointsToUse: points, giftCode: appliedGift || undefined });
+      const q = await quoteAction({ deliveryMethod: delivery, promoCode: appliedPromo || undefined, giftCode: appliedGift || undefined });
       setQuote(q);
     });
-  }, [delivery, appliedPromo, points, appliedGift]);
+  }, [delivery, appliedPromo, appliedGift]);
 
   // подсказки адреса: запрос через 300 мс после последнего ввода
   function onAddressInput(value: string) {
@@ -108,13 +107,10 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
     <dl className="space-y-2 text-sm">
       <div className="flex justify-between"><dt>Товары</dt><dd>{formatMoney(quote.subtotal)}</dd></div>
       {quote.discount > 0 && <div className="flex justify-between text-success"><dt>Скидка по промокоду</dt><dd>−{formatMoney(quote.discount)}</dd></div>}
-      {quote.pointsValue > 0 && <div className="flex justify-between text-success"><dt>Баллами</dt><dd>−{formatMoney(quote.pointsValue)}</dd></div>}
       <div className="flex justify-between"><dt>Доставка</dt><dd>{quote.delivery ? formatMoney(quote.delivery) : "бесплатно"}</dd></div>
       {quote.giftApplied > 0 && <div className="flex justify-between text-success"><dt>Сертификатом</dt><dd>−{formatMoney(quote.giftApplied)}</dd></div>}
       <div className="flex justify-between border-t border-line pt-3 text-lg"><dt className="serif">Итого</dt><dd>{formatMoney(quote.total)}</dd></div>
     </dl>
-    {/* строка о баллах — вне списка: внутри dl допустимы только пары dt/dd */}
-    <p className="mt-2 text-xs text-taupe-dark">+{quote.earn.toLocaleString("ru-RU")} баллов Circle через 14 дней после получения</p>
     </div>
   );
 
@@ -142,7 +138,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
               <label><span className="label">Email</span><input name="email" type="email" defaultValue={profile?.email ?? ""} required autoComplete="email" className="input" /></label>
               <label><span className="label">Телефон</span><input name="phone" type="tel" defaultValue={profile?.phone ?? ""} required autoComplete="tel" placeholder="+7" className="input" /></label>
             </div>
-            {guest && <p className="mt-2 text-xs text-muted">Пароль не нужен: аккаунт T.Rodionova Circle с 2 000 приветственных баллов создастся вместе с заказом. Уже покупали у нас? <Link href="/login?next=/checkout" className="text-ink underline">Войти</Link>, корзина сохранится.</p>}
+            {guest && <p className="mt-2 text-xs text-muted">Пароль не нужен: аккаунт T.Rodionova создастся вместе с заказом. Уже покупали у нас? <Link href="/login?next=/checkout" className="text-ink underline">Войти</Link>, корзина сохранится.</p>}
           </div>
 
           <div>
@@ -216,7 +212,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           </div>
         </section>
 
-        {/* Шаг 2: оплата, промокод, сертификат, баллы */}
+        {/* Шаг 2: оплата, промокод, сертификат */}
         <section data-step="1" hidden={step !== 1} className="space-y-6">
           <div>
             <h2 className="mb-4">Оплата</h2>
@@ -253,16 +249,6 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
               </div>
             </div>
           </details>
-          {profile && (
-            <div>
-              <span className="label">Оплатить баллами · баланс {profile.pointsBalance.toLocaleString("ru-RU")}</span>
-              <div className="flex items-center gap-3">
-                <input type="range" aria-label="Оплатить баллами" aria-valuetext={`${quote.pointsUsed.toLocaleString("ru-RU")} баллов`} min={0} max={quote.pointsMax} step={100} value={Math.min(points, quote.pointsMax)} onChange={(e) => setPoints(Number(e.target.value))} className="flex-1 accent-black" disabled={quote.pointsMax === 0} />
-                <button type="button" className="min-h-10 px-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-taupe-dark" onClick={() => setPoints(quote.pointsMax)}>Макс.</button>
-              </div>
-              <p className="mt-1 text-xs text-muted">До {profile.maxPayPct}% заказа на уровне {profile.tierName}. Списать: {quote.pointsUsed.toLocaleString("ru-RU")} из {quote.pointsMax.toLocaleString("ru-RU")}</p>
-            </div>
-          )}
           <label className="block">
             <span className="label">Комментарий к заказу</span>
             <textarea name="comment" rows={2} className="input" placeholder="Пожелания по примерке, код домофона" />
@@ -291,7 +277,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
               </label>
               <label className="flex gap-2 py-1 text-xs text-muted">
                 <input type="checkbox" name="offer" value="on" required className="mt-0.5 h-4 w-4 shrink-0 accent-black" />
-                <span>Принимаю условия <Link href="/offer" target="_blank" className="underline">публичной оферты</Link> и правила программы Circle</span>
+                <span>Принимаю условия <Link href="/offer" target="_blank" className="underline">публичной оферты</Link></span>
               </label>
               <label className="flex gap-2 py-1 text-xs text-muted">
                 <input type="checkbox" name="marketingConsent" value="on" className="mt-0.5 h-4 w-4 shrink-0 accent-black" />
@@ -326,7 +312,6 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
       </aside>
       <input type="hidden" name="promoCode" value={quote.promoApplied ?? ""} />
       <input type="hidden" name="giftCode" value={quote.giftApplied > 0 && quote.giftCode ? quote.giftCode : ""} />
-      <input type="hidden" name="pointsToUse" value={quote.pointsUsed} />
       <div style={{ bottom: "var(--consent-h, 0px)" }} className="fixed inset-x-0 z-30 border-t border-line bg-ivory/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>

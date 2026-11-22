@@ -54,7 +54,7 @@ export default async function GiftPage() {
             <ul className="list-disc space-y-1.5 pl-5">
               <li>Срок действия — {GIFT_VALIDITY_MONTHS} месяцев.</li>
               <li>Сертификат можно использовать частями.</li>
-              <li>Суммируется с промокодами и баллами Circle.</li>
+              <li>Суммируется с промокодами.</li>
               <li>При отмене заказа сумма возвращается на сертификат.</li>
             </ul>
           </div>

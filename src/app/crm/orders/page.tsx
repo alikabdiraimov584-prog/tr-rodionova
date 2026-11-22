@@ -34,7 +34,7 @@ export default async function CrmOrders({ searchParams }: PageProps<"/crm/orders
       : {}),
   };
   const [orders, total, counts] = await Promise.all([
-    db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PER, take: PER, include: { items: { select: { quantity: true } }, user: { select: { loyaltyTier: { select: { name: true } } } } } }),
+    db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PER, take: PER, include: { items: { select: { quantity: true } } } }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], _count: true }),
   ]);
@@ -56,14 +56,13 @@ export default async function CrmOrders({ searchParams }: PageProps<"/crm/orders
       </div>
       <div className="card overflow-x-auto" tabIndex={0}>
         <table className="table">
-          <thead><tr><th>№</th><th>Дата</th><th>Клиент</th><th>Уровень</th><th>Шт.</th><th>Доставка</th><th>Статус</th><th className="text-right">Сумма</th></tr></thead>
+          <thead><tr><th>№</th><th>Дата</th><th>Клиент</th><th>Шт.</th><th>Доставка</th><th>Статус</th><th className="text-right">Сумма</th></tr></thead>
           <tbody>
             {orders.map((o) => (
               <tr key={o.id}>
                 <td><Link href={`/crm/orders/${o.id}`} prefetch={false} className="underline underline-offset-4">{o.number}</Link></td>
                 <td className="whitespace-nowrap text-muted">{formatDate(o.createdAt, true)}</td>
                 <td>{o.firstName} {o.lastName}<div className="text-xs text-muted">{o.phone}</div></td>
-                <td className="text-muted">{o.user?.loyaltyTier?.name ?? "—"}</td>
                 <td>{o.items.reduce((s, i) => s + i.quantity, 0)}</td>
                 <td className="text-muted">{DELIVERY_METHOD[o.deliveryMethod].label}</td>
                 <td><Badge tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Badge></td>

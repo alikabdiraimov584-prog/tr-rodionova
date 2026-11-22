@@ -29,7 +29,6 @@ export default async function CartPage() {
     ? (await db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, isNew: true }, include: { images: { orderBy: { order: "asc" } }, variants: true }, orderBy: { createdAt: "desc" }, take: 12 })).filter((p) => isRealPhoto(p.images[0]?.url)).slice(0, 4)
     : [];
   const subtotal = items.reduce((s, i) => s + (i.variant.price ?? i.variant.product.price) * i.quantity, 0);
-  const pts = Math.floor((subtotal * (user?.loyaltyTier?.cashbackPct ?? 3)) / 100 / 100);
   const installments = subtotal > 0 && (await dolyameAvailableFor(subtotal).catch(() => false));
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
@@ -96,10 +95,7 @@ export default async function CartPage() {
             <div className="flex justify-between text-sm"><span>Товары</span><span>{formatMoney(subtotal)}</span></div>
             <div className="mt-2 flex justify-between text-sm text-muted">
               <span>Доставка</span>
-              <span>{user?.loyaltyTier?.freeShipping || subtotal >= delivery.freeFrom ? "бесплатно" : "при оформлении"}</span>
-            </div>
-            <div className="mt-4 border-t border-line pt-4 text-xs text-taupe-dark">
-              +{pts.toLocaleString("ru-RU")} баллов после получения заказа{user ? ` · баланс ${user.pointsBalance.toLocaleString("ru-RU")} баллов` : " · 2 000 приветственных баллов при первом заказе"}
+              <span>{subtotal >= delivery.freeFrom ? "бесплатно" : "при оформлении"}</span>
             </div>
             <Link href="/checkout" className="btn-primary mt-6 w-full">Оформить заказ</Link>
             <ul className="mt-5 space-y-1.5 text-[0.75rem] text-muted">

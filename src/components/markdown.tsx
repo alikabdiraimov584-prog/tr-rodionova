@@ -31,7 +31,6 @@ const BULLET = /^- /;
 const NUMBERED = /^\d+\.\s/;
 
 const ANCHORS: [RegExp, string][] = [
-  [/программы лояльности/i, "loyalty"],
   [/^\d+\.\s*Согласие на обработку/i, "consent"],
   [/^\d+\.\s*Согласие на получение рекламных/i, "marketing"],
 ];

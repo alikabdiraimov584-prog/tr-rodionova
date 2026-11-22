@@ -67,7 +67,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
             {(await onlinePaymentsAvailable()) && <PayButton orderId={order.id} live={await paymentsEnabled()} />}
             <form action={cancelOwnOrderAction}>
               <input type="hidden" name="orderId" value={order.id} />
-              <ConfirmButton message="Отменить заказ? Списанные баллы вернутся на счёт.">Отменить</ConfirmButton>
+              <ConfirmButton message="Отменить заказ?">Отменить</ConfirmButton>
             </form>
           </div>
         </div>
@@ -122,14 +122,10 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/ac
         </div>
         <aside className="card h-fit space-y-2 p-5 text-sm">
           <div className="flex justify-between"><span>Товары</span><span>{formatMoney(order.subtotal)}</span></div>
-          {order.discount - order.pointsUsed * 100 > 0 && <div className="flex justify-between text-success"><span>Скидка</span><span>−{formatMoney(order.discount - order.pointsUsed * 100)}</span></div>}
-          {order.pointsUsed > 0 && <div className="flex justify-between text-success"><span>Баллами</span><span>−{formatMoney(order.pointsUsed * 100)}</span></div>}
+          {order.discount > 0 && <div className="flex justify-between text-success"><span>Скидка</span><span>−{formatMoney(order.discount)}</span></div>}
           {order.giftUsed > 0 && <div className="flex justify-between text-success"><span>Сертификатом</span><span>−{formatMoney(order.giftUsed)}</span></div>}
           <div className="flex justify-between"><span>Доставка</span><span>{order.deliveryCost ? formatMoney(order.deliveryCost) : "бесплатно"}</span></div>
           <div className="flex justify-between border-t border-line pt-2 text-base"><span className="serif">Итого</span><span>{formatMoney(order.total)}</span></div>
-          <div className="pt-2 text-xs text-taupe-dark">
-            {order.pointsEarned ? `Начислено ${order.pointsEarned.toLocaleString("ru-RU")} баллов` : order.status === "CANCELLED" || order.status === "RETURNED" ? "" : "Баллы начислятся через 14 дней после получения"}
-          </div>
           <div className="border-t border-line pt-3 text-xs text-muted">
             <div className="eyebrow mb-1">Доставка</div>
             {DELIVERY_METHOD[order.deliveryMethod].label}

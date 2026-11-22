@@ -48,7 +48,7 @@ export async function GET(req: Request, ctx: RouteContext<"/crm/orders/[id]/prin
   <p>Покупатель: ${esc(fullName)}, ${esc(order.phone)}, ${esc(order.email)}<br>Доставка: ${esc(DELIVERY_METHOD[order.deliveryMethod].label)}, ${esc(addr)}</p>
   <table><thead><tr><th>#</th><th>Наименование</th><th>Артикул</th><th>Размер / цвет</th><th class="r">Кол-во</th><th class="r">Цена</th><th class="r">Сумма</th><th></th></tr></thead><tbody>${rows}</tbody>
   <tfoot><tr><td colspan="6" class="r">Товары</td><td class="r">${formatMoney(order.subtotal)}</td><td></td></tr>
-  ${order.discount ? `<tr><td colspan="6" class="r">Скидка и баллы Circle</td><td class="r">−${formatMoney(order.discount)}</td><td></td></tr>` : ""}
+  ${order.discount ? `<tr><td colspan="6" class="r">Скидка</td><td class="r">−${formatMoney(order.discount)}</td><td></td></tr>` : ""}
   ${order.giftUsed ? `<tr><td colspan="6" class="r">Подарочный сертификат</td><td class="r">−${formatMoney(order.giftUsed)}</td><td></td></tr>` : ""}
   <tr><td colspan="6" class="r">Доставка</td><td class="r">${formatMoney(order.deliveryCost)}</td><td></td></tr>
   <tr><td colspan="6" class="r"><b>Итого к оплате</b></td><td class="r"><b>${formatMoney(order.total)}</b></td><td></td></tr></tfoot></table>

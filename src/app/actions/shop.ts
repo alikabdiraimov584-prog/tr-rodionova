@@ -14,8 +14,6 @@ import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 import { trackEvent } from "@/lib/web-analytics";
 import { addedMessage, addToGuestCart, cartLimit, ensureGuestToken, getGuestToken, setGuestCartQuantity } from "@/lib/guest-cart";
 import { hashPassword, loginAs } from "@/lib/auth";
-import { addPoints, recalcTier } from "@/lib/loyalty";
-import { getSetting } from "@/lib/settings";
 import { recordConsent } from "@/lib/consent";
 import { audit } from "@/lib/audit";
 import { checkRate, clientIp } from "@/lib/ratelimit";
@@ -112,19 +110,17 @@ const CheckoutSchema = z.object({
   offer: z.string().optional(),
   marketingConsent: z.string().optional(),
   promoCode: z.string().trim().optional(),
-  pointsToUse: z.coerce.number().int().min(0).optional(),
   giftCode: z.string().trim().max(32).optional(),
 });
 
 /**
- * Гость оформляет заказ без пароля: аккаунт Circle создаётся с первым заказом, вход выполняется сразу.
+ * Гость оформляет заказ без пароля: аккаунт создаётся с первым заказом, вход выполняется сразу.
  * Пароль можно задать позже по ссылке «Забыли пароль» или войти по коду из письма.
  */
 async function createAccountForGuest(d: { email: string; phone: string; firstName: string; lastName?: string; marketingConsent?: string }) {
   const ip = await clientIp();
   const rl = await checkRate(`register:ip:${ip ?? "unknown"}`, { limit: 10, windowSec: 3600, lockSec: 3600 });
   if (!rl.ok) throw new Error("Слишком много регистраций с этого адреса. Попробуйте позже.");
-  const s = await getSetting("loyalty");
   const user = await db.$transaction(async (tx) => {
     const u = await tx.user.create({
       data: {
@@ -140,8 +136,6 @@ async function createAccountForGuest(d: { email: string; phone: string; firstNam
     await recordConsent(tx, u.id, "PERSONAL_DATA", true);
     await recordConsent(tx, u.id, "OFFER", true);
     if (d.marketingConsent === "on") await recordConsent(tx, u.id, "MARKETING", true);
-    await recalcTier(tx, u.id);
-    await addPoints(tx, u.id, "EARN_WELCOME", s.welcomePoints, { comment: "Добро пожаловать в T.Rodionova Circle" });
     await audit(u.id, "auth.register", "User", u.id, { via: "checkout" }, tx);
     return u;
   });
@@ -243,7 +237,7 @@ export async function leaveReviewAction(_: ActionState, formData: FormData): Pro
   if (exists) return { error: "Вы уже оставили отзыв на это изделие" };
   await db.review.create({ data: { userId: user.id, productId: parsed.data.productId, rating: parsed.data.rating, text: parsed.data.text || null } });
   revalidatePath("/account/orders");
-  return { ok: true, message: "Спасибо! Баллы начислятся после модерации." };
+  return { ok: true, message: "Спасибо! Отзыв появится после модерации." };
 }
 
 export type QuoteView = {
@@ -252,35 +246,25 @@ export type QuoteView = {
   discount: number;
   promoError: string | null;
   promoApplied: string | null;
-  pointsMax: number;
-  pointsUsed: number;
-  pointsValue: number;
   delivery: number;
   total: number;
-  earn: number;
   giftCode: string | null;
   giftApplied: number;
   giftError: string | null;
 };
 
-export async function quoteAction(input: { promoCode?: string; pointsToUse?: number; deliveryMethod: DeliveryMethod; giftCode?: string }): Promise<QuoteView> {
+export async function quoteAction(input: { promoCode?: string; deliveryMethod: DeliveryMethod; giftCode?: string }): Promise<QuoteView> {
   const user = await getCurrentCustomer();
   const { quoteCart, quoteGuestCart } = await import("@/lib/orders");
   const q = user ? await quoteCart(user.id, input) : await quoteGuestCart(await getGuestToken(), input);
-  const pct = user?.loyaltyTier?.cashbackPct ?? 3;
-  const pointValue = (await getSetting("loyalty")).pointValueKopecks;
   return {
     lines: q.lines.map((l) => ({ variantId: l.variantId, productName: l.productName, size: l.size, color: l.color, quantity: l.quantity, price: l.price, isPreorder: l.isPreorder })),
     subtotal: q.subtotal,
     discount: q.discount,
     promoError: q.promo && !q.promo.ok ? q.promo.error : null,
     promoApplied: q.promo?.ok ? q.promo.promo.code : null,
-    pointsMax: q.pointsMax,
-    pointsUsed: q.pointsUsed,
-    pointsValue: q.pointsValue,
     delivery: q.delivery,
     total: q.total,
-    earn: Math.floor((Math.max(0, q.total - q.delivery) * pct) / 100 / pointValue),
     giftCode: q.giftCode ?? null,
     giftApplied: q.giftApplied,
     giftError: q.giftError,

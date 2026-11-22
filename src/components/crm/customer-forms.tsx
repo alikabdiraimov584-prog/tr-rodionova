@@ -1,27 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
-import { adjustPointsAction, updateCustomerAction } from "@/app/actions/crm-customers";
+import { updateCustomerAction } from "@/app/actions/crm-customers";
 
 function Msg({ s }: { s: { error?: string; message?: string } | undefined }) {
   if (s?.error) return <p className="text-xs text-danger">{s.error}</p>;
   if (s?.message) return <p className="text-xs text-success">{s.message}</p>;
   return null;
-}
-
-export function PointsForm({ userId }: { userId: string }) {
-  const [state, action, pending] = useActionState(adjustPointsAction, undefined);
-  return (
-    <form action={action} className="space-y-2">
-      <input type="hidden" name="userId" value={userId} />
-      <div className="grid grid-cols-[110px_1fr] gap-2">
-        <input aria-label="Сумма" name="amount" type="number" placeholder="+500 / −500" className="input py-2" />
-        <input name="comment" placeholder="Причина (видна клиенту)" className="input py-2" />
-      </div>
-      <button className="btn-outline btn-sm" disabled={pending}>Провести</button>
-      <Msg s={state} />
-    </form>
-  );
 }
 
 // Форма задачи — TaskQuickForm в task-forms.tsx (срок со временем, приоритет, тип, подтверждение с именем ответственного)

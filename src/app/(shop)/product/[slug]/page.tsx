@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
@@ -58,19 +58,14 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   // скрытая в CRM категория не показывается и в «хлебных крошках»
   const category = p.category?.isActive ? p.category : null;
   const user = await getCurrentCustomer();
-  if (p.earlyAccessUntil && p.earlyAccessUntil > new Date() && !user?.loyaltyTier?.earlyAccess) {
-    redirect(`/circle?early=${p.slug}`);
-  }
-  const [inWishlist, tier, related, delivery, seller, installments] = await Promise.all([
+  const [inWishlist, related, delivery, seller, installments] = await Promise.all([
     user ? db.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } }) : null,
-    user?.loyaltyTier ?? db.loyaltyTier.findFirst({ orderBy: { threshold: "asc" } }),
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: true }, take: 4 }),
     getSetting("delivery"),
     getSetting("seller"),
     // «4 платежа» обещаем, только если оплата Долями подключена и цена в её пределах
     dolyameAvailableFor(p.price).catch(() => false),
   ]);
-  const pts = Math.floor((p.price * (tier?.cashbackPct ?? 3)) / 100 / 100);
   // «С этим носят»: вещи из тех же образов лукбука, иначе соседи по категории
   // в подборках под карточкой — только вещи со съёмкой, иначе блок из заглушек выглядит незаконченным
   // «Собрать образ» — вещи одного образа, того же, куда ведёт «Весь образ»; остальные образы — ссылками у блока покупки
@@ -94,7 +89,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     ...(p.isPreorder ? [["Отшив", p.preorderShipAt ? `к ${formatDate(p.preorderShipAt)}` : "4–6 недель"] as [string, string]] : []),
   ];
   const sizesAll = [...new Set(p.variants.map((v) => v.size))];
-  const faq = productFaq(p, sizesAll, delivery, pts);
+  const faq = productFaq(p, sizesAll, delivery);
   const ld = productJsonLd(p, delivery, { hasStore: !!seller.showroom });
   const shots = p.images.filter((img) => isRealPhoto(img.url));
   const price = (
@@ -133,7 +128,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           <div className="mt-5 hidden md:block">{price}</div>
           {rating && <a href="#reviews" className="mt-1 inline-block text-[#6f6f6f] underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
           {installments && <div className="mt-1 text-[#6f6f6f]">или 4 платежа по {formatMoney(Math.ceil(p.price / 4 / 100) * 100)} с Долями</div>}
-          {p.isPreorder && <p className="mt-6 text-[#6f6f6f]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении, баллы — после получения.</p>}
+          {p.isPreorder && <p className="mt-6 text-[#6f6f6f]">Предзаказ: отшиваем под вас {p.preorderShipAt ? `к ${formatDate(p.preorderShipAt).replace(/\.$/, "")}` : "за 4–6 недель"}. Оплата при оформлении.</p>}
           <div className="mt-8"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
           <div className="mt-2">
             <AddToCart slug={p.slug} loggedIn={!!user} preorder={p.isPreorder} defaultSize={wantedSize ?? (advice?.fit === "точно" ? advice.size : null)} defaultColor={wantedColor} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
@@ -161,7 +156,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               <summary className="acc-line">Доставка и возврат<span aria-hidden className="acc-mark">+</span></summary>
               <div className="space-y-2 pb-5">
                 <p>Курьер с примеркой по Москве и Петербургу за 1–2 дня: до 20 минут на примерку, платите только за то, что подошло. СДЭК по России — 2–7 дней.</p>
-                <p>Возврат 14 дней с момента получения. Для уровня Privé обратный забор бесплатный. <Link href="/delivery" className="underline underline-offset-4">Подробнее</Link></p>
+                <p>Возврат 14 дней с момента получения. <Link href="/delivery" className="underline underline-offset-4">Подробнее</Link></p>
               </div>
             </details>
             {p.articles.length > 0 && (

@@ -1,8 +1,8 @@
 import "server-only";
+import { updateCustomerSpending } from "@/lib/customer-spending";
 import { db } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { reserveStock, releaseStock, commitSale, returnOrderItems } from "@/lib/stock";
-import { earnForOrder, revertOrderPoints, grantReferralBonus, recalcTier, addPoints, maxPointsForOrder } from "@/lib/loyalty";
 
 export const RETURN_WINDOW_DAYS = 14;
 import { audit } from "@/lib/audit";
@@ -143,12 +143,8 @@ export type Quote = {
   subtotal: number;
   discount: number;
   promo: PromoResult | null;
-  pointsMax: number;
-  pointsUsed: number;
-  pointsValue: number;
   delivery: number;
   total: number;
-  freeShippingByTier: boolean;
   /** Код сертификата, если он прошёл проверку */
   giftCode?: string | null;
   giftCardId?: string | null;
@@ -159,22 +155,15 @@ export type Quote = {
 
 export async function quoteCart(
   userId: string,
-  input: { promoCode?: string | null; pointsToUse?: number; deliveryMethod: DeliveryMethod; giftCode?: string | null },
+  input: { promoCode?: string | null; deliveryMethod: DeliveryMethod; giftCode?: string | null },
 ): Promise<Quote> {
   const lines = await loadCart(userId);
   const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
   const promo = await evaluatePromo(input.promoCode, subtotal, userId);
   const discount = promo?.ok ? promo.discount : 0;
   const afterDiscount = subtotal - discount;
-  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, include: { loyaltyTier: true } });
-  const pointsMax = await maxPointsForOrder(userId, afterDiscount);
-  const pointsUsed = Math.max(0, Math.min(pointsMax, Math.floor(input.pointsToUse ?? 0)));
-  const s = await getSetting("loyalty");
-  const pointsValue = pointsUsed * s.pointValueKopecks;
-  const freeShippingByTier = !!user.loyaltyTier?.freeShipping;
-  const delivery = await deliveryCost(input.deliveryMethod, afterDiscount, { freeShipping: freeShippingByTier || (promo?.ok && promo.freeShipping) });
-  // к оплате после промокода и баллов, включая доставку — именно это покрывает сертификат
-  const toPay = Math.max(0, afterDiscount - pointsValue) + delivery;
+  const delivery = await deliveryCost(input.deliveryMethod, afterDiscount, { freeShipping: promo?.ok && promo.freeShipping });
+  const toPay = afterDiscount + delivery;
   const gift = await evaluateGift(input.giftCode);
   const giftApplied = gift?.ok ? Math.min(gift.card.balance, toPay) : 0;
   const total = toPay - giftApplied;
@@ -183,12 +172,8 @@ export async function quoteCart(
     subtotal,
     discount,
     promo,
-    pointsMax,
-    pointsUsed,
-    pointsValue,
     delivery,
     total,
-    freeShippingByTier,
     giftCode: gift?.ok ? gift.card.code : null,
     giftCardId: gift?.ok ? gift.card.id : null,
     giftApplied,
@@ -209,13 +194,12 @@ export type CheckoutInput = {
   addressText?: string | null;
   comment?: string | null;
   promoCode?: string | null;
-  pointsToUse?: number;
   giftCode?: string | null;
   fittingRequested?: boolean;
   deliverySlot?: string | null;
 };
 
-/** Котировка корзины гостя: без баллов и уровня, промокод и сертификат работают. */
+/** Котировка корзины гостя: промокод и сертификат работают. */
 export async function quoteGuestCart(token: string | null, input: { promoCode?: string | null; deliveryMethod: DeliveryMethod; giftCode?: string | null }) {
   const { guestCartItems } = await import("@/lib/guest-cart");
   const items = await guestCartItems(token);
@@ -242,7 +226,7 @@ export async function quoteGuestCart(token: string | null, input: { promoCode?: 
   const gift = await evaluateGift(input.giftCode);
   const giftApplied = gift?.ok ? Math.min(gift.card.balance, toPay) : 0;
   const total = toPay - giftApplied;
-  const quote: Quote = { lines, subtotal, discount, promo, pointsMax: 0, pointsUsed: 0, pointsValue: 0, delivery, total, freeShippingByTier: false, giftCode: gift?.ok ? gift.card.code : null, giftCardId: gift?.ok ? gift.card.id : null, giftApplied, giftError: gift && !gift.ok ? gift.error : null };
+  const quote: Quote = { lines, subtotal, discount, promo, delivery, total, giftCode: gift?.ok ? gift.card.code : null, giftCardId: gift?.ok ? gift.card.id : null, giftApplied, giftError: gift && !gift.ok ? gift.error : null };
   return quote;
 }
 
@@ -289,8 +273,7 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
         addressText: input.addressText ?? null,
         deliveryCost: quote.delivery,
         subtotal: quote.subtotal,
-        discount: quote.discount + quote.pointsValue,
-        pointsUsed: quote.pointsUsed,
+        discount: quote.discount,
         giftUsed,
         total: quote.total,
         promoCodeId: quote.promo?.ok ? quote.promo.promo.id : null,
@@ -314,9 +297,6 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
       },
     });
     for (const l of quote.lines) if (!l.isPreorder) await reserveStock(tx, l.variantId, l.quantity, order.id);
-    if (quote.pointsUsed > 0) {
-      await addPoints(tx, userId, "SPEND_PURCHASE", -quote.pointsUsed, { orderId: order.id, comment: `Оплата заказа №${order.number}`, expiresAt: null });
-    }
     if (quote.promo?.ok) {
       // блокируем строку промокода, чтобы лимиты использований не обходились параллельными заказами
       const promoId = quote.promo.promo.id;
@@ -382,7 +362,7 @@ export async function markOrderPaid(orderId: string, opts: { createdBy?: string 
           : []),
       ],
     });
-    if (order.userId) await recalcTier(tx, order.userId);
+    if (order.userId) await updateCustomerSpending(tx, order.userId);
     await addOrderEvent(tx, orderId, "Оплата получена", "PAID", opts.createdBy);
     await audit(opts.createdBy ?? null, "order.paid", "Order", orderId, undefined, tx);
   });
@@ -445,10 +425,9 @@ export async function cancelOrder(orderId: string, opts: { reason?: string; crea
       await refundReminder(tx, orderId, order.total, opts.createdBy);
       await reverseCogs(tx, order, order.items.filter((i) => !i.isPreorder).map((i) => ({ costPrice: i.costPrice, qty: i.quantity - i.returnedQty })), `Сторно себестоимости: отмена заказа №${order.number}`, opts.createdBy);
     }
-    if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
     await restoreGiftForOrder(tx, orderId, opts.createdBy);
     await tx.order.update({ where: { id: orderId }, data: { status: "CANCELLED" } });
-    if (order.userId) await recalcTier(tx, order.userId);
+    if (order.userId) await updateCustomerSpending(tx, order.userId);
     await addOrderEvent(tx, orderId, opts.reason ? `Заказ отменён: ${opts.reason}` : "Заказ отменён", "CANCELLED", opts.createdBy);
     await audit(opts.createdBy ?? null, "order.cancel", "Order", orderId, { reason: opts.reason ?? null }, tx);
   });
@@ -477,7 +456,6 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
       if (refund > 0) await tx.ledgerEntry.create({ data: { type: "REFUND", amount: refund, orderId, comment: `Возврат по заказу №${order.number}`, createdBy: opts.createdBy } });
       await refundReminder(tx, orderId, refund, opts.createdBy);
       await reverseCogs(tx, order, order.items.filter((i) => !i.isPreorder).map((i) => ({ costPrice: i.costPrice, qty: i.quantity - i.returnedQty })), `Сторно себестоимости: возврат по заказу №${order.number}`, opts.createdBy);
-      if (order.userId) await revertOrderPoints(tx, orderId, opts.createdBy);
       // оплаченное сертификатом возвращается на сертификат
       await restoreGiftForOrder(tx, orderId, opts.createdBy);
     }
@@ -490,15 +468,11 @@ export async function setOrderStatus(orderId: string, status: OrderStatus, opts:
         ...(opts.trackingNumber !== undefined ? { trackingNumber: opts.trackingNumber } : {}),
       },
     });
-    if (order.userId && status === "COMPLETED") {
-      await earnForOrder(tx, orderId);
-      await grantReferralBonus(tx, orderId);
-    }
-    if (order.userId && status === "RETURNED") await recalcTier(tx, order.userId);
+    if (order.userId && status === "RETURNED") await updateCustomerSpending(tx, order.userId);
     await addOrderEvent(tx, orderId, opts.note ?? `Статус изменён`, status, opts.createdBy);
     await audit(opts.createdBy ?? null, "order.status", "Order", orderId, { status }, tx);
   });
-  const notifyFor: Partial<Record<OrderStatus, Parameters<typeof notifyOrder>[1]>> = { SHIPPED: "ORDER_SHIPPED", DELIVERED: "ORDER_DELIVERED", COMPLETED: "ORDER_COMPLETED" };
+  const notifyFor: Partial<Record<OrderStatus, Parameters<typeof notifyOrder>[1]>> = { SHIPPED: "ORDER_SHIPPED", DELIVERED: "ORDER_DELIVERED" };
   if (notifyFor[status]) void notifyOrder(orderId, notifyFor[status]);
   // 54-ФЗ: при вручении предоплаченного заказа — второй чек «полный расчёт» с зачётом предоплаты
   if (status === "DELIVERED") void import("@/lib/payments/fiscal").then((m) => m.issueReceiptInBackground(orderId, "settlement", opts.createdBy));
@@ -534,23 +508,7 @@ export async function partialReturn(orderId: string, lines: { orderItemId: strin
         await tx.order.update({ where: { id: orderId }, data: { status: "RETURNED" } });
         await addOrderEvent(tx, orderId, "Все позиции возвращены", "RETURNED", opts.createdBy);
       }
-      if (order.userId) {
-        if (allReturned) {
-          await revertOrderPoints(tx, orderId, opts.createdBy);
-        } else {
-          // списанные баллы возвращаем пропорционально возвращённым позициям
-          const pointsBack = Math.floor((order.pointsUsed * value) / Math.max(1, order.subtotal));
-          if (pointsBack > 0) await addPoints(tx, order.userId, "EARN_MANUAL", pointsBack, { orderId, comment: `Возврат баллов за позиции заказа №${order.number}`, createdBy: opts.createdBy });
-        }
-        if (!allReturned && order.pointsEarned > 0) {
-          // та же база, что при начислении (earnBase): доля возвращённых позиций от стоимости товаров
-          const revert = Math.min(order.pointsEarned, Math.floor((order.pointsEarned * value) / Math.max(1, order.subtotal)));
-          const user = await tx.user.findUniqueOrThrow({ where: { id: order.userId } });
-          const amount = -Math.min(revert, user.pointsBalance);
-          if (amount) await addPoints(tx, order.userId, "REVERT", amount, { orderId, comment: `Частичный возврат по заказу №${order.number}`, createdBy: opts.createdBy, expiresAt: null });
-        }
-        await recalcTier(tx, order.userId);
-      }
+      if (order.userId) await updateCustomerSpending(tx, order.userId);
     }
     await addOrderEvent(tx, orderId, `Возврат позиций: к выплате ${Math.round(refundFor(order, value) / 100).toLocaleString("ru-RU")} ₽`, null, opts.createdBy);
     await audit(opts.createdBy ?? null, "order.partialReturn", "Order", orderId, { lines, value }, tx);
@@ -570,7 +528,6 @@ export type ManualOrderInput = {
   paymentMethod: PaymentMethod;
   deliveryMethod: DeliveryMethod;
   addressText?: string | null;
-  pointsToUse?: number;
   discount?: number;
   comment?: string | null;
   markPaid: boolean;
@@ -590,13 +547,7 @@ export async function createManualOrder(input: ManualOrderInput) {
   });
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = Math.min(subtotal, Math.max(0, input.discount ?? 0));
-  let pointsUsed = 0;
-  if (input.userId && input.pointsToUse) {
-    const max = await maxPointsForOrder(input.userId, subtotal - discount);
-    pointsUsed = Math.min(max, Math.floor(input.pointsToUse));
-  }
-  const s = await getSetting("loyalty");
-  const total = Math.max(0, subtotal - discount - pointsUsed * s.pointValueKopecks);
+  const total = subtotal - discount;
   const order = await db.$transaction(async (tx) => {
     const o = await tx.order.create({
       data: {
@@ -608,8 +559,7 @@ export async function createManualOrder(input: ManualOrderInput) {
         deliveryMethod: input.deliveryMethod,
         addressText: input.addressText ?? null,
         subtotal,
-        discount: discount + pointsUsed * s.pointValueKopecks,
-        pointsUsed,
+        discount,
         total,
         comment: input.comment ?? null,
         managerNote: "Создан в CRM",
@@ -629,9 +579,6 @@ export async function createManualOrder(input: ManualOrderInput) {
       },
     });
     for (const i of items) await reserveStock(tx, i.v.id, i.quantity, o.id);
-    if (pointsUsed > 0 && input.userId) {
-      await addPoints(tx, input.userId, "SPEND_PURCHASE", -pointsUsed, { orderId: o.id, comment: `Оплата заказа №${o.number}`, createdBy: input.createdBy, expiresAt: null });
-    }
     await addOrderEvent(tx, o.id, "Заказ создан менеджером", "NEW", input.createdBy);
     await audit(input.createdBy, "order.createManual", "Order", o.id, { total }, tx);
     return o;

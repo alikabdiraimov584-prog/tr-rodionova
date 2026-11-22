@@ -26,7 +26,7 @@ export function StatusForm({ orderId, next, tracking }: { orderId: string; next:
         disabled={pending}
         onClick={(e) => {
           const sel = (e.currentTarget.form?.elements.namedItem("status") as HTMLSelectElement | null)?.value;
-          if ((sel === "CANCELLED" || sel === "RETURNED") && !confirm("Подтвердите: деньги и баллы будут возвращены клиенту, товар — на склад.")) e.preventDefault();
+          if ((sel === "CANCELLED" || sel === "RETURNED") && !confirm("Подтвердите: деньги будут возвращены клиенту, товар — на склад.")) e.preventDefault();
         }}
       >
         {pending ? "Сохраняем…" : "Применить"}

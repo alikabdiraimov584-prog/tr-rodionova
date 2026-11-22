@@ -4,58 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
-import { addPoints } from "@/lib/loyalty";
-import { getSetting, setSetting } from "@/lib/settings";
-import { runDailyJobs } from "@/lib/jobs";
 import { toKopecks } from "@/lib/money";
 import { audit } from "@/lib/audit";
-import { errorMessage, type ActionState } from "@/lib/action-result";
-
-export async function saveTierAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireSection("loyaltyEdit");
-  const id = String(formData.get("id"));
-  const num = (k: string) => Math.max(0, Math.trunc(Number(formData.get(k) ?? 0)));
-  const data = {
-    name: String(formData.get("name") ?? "").trim(),
-    threshold: toKopecks(String(formData.get("threshold") ?? "0")),
-    cashbackPct: Math.min(30, num("cashbackPct")),
-    maxPayPct: Math.min(100, num("maxPayPct")),
-    birthdayBonus: num("birthdayBonus"),
-    perks: String(formData.get("perks") ?? "").split("\n").map((s) => s.trim()).filter(Boolean),
-    freeShipping: formData.get("freeShipping") === "on",
-    freeReturns: formData.get("freeReturns") === "on",
-    earlyAccess: formData.get("earlyAccess") === "on",
-    stylist: formData.get("stylist") === "on",
-  };
-  if (!data.name) return { error: "Название уровня" };
-  await db.loyaltyTier.update({ where: { id }, data });
-  await audit(me.id, "loyalty.tier", "LoyaltyTier", id, data);
-  revalidatePath("/crm/loyalty");
-  revalidatePath("/circle");
-  return { ok: true, message: "Уровень сохранён. Пересчёт клиентов — кнопкой «Запустить задачи»." };
-}
-
-export async function saveLoyaltySettingsAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireSection("loyaltyEdit");
-  const cur = await getSetting("loyalty");
-  const n = (k: string) => Math.max(0, Math.trunc(Number(formData.get(k) ?? 0)));
-  const next = { ...cur, welcomePoints: n("welcomePoints"), referralPoints: n("referralPoints"), reviewPoints: n("reviewPoints"), pointsExpireDays: Math.max(30, n("pointsExpireDays")) };
-  await setSetting("loyalty", next);
-  await audit(me.id, "settings.loyalty", "Setting", "loyalty", next);
-  revalidatePath("/crm/loyalty");
-  return { ok: true, message: "Сохранено" };
-}
-
-export async function runJobsAction(): Promise<ActionState> {
-  const me = await requireSection("loyalty");
-  try {
-    const r = await runDailyJobs(me.id);
-    revalidatePath("/crm", "layout");
-    return { ok: true, message: `Завершено заказов: ${r.completed}, подарков ко ДР: ${r.birthdays}, сгораний: ${r.expired}, пересчитано уровней: ${r.tiers}` };
-  } catch (e) {
-    return { error: errorMessage(e) };
-  }
-}
+import type { ActionState } from "@/lib/action-result";
 
 const PromoSchema = z.object({
   code: z.string().trim().min(3, "Код").max(32).regex(/^[A-Za-z0-9_-]+$/, "Код: латиница и цифры"),
@@ -113,18 +64,7 @@ export async function moderateReviewAction(formData: FormData) {
   if (op === "delete") {
     await db.review.delete({ where: { id } });
   } else {
-    const publish = op === "publish";
-    await db.$transaction(async (tx) => {
-      await tx.review.update({ where: { id }, data: { isPublic: publish } });
-      if (publish) {
-        // бонус за отзыв — один раз за отзыв
-        const paid = await tx.pointsTransaction.findFirst({ where: { userId: review.userId, type: "EARN_REVIEW", comment: { contains: review.id } } });
-        if (!paid) {
-          const s = await getSetting("loyalty");
-          await addPoints(tx, review.userId, "EARN_REVIEW", s.reviewPoints, { comment: `Отзыв о «${review.product.name}» (${review.id})`, createdBy: me.id });
-        }
-      }
-    });
+    await db.review.update({ where: { id }, data: { isPublic: op === "publish" } });
   }
   await audit(me.id, `review.${op}`, "Review", id);
   revalidatePath("/crm/reviews");

@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Сотрудники" };
 
 const SECTION_LABELS: Partial<Record<keyof typeof SECTIONS, string>> = {
   dashboard: "Дашборд", support: "Поддержка", orders: "Заказы (просмотр)", ordersEdit: "Заказы (изменение)", customers: "Клиенты (просмотр)",
-  customersEdit: "Клиенты (изменение)", points: "Ручные баллы", tasks: "Задачи", products: "Товары", stock: "Склад", loyalty: "Лояльность",
+  customersEdit: "Клиенты (изменение)", tasks: "Задачи", products: "Товары", stock: "Склад",
   promos: "Промокоды", reviews: "Отзывы", finance: "Финансы", staff: "Сотрудники", settings: "Настройки", integrations: "Каналы", audit: "Журнал",
 };
 

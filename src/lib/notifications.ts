@@ -12,13 +12,13 @@ import { publicPhone } from "@/lib/seo";
 import { yandexTrackingLink } from "@/lib/delivery";
 
 /**
- * Сервисные уведомления: статусы заказа и баллы. Это не рассылки, поэтому согласие на маркетинг
+ * Сервисные уведомления: статусы заказа. Это не рассылки, поэтому согласие на маркетинг
  * не требуется. Email уходит всегда, когда канал подключён; SMS — только для событий, где
  * важна скорость (отправка и доставка заказа). Каждая попытка пишется в Notification,
  * ошибки отправки никогда не ломают действие, которое их вызвало.
  */
 
-export type OrderEventKind = "ORDER_CREATED" | "ORDER_PAID" | "ORDER_SHIPPED" | "ORDER_DELIVERED" | "ORDER_COMPLETED" | "ORDER_CANCELLED" | "COURIER_SOON";
+export type OrderEventKind = "ORDER_CREATED" | "ORDER_PAID" | "ORDER_SHIPPED" | "ORDER_DELIVERED" | "ORDER_CANCELLED" | "COURIER_SOON";
 
 const SMS_EVENTS: OrderEventKind[] = ["ORDER_SHIPPED", "ORDER_DELIVERED", "COURIER_SOON"];
 
@@ -62,7 +62,7 @@ function signature(brand: { name: string; phone: string; email: string }) {
 /** Уведомление по событию заказа. Вызывать после фиксации транзакции; ошибки гасятся. */
 export async function notifyOrder(orderId: string, event: OrderEventKind) {
   try {
-    const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true, user: { select: { id: true, pointsBalance: true } }, payments: { select: { method: true }, orderBy: { createdAt: "asc" }, take: 1 } } });
+    const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true, payments: { select: { method: true }, orderBy: { createdAt: "asc" }, take: 1 } } });
     if (!order) return;
     const brand = await getSetting("brand");
     const method = order.payments[0]?.method;
@@ -112,12 +112,8 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
         break;
       case "ORDER_DELIVERED":
         subject = `Заказ ${n} доставлен`;
-        text = `${hi}\n\nЗаказ ${n} доставлен. Надеемся, вещи сели так, как вы ждали.\n\nЕсли что-то не подошло, вернуть можно в течение 14 дней: ${siteUrl()}/delivery. Баллы Circle начислятся после окончания срока возврата.`;
+        text = `${hi}\n\nЗаказ ${n} доставлен. Надеемся, вещи сели так, как вы ждали.\n\nЕсли что-то не подошло, вернуть можно в течение 14 дней: ${siteUrl()}/delivery.`;
         sms = `T.Rodionova: заказ ${n} доставлен. Возврат — 14 дней.`;
-        break;
-      case "ORDER_COMPLETED":
-        subject = `Баллы за заказ ${n} начислены`;
-        text = `${hi}\n\nЗа заказ ${n} начислено ${order.pointsEarned.toLocaleString("ru-RU")} баллов Circle. ${order.user ? `На вашем счёте ${order.user.pointsBalance.toLocaleString("ru-RU")} баллов — ими можно оплатить часть следующей покупки.` : ""}\n\nЛичный кабинет: ${siteUrl()}/account/loyalty`;
         break;
       case "ORDER_CANCELLED": {
         subject = `Заказ ${n} отменён`;
@@ -126,11 +122,10 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
         const reason = ev?.message.replace(/^Заказ отменён:?\s*/, "").trim();
         const unpaid = !!reason && /не оплачен/.test(reason);
         const why = unpaid ? ": оплата не поступила за 24 часа, и резерв снят" : reason ? `: ${reason.charAt(0).toLowerCase()}${reason.slice(1).replace(/\.$/, "")}` : "";
-        text = `${hi}\n\nЗаказ ${n} отменён${why}.${unpaid ? ` Если вещи ещё нужны, оформите заказ заново: ${siteUrl()}/cart` : ""}${order.total > 0 && order.paidAt ? " Деньги вернутся на карту в течение 3–10 рабочих дней." : ""}${order.pointsUsed > 0 ? ` Списанные баллы (${order.pointsUsed}) возвращены на счёт.` : ""}\n\nЕсли отмена произошла по ошибке, ответьте на это письмо.`;
+        text = `${hi}\n\nЗаказ ${n} отменён${why}.${unpaid ? ` Если вещи ещё нужны, оформите заказ заново: ${siteUrl()}/cart` : ""}${order.total > 0 && order.paidAt ? " Деньги вернутся на карту в течение 3–10 рабочих дней." : ""}\n\nЕсли отмена произошла по ошибке, ответьте на это письмо.`;
         break;
       }
     }
-    if (event === "ORDER_COMPLETED" && !(order.pointsEarned > 0)) return;
     await dispatch({ userId: order.userId, orderId: order.id, event, subject, text: text + signature(brand), email: order.email, phone: order.phone, sms: SMS_EVENTS.includes(event) ? sms : null });
   } catch (e) {
     console.error("notifyOrder", event, orderId, e);
@@ -168,7 +163,7 @@ export async function notifyUnpaidOrders(now = new Date()) {
   return n;
 }
 
-/** Через 10 дней после получения: как сели вещи, уход за тканью, просьба об отзыве за баллы. Один раз на заказ. */
+/** Через 10 дней после получения: как сели вещи, уход за тканью, просьба об отзыве. Один раз на заказ. */
 export async function notifyReviewRequests(now = new Date()) {
   const d = 86_400_000;
   const orders = await db.order.findMany({
@@ -177,7 +172,7 @@ export async function notifyReviewRequests(now = new Date()) {
   });
   if (orders.length === 0) return 0;
   const sent = new Set((await db.notification.findMany({ where: { orderId: { in: orders.map((o) => o.id) }, event: "REVIEW_REQUEST" }, select: { orderId: true } })).map((x) => x.orderId));
-  const [brand, loyalty] = await Promise.all([getSetting("brand"), getSetting("loyalty")]);
+  const brand = await getSetting("brand");
   let n = 0;
   for (const o of orders) {
     if (sent.has(o.id) || !o.user?.isActive) continue;
@@ -185,7 +180,7 @@ export async function notifyReviewRequests(now = new Date()) {
     const pending = o.items.filter((i) => i.quantity - i.returnedQty > 0 && !reviewed.has(i.variant.product.id));
     if (pending.length === 0) continue;
     const care = pending.map((i) => i.variant.product.care ? `· ${i.productName}: ${i.variant.product.care}` : null).filter(Boolean).join("\n");
-    const text = `${o.firstName}, здравствуйте.\n\nПрошло десять дней с доставки заказа №${o.number}. Надеемся, вещи уже стали частью гардероба.${care ? `\n\nКак ухаживать:\n${care}` : ""}\n\nБудем благодарны за пару слов о покупке: отзыв помогает другим клиенткам выбрать размер и посадку${loyalty.reviewPoints > 0 ? `, а вам начислим ${loyalty.reviewPoints} баллов Circle` : ""}.\nОставить отзыв: ${siteUrl()}/account/orders/${o.id}`;
+    const text = `${o.firstName}, здравствуйте.\n\nПрошло десять дней с доставки заказа №${o.number}. Надеемся, вещи уже стали частью гардероба.${care ? `\n\nКак ухаживать:\n${care}` : ""}\n\nБудем благодарны за пару слов о покупке: отзыв помогает другим клиенткам выбрать размер и посадку.\nОставить отзыв: ${siteUrl()}/account/orders/${o.id}`;
     await dispatch({ userId: o.userId, orderId: o.id, event: "REVIEW_REQUEST", subject: `Как вам вещи из заказа №${o.number}?`, text: text + signature(brand), email: o.email, sms: null });
     n++;
   }
@@ -210,52 +205,8 @@ export async function notifyAbandonedCarts(now = new Date()) {
   for (const u of users) {
     if (skip.has(u.id) || u.cart.length === 0) continue;
     const lines = u.cart.map((c) => `· ${c.variant.product.name}, ${c.variant.size} — ${formatMoney(c.variant.price ?? c.variant.product.price)}`).join("\n");
-    const text = `${u.firstName}, здравствуйте.\n\nВ вашей корзине остались вещи:\n${lines}\n\nОни ждут вас: ${siteUrl()}/cart\nПри оформлении можно оплатить часть баллами Circle.${signature(brand)}\n\nОтписаться от рассылок: ${siteUrl()}/unsubscribe/${u.unsubscribeToken}`;
+    const text = `${u.firstName}, здравствуйте.\n\nВ вашей корзине остались вещи:\n${lines}\n\nОни ждут вас: ${siteUrl()}/cart${signature(brand)}\n\nОтписаться от рассылок: ${siteUrl()}/unsubscribe/${u.unsubscribeToken}`;
     await dispatch({ userId: u.id, event: "CART_REMINDER", subject: "Вещи в вашей корзине", text, email: u.email, sms: null });
-    n++;
-  }
-  return n;
-}
-
-/** Уведомление клиентке по баллам (день рождения, скорое сгорание). */
-export async function notifyPoints(userId: string, event: "POINTS_BIRTHDAY" | "POINTS_EXPIRING", data: { points: number; expiresAt?: Date | null }) {
-  try {
-    const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, phone: true, firstName: true, pointsBalance: true, loyaltyTier: { select: { maxPayPct: true } } } });
-    if (!user) return;
-    const brand = await getSetting("brand");
-    const hi = `${user.firstName}, здравствуйте.`;
-    const subject = event === "POINTS_BIRTHDAY" ? "С днём рождения! Подарок от T.Rodionova" : `${data.points} баллов сгорят ${data.expiresAt?.toLocaleDateString("ru-RU") ?? "скоро"}`;
-    const text =
-      event === "POINTS_BIRTHDAY"
-        ? `${hi}\n\nС днём рождения! Мы начислили ${data.points} подарочных баллов — они действуют 30 дней. На счёте сейчас ${user.pointsBalance} баллов.\n\nВыбрать подарок себе: ${siteUrl()}/catalog`
-        : `${hi}\n\n${data.points} баллов Circle сгорят ${data.expiresAt?.toLocaleDateString("ru-RU") ?? "в ближайшие дни"}. Ими можно оплатить до ${user.loyaltyTier?.maxPayPct ?? 20} % следующей покупки.\n\nКаталог: ${siteUrl()}/catalog`;
-    await dispatch({ userId, event, subject, text: text + signature(brand), email: user.email, phone: user.phone, sms: null });
-  } catch (e) {
-    console.error("notifyPoints", event, userId, e);
-  }
-}
-
-/** Баллы, которые сгорят в ближайшие days дней, — по одному письму на клиентку в неделю. */
-export async function notifyExpiringPoints(days = 7, now = new Date()) {
-  const until = new Date(now.getTime() + days * 86_400_000);
-  const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
-  const rows = await db.pointsTransaction.groupBy({
-    by: ["userId"],
-    where: { amount: { gt: 0 }, expiresAt: { gt: now, lte: until } },
-    _sum: { amount: true },
-    _min: { expiresAt: true },
-  });
-  if (rows.length === 0) return 0;
-  const recent = await db.notification.findMany({ where: { event: "POINTS_EXPIRING", createdAt: { gte: weekAgo }, userId: { in: rows.map((r) => r.userId) } }, select: { userId: true } });
-  const skip = new Set(recent.map((r) => r.userId));
-  const balances = await db.user.findMany({ where: { id: { in: rows.map((r) => r.userId) } }, select: { id: true, pointsBalance: true } });
-  const balance = new Map(balances.map((b) => [b.id, b.pointsBalance]));
-  let n = 0;
-  for (const r of rows) {
-    if (skip.has(r.userId)) continue;
-    const points = Math.min(r._sum.amount ?? 0, balance.get(r.userId) ?? 0);
-    if (points <= 0) continue;
-    await notifyPoints(r.userId, "POINTS_EXPIRING", { points, expiresAt: r._min.expiresAt });
     n++;
   }
   return n;
@@ -287,18 +238,17 @@ export async function notifyStaffOrder(orderId: string, kind: "paid" | "created"
   }
 }
 
-/** Новая клиентка: что на счёте Circle и как войти. Аккаунт, созданный при оформлении заказа, — без пароля, вход по коду. */
+/** Новая клиентка: как войти. Аккаунт, созданный при оформлении заказа, — без пароля, вход по коду. */
 export async function notifyWelcome(userId: string, via: "register" | "checkout") {
   try {
-    const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, pointsBalance: true, loyaltyTier: { select: { name: true, maxPayPct: true } } } });
+    const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true } });
     if (!user) return;
     const brand = await getSetting("brand");
-    const points = user.pointsBalance > 0 ? `\n\nНа ваш счёт ${brand.name} Circle начислено ${user.pointsBalance.toLocaleString("ru-RU")} приветственных баллов: ими можно оплатить до ${user.loyaltyTier?.maxPayPct ?? 20} % покупки.` : "";
     const account =
       via === "checkout"
-        ? `Мы создали для вас личный кабинет при оформлении заказа: там статус заказа, баллы и история покупок. Пароль не нужен — войти можно по коду из письма: ${siteUrl()}/login («Войти по коду из письма»).`
-        : `Ваш личный кабинет: ${siteUrl()}/account — заказы, баллы, избранное и мерки для подбора размера.`;
-    const text = `${user.firstName}, здравствуйте.\n\nДобро пожаловать в ${brand.name}.${points}\n\n${account}${signature(brand)}`;
+        ? `Мы создали для вас личный кабинет при оформлении заказа: там статус заказа и история покупок. Пароль не нужен — войти можно по коду из письма: ${siteUrl()}/login («Войти по коду из письма»).`
+        : `Ваш личный кабинет: ${siteUrl()}/account — заказы, избранное и мерки для подбора размера.`;
+    const text = `${user.firstName}, здравствуйте.\n\nДобро пожаловать в ${brand.name}.\n\n${account}${signature(brand)}`;
     await dispatch({ userId, event: "WELCOME", subject: `Добро пожаловать в ${brand.name}`, text, email: user.email, sms: null });
   } catch (e) {
     console.error("notifyWelcome", userId, e);

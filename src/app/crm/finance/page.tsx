@@ -155,7 +155,7 @@ export default async function Finance({ searchParams }: PageProps<"/crm/finance"
       {tab === "cashflow" && <CashFlow cash={cash} cashTotal={cashTotal} finance={finance} />}
       {tab === "pnl" && <Pnl rows={rows} total={total} monthKey={monthKey} monthFrom={monthFrom} monthTo={monthTo} base={base} method={finance.pnlCost} />}
       {tab === "expenses" && <Expenses type={type} page={page} edit={edit} base={base} />}
-      {tab === "stock" && <StockTab months={months} bs={bs} />}
+      {tab === "stock" && <StockTab months={months} />}
     </div>
   );
 }
@@ -205,7 +205,6 @@ async function Overview({ rows, total, cash, cashTotal, bs, months, from }: { ro
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between"><dt className="text-muted">Товарный запас по себестоимости</dt><dd>{formatMoney(bs.inventoryCost)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Товарный запас в розничных ценах</dt><dd>{formatMoney(bs.inventoryRetail)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Обязательства по баллам Circle</dt><dd className="text-danger">{formatMoney(bs.pointsLiability)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Неоплаченные заказы ({bs.unpaidCount})</dt><dd>{formatMoney(bs.unpaidOrders)}</dd></div>
           </dl>
           <div className="mt-5"><Eyebrow>Способы оплаты, {months} мес.</Eyebrow><div className="mt-3"><HBar items={mix.map((m) => ({ label: `${PAYMENT_METHOD[m.method]} · ${m.count}`, value: m.amount, display: formatMoney(m.amount) }))} /></div></div>
@@ -350,7 +349,7 @@ async function Expenses({ type, page: requested, edit, base }: { type?: LedgerTy
   );
 }
 
-async function StockTab({ months, bs }: { months: number; bs: Awaited<ReturnType<typeof balanceSheetLite>> }) {
+async function StockTab({ months }: { months: number }) {
   const stock = await stockReport(months);
   return (
     <>
@@ -358,7 +357,6 @@ async function StockTab({ months, bs }: { months: number; bs: Awaited<ReturnType
         <Stat label="Вещей на складе" value={stock.total.qty} hint={`${stock.products.length} моделей в наличии`} />
         <Stat label="Запас по себестоимости" value={formatMoney(stock.total.cost)} hint={stock.total.withoutCost ? `${stock.total.withoutCost} моделей без цены закупки` : "по цене закупки из карточек"} tone={stock.total.withoutCost ? "warning" : undefined} />
         <Stat label="Запас в розничных ценах" value={formatMoney(stock.total.retail)} hint={stock.total.cost ? `наценка ${Math.round(((stock.total.retail - stock.total.cost) / stock.total.cost) * 100)}%` : undefined} />
-        <Stat label="Обязательства по баллам" value={formatMoney(bs.pointsLiability)} hint="баллы Circle, которыми могут оплатить" />
       </div>
       <div className="card overflow-x-auto" tabIndex={0}>
         <div className="p-5 pb-2"><Eyebrow>Движение склада по месяцам, штуки и себестоимость</Eyebrow><p className="mt-1 text-xs text-muted">Приход — из поступлений на складе, продажи и возвраты — из заказов, списания и инвентаризация — из раздела «Склад». Себестоимость движения считается по цене закупки на момент операции.</p></div>

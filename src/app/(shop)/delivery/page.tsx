@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Доставка и возврат" 
 export default async function Delivery() {
   const [d, seller] = await Promise.all([getSetting("delivery"), getSetting("seller")]);
   return (
-    <TextPage eyebrow="Покупателям" title="Доставка и возврат" intro={`Бесплатная доставка от ${formatMoney(d.freeFrom)} и для участниц Circle уровней Maison и Privé.`} crumbs={[{ name: "Доставка и возврат", path: "/delivery" }]}>
+    <TextPage eyebrow="Покупателям" title="Доставка и возврат" intro={`Бесплатная доставка от ${formatMoney(d.freeFrom)}.`} crumbs={[{ name: "Доставка и возврат", path: "/delivery" }]}>
       <Section id="fitting" title="Курьер с примеркой">
         <p>Москва и Санкт-Петербург, 1–2 дня. Курьер привезёт заказ и подождёт до 20 минут, пока вы примерите. Можно заказать несколько размеров и оставить один. Стоимость {formatMoney(d.courier)}.</p>
       </Section>
@@ -22,11 +22,11 @@ export default async function Delivery() {
         </Section>
       )}
       <Section id="returns" title="Возврат">
-        <p>14 дней с момента получения, если сохранены ярлыки и товарный вид. Оформите возврат в <Link href="/account/orders" className="underline">кабинете</Link>: мы вызовем курьера или пришлём накладную. Деньги вернутся тем же способом в течение 10 дней. Для уровня Privé обратный забор бесплатный.</p>
+        <p>14 дней с момента получения, если сохранены ярлыки и товарный вид. Оформите возврат в <Link href="/account/orders" className="underline">кабинете</Link>: мы вызовем курьера или пришлём накладную. Деньги вернутся тем же способом в течение 10 дней.</p>
         <p>Вещи, сшитые по предзаказу и с подгонкой, возврату по размеру не подлежат. Брак меняем или возвращаем деньги в любом случае.</p>
       </Section>
       <Section id="payment" title="Оплата">
-        <p>Банковская карта, СБП, рассрочка банка-партнёра, оплата при получении курьеру. Чек приходит на email. Баллами Circle можно оплатить до 30% заказа, подарочным сертификатом — любую часть.</p>
+        <p>Банковская карта, СБП, рассрочка банка-партнёра, оплата при получении курьеру. Чек приходит на email.</p>
       </Section>
     </TextPage>
   );

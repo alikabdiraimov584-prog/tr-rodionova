@@ -21,7 +21,7 @@ export default async function Audit({ searchParams }: PageProps<"/crm/audit">) {
   ]);
   return (
     <div>
-      <PageTitle title="Журнал действий">Кто и что менял: заказы, баллы, склад, финансы, сотрудники, настройки, входы и экспорт данных.</PageTitle>
+      <PageTitle title="Журнал действий">Кто и что менял: заказы, склад, финансы, сотрудники, настройки, входы и экспорт данных.</PageTitle>
       <div className="mb-4 flex flex-wrap gap-2">
         <a href="/crm/audit" className={`badge ${!action ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>Все</a>
         {groups.map((g) => <a key={g.g} href={qs("/crm/audit", { action: g.g })} className={`badge ${action === g.g ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>{g.g} · {Number(g.n)}</a>)}

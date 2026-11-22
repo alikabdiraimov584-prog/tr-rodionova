@@ -32,7 +32,6 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
       { href: "/crm/customers", label: "Клиенты", section: "customers" },
       { href: "/crm/campaigns", label: "Рассылки", section: "campaigns" },
       { href: "/crm/stylist", label: "Стилист", section: "stylist" },
-      { href: "/crm/loyalty", label: "Circle", section: "loyalty" },
       { href: "/crm/reviews", label: "Отзывы", badge: pendingReviews, section: "reviews" },
       { href: "/crm/giftcards", label: "Сертификаты", section: "giftcards" },
     ] },

@@ -78,7 +78,7 @@ export async function GET(request: Request) {
   const backup = dbOk ? await backupStatus().catch(() => null) : null;
   const mail = dbOk ? await mailStatus().catch(() => null) : null;
   const integrations = dbOk ? await integrationsStatus().catch(() => null) : null;
-  // планировщик: напоминания об оплате, снятие резерва, отзывы, баллы — без него воронка после заказа молчит
+  // планировщик: напоминания об оплате, снятие резерва, отзывы — без него воронка после заказа молчит
   const jobs = dbOk ? await cronRuns().catch(() => null) : null;
   return NextResponse.json(
     { ok: dbOk, commit: process.env.GIT_SHA ?? "unknown", builtAt: process.env.BUILD_AT ?? null, time: new Date().toISOString(), uploads, backup, mail, integrations, jobs },

@@ -2,17 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
-import { pendingPoints, tierProgress } from "@/lib/loyalty";
 import { rfmSegment, daysSince } from "@/lib/rfm";
 import { formatDate, formatMoney } from "@/lib/money";
-import { ORDER_STATUS, POINTS_TYPE, TASK_STATUS, TRAFFIC_CHANNEL } from "@/lib/labels";
+import { ORDER_STATUS, TASK_STATUS, TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
-import { CustomerEditForm, PointsForm } from "@/components/crm/customer-forms";
+import { CustomerEditForm } from "@/components/crm/customer-forms";
 import { TaskQuickForm } from "@/components/crm/task-forms";
 import { PriorityDot } from "@/components/crm/task-card";
 import { SubmitButton } from "@/components/form";
 import { can } from "@/lib/permissions";
-import { addNoteAction, anonymizeCustomerAction, deleteNoteAction, recalcCustomerTierAction } from "@/app/actions/crm-customers";
+import { addNoteAction, anonymizeCustomerAction, deleteNoteAction } from "@/app/actions/crm-customers";
 import { setTaskStatusAction } from "@/app/actions/crm-tasks";
 import { ConfirmButton } from "@/components/form";
 
@@ -22,11 +21,7 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
   const c = await db.user.findUnique({
     where: { id },
     include: {
-      loyaltyTier: true,
-      referredBy: { select: { id: true, firstName: true, lastName: true } },
-      referrals: { select: { id: true, firstName: true, lastName: true } },
       orders: { orderBy: { createdAt: "desc" }, include: { items: true } },
-      points: { orderBy: { createdAt: "desc" }, take: 30 },
       notes: { orderBy: { createdAt: "desc" } },
       tasks: { orderBy: [{ status: "asc" }, { dueAt: "asc" }], include: { assignee: { select: { firstName: true } } } },
       wishlist: { include: { product: true } },
@@ -36,16 +31,11 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
     },
   });
   if (!c || c.role !== "CUSTOMER") notFound();
-  const [tiers, pending, staff] = await Promise.all([
-    db.loyaltyTier.findMany({ orderBy: { threshold: "asc" } }),
-    pendingPoints(c.id),
-    db.user.findMany({ where: { role: { in: ["MANAGER", "ADMIN"] } }, select: { id: true, firstName: true } }),
-  ]);
-  const staffName = new Map(staff.map((s) => [s.id, s.firstName]));
+  const staff = await db.user.findMany({ where: { id: { in: c.notes.flatMap((note) => note.createdBy ? [note.createdBy] : []) } }, select: { id: true, firstName: true } });
+  const staffName = new Map(staff.map((member) => [member.id, member.firstName]));
   const paid = c.orders.filter((o) => ["PAID", "CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"].includes(o.status));
   const last = paid[0]?.createdAt ?? null;
   const seg = rfmSegment({ lastOrderAt: last, ordersCount: paid.length, lifetimeSpent: c.lifetimeSpent, createdAt: c.createdAt });
-  const tp = tierProgress(c.yearSpent, tiers, c.loyaltyTier?.code);
   const sizes = new Map<string, number>();
   for (const o of paid) for (const i of o.items) sizes.set(i.size, (sizes.get(i.size) ?? 0) + i.quantity);
   const returnedQty = c.orders.flatMap((o) => o.items).reduce((s, i) => s + i.returnedQty, 0);
@@ -66,8 +56,6 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
       </PageTitle>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <Stat label="Уровень" value={c.loyaltyTier?.name ?? "—"} hint={tp.next ? `до ${tp.next.name}: ${formatMoney(tp.remaining)}` : "высший"} />
-        <Stat label="Баллы" value={c.pointsBalance.toLocaleString("ru-RU")} hint={pending ? `+${pending.toLocaleString("ru-RU")} ожидают` : undefined} />
         <Stat label="LTV" value={formatMoney(c.lifetimeSpent)} hint={`за 12 мес. ${formatMoney(c.yearSpent)}`} />
         <Stat label="Заказов" value={paid.length} hint={paid.length ? `ср. чек ${formatMoney(Math.round(paid.reduce((s, o) => s + o.total, 0) / paid.length))}` : undefined} />
         <Stat label="Последний заказ" value={last ? `${daysSince(last)} дн.` : "—"} hint={last ? formatDate(last) : undefined} />
@@ -96,22 +84,6 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
             {c.orders.length === 0 && <p className="p-4 text-sm text-muted">Заказов нет</p>}
           </div>
 
-          <div className="card overflow-x-auto" tabIndex={0}>
-            <div className="p-4 pb-0"><Eyebrow>Движение баллов</Eyebrow></div>
-            <table className="table">
-              <tbody>
-                {c.points.map((t) => (
-                  <tr key={t.id}>
-                    <td className="whitespace-nowrap text-muted">{formatDate(t.createdAt)}</td>
-                    <td>{POINTS_TYPE[t.type]}</td>
-                    <td className="text-muted">{t.comment}{t.createdBy && staffName.get(t.createdBy) ? ` · ${staffName.get(t.createdBy)}` : ""}</td>
-                    <td className={`whitespace-nowrap text-right ${t.amount > 0 ? "text-success" : "text-danger"}`}>{t.amount > 0 ? "+" : ""}{t.amount.toLocaleString("ru-RU")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
           <div className="grid gap-6 md:grid-cols-2">
             <div className="card p-5 text-sm">
               <Eyebrow>Избранное</Eyebrow>
@@ -120,9 +92,6 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
               <ul className="mt-2 space-y-1">{c.stockAlerts.map((a) => <li key={a.id}>{a.variant.product.name} · {a.variant.size} {a.variant.stock - a.variant.reserved > 0 && <Badge tone="success">в наличии</Badge>}</li>)}{c.stockAlerts.length === 0 && <li className="text-muted">—</li>}</ul>
             </div>
             <div className="card p-5 text-sm">
-              <Eyebrow>Рефералы</Eyebrow>
-              <div className="mt-2">Пригласила её: {c.referredBy ? <Link href={`/crm/customers/${c.referredBy.id}`} className="underline">{c.referredBy.firstName} {c.referredBy.lastName}</Link> : "—"}</div>
-              <div className="mt-1">Пригласила она: {c.referrals.length ? c.referrals.map((r, i) => <span key={r.id}>{i > 0 && ", "}<Link href={`/crm/customers/${r.id}`} className="underline">{r.firstName}</Link></span>) : "—"}</div>
               <Eyebrow className="mt-5">Адреса</Eyebrow>
               <ul className="mt-2 space-y-1 text-muted">{c.addresses.map((a) => <li key={a.id}>{[a.city, a.street, a.building, a.apartment].filter(Boolean).join(", ")}</li>)}</ul>
               {c.reviews.length > 0 && (
@@ -187,10 +156,7 @@ export default async function CustomerCard({ params }: PageProps<"/crm/customers
               {c.tasks.length === 0 && <li className="text-xs text-muted">Задач по клиентке пока нет</li>}
             </ul>
           </div>
-          {can(me.role, "points") && <div className="card space-y-3 p-5">
-            <Eyebrow>Начислить / списать баллы</Eyebrow>
-            <PointsForm userId={c.id} />
-            <form action={recalcCustomerTierAction}><input type="hidden" name="userId" value={c.id} /><SubmitButton className="text-xs text-muted underline">Пересчитать уровень</SubmitButton></form>
+          {can(me.role, "customersEdit") && <div className="card space-y-3 p-5">
             {can(me.role, "customersEdit") && !c.anonymizedAt && (
               <form action={anonymizeCustomerAction}>
                 <input type="hidden" name="userId" value={c.id} />

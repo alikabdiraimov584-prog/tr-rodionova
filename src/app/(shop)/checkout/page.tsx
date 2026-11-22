@@ -37,9 +37,6 @@ export default async function CheckoutPage() {
           lastName: user.lastName,
           email: user.email,
           phone: user.phone,
-          pointsBalance: user.pointsBalance,
-          tierName: user.loyaltyTier?.name ?? null,
-          maxPayPct: user.loyaltyTier?.maxPayPct ?? 30,
         } : null}
         addresses={addresses.map((a) => ({
           id: a.id,

@@ -19,7 +19,6 @@ export default async function AccountLayout({ children }: LayoutProps<"/account"
             <div>
               <div className="eyebrow">Кабинет</div>
               <div className="mt-1 text-base">{user.firstName} {user.lastName}</div>
-              <div className="text-[0.68rem] uppercase tracking-[0.1em] text-muted">{user.loyaltyTier?.name ?? "Atelier"} · {user.pointsBalance.toLocaleString("ru-RU")} баллов</div>
             </div>
             <AccountNav />
             <form action={logoutAction} className="hidden md:block"><button className="py-1 text-[0.68rem] uppercase tracking-[0.1em] text-muted hover:text-danger">Выйти</button></form>

@@ -13,7 +13,6 @@ export const getCurrentUser = cache(async () => {
   if (!session) return null;
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    include: { loyaltyTier: true },
   });
   if (!user || !user.isActive) return null;
   // токен, выданный до смены пароля или блокировки, больше не действует

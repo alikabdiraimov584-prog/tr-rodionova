@@ -30,7 +30,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
       ledger: true,
       address: true,
       promoCode: true,
-      user: { include: { loyaltyTier: true } },
+      user: true,
     },
   });
   if (!order) notFound();
@@ -71,8 +71,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
             <div className="grid gap-1 border-t border-line p-4 text-sm sm:grid-cols-2">
               <div className="space-y-1">
                 <div className="flex justify-between"><span className="text-muted">Товары</span><span>{formatMoney(order.subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-muted">Скидка {order.promoCode ? `(${order.promoCode.code})` : ""}</span><span>−{formatMoney(order.discount - order.pointsUsed * 100)}</span></div>
-                <div className="flex justify-between"><span className="text-muted">Баллами</span><span>−{formatMoney(order.pointsUsed * 100)}</span></div>
+                <div className="flex justify-between"><span className="text-muted">Скидка {order.promoCode ? `(${order.promoCode.code})` : ""}</span><span>−{formatMoney(order.discount)}</span></div>
                 {order.giftUsed > 0 && <div className="flex justify-between"><span className="text-muted">Сертификатом</span><span>−{formatMoney(order.giftUsed)}</span></div>}
                 <div className="flex justify-between"><span className="text-muted">Доставка</span><span>{formatMoney(order.deliveryCost)}</span></div>
                 <div className="flex justify-between border-t border-line pt-1"><span>Итого</span><span>{formatMoney(order.total)}</span></div>
@@ -80,7 +79,6 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               <div className="space-y-1 sm:border-l sm:border-line sm:pl-4">
                 <div className="flex justify-between"><span className="text-muted">Себестоимость</span><span>{formatMoney(cogs)}</span></div>
                 <div className="flex justify-between"><span className="text-muted">Валовая маржа</span><span className={margin >= 0 ? "text-success" : "text-danger"}>{formatMoney(margin)}</span></div>
-                <div className="flex justify-between"><span className="text-muted">Баллов начислено</span><span>{order.pointsEarned.toLocaleString("ru-RU")}</span></div>
               </div>
             </div>
           </div>
@@ -92,7 +90,7 @@ export default async function CrmOrder({ params }: PageProps<"/crm/orders/[id]">
               <div className="text-muted">{order.phone} · {order.email}</div>
               {order.user && (
                 <Link href={`/crm/customers/${order.user.id}`} className="mt-2 inline-block text-xs underline">
-                  Карточка клиента · {order.user.loyaltyTier?.name} · {order.user.pointsBalance.toLocaleString("ru-RU")} баллов
+                  Карточка клиента
                 </Link>
               )}
               {order.channel && <div className="mt-2 text-xs text-muted">Источник заказа: {TRAFFIC_CHANNEL[order.channel]}{order.source ? ` · ${order.source}` : ""}{order.campaign ? ` · ${order.campaign}` : ""}</div>}

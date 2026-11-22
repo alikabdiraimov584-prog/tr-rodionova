@@ -22,13 +22,11 @@ export function LoginForm({ next }: { next?: string }) {
   );
 }
 
-export function RegisterForm({ next, refCode, referrerName }: { next?: string; refCode?: string; referrerName?: string }) {
+export function RegisterForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(registerAction, undefined);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next ?? ""} />
-      <input type="hidden" name="ref" value={refCode ?? ""} />
-      {referrerName && <p className="border border-champagne bg-champagne/20 px-4 py-3 text-sm">Вас пригласила {referrerName}</p>}
       <div className="grid grid-cols-2 gap-3">
         <label className="block"><span className="label">Имя</span><input name="firstName" required className="input" /></label>
         <label className="block"><span className="label">Фамилия</span><input name="lastName" className="input" /></label>
@@ -38,7 +36,6 @@ export function RegisterForm({ next, refCode, referrerName }: { next?: string; r
       <label className="block">
         <span className="label">Дата рождения</span>
         <input name="birthday" type="date" className="input" />
-        <span className="mt-1 block text-xs text-muted">Для подарочных баллов. Указывается один раз.</span>
       </label>
       <label className="block"><span className="label">Пароль</span><input name="password" type="password" minLength={8} required autoComplete="new-password" className="input" /></label>
       <label className="flex gap-2 py-1 text-xs text-muted">
@@ -47,7 +44,7 @@ export function RegisterForm({ next, refCode, referrerName }: { next?: string; r
       </label>
       <label className="flex gap-2 py-1 text-xs text-muted">
         <input type="checkbox" name="offer" required className="mt-0.5 h-4 w-4 shrink-0 accent-black" />
-        <span>Принимаю условия <Link href="/offer" target="_blank" className="underline">публичной оферты</Link> и <Link href="/offer#loyalty" target="_blank" className="underline">правила программы Circle</Link></span>
+        <span>Принимаю условия <Link href="/offer" target="_blank" className="underline">публичной оферты</Link></span>
       </label>
       <label className="flex gap-2 py-1 text-xs text-muted">
         <input type="checkbox" name="marketingConsent" className="mt-0.5 h-4 w-4 shrink-0 accent-black" />

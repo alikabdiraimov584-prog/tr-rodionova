@@ -14,7 +14,7 @@ const TOPICS: [string, RegExp][] = [
   ["доставка", /доставк|курьер|трек|когда (придёт|приедет|привез)|сдэк|cdek|boxberry|самовывоз/i],
   ["размер", /размер|мерк|сядет|маломер|большемер|примерк|рост\s*\d/i],
   ["оплата", /оплат|рассрочк|чек|карт[аоу]|сбп|деньги/i],
-  ["баллы", /балл|бонус|circle|уров(ень|ня)|промокод/i],
+  ["промокод", /промокод/i],
   ["наличие", /наличи|появится|предзаказ|когда будет|поступлен/i],
 ];
 const URGENT = /брак|жалоб|претенз|срочно|верните деньги|обман|не пришл|потерял/i;
@@ -103,7 +103,7 @@ export async function ingestInbound(channel: Channel, msg: Inbound) {
     const u = await matchCustomer(contact.phone, contact.email);
     if (u) contact = await db.contact.update({ where: { id: contact.id }, data: { userId: u.id } });
   }
-  const customer = contact.userId ? await db.user.findUnique({ where: { id: contact.userId }, include: { loyaltyTier: true } }) : null;
+  const customer = contact.userId ? await db.user.findUnique({ where: { id: contact.userId } }) : null;
 
   // 2. Диалог: продолжаем открытый, переоткрываем недавно закрытый, иначе создаём
   const reopenBorder = new Date(now.getTime() - settings.reopenDays * 86_400_000);
@@ -140,8 +140,7 @@ export async function ingestInbound(channel: Channel, msg: Inbound) {
   const validNumbers = numbers.length
     ? (await db.order.findMany({ where: { number: { in: numbers }, ...(customer ? { userId: customer.id } : {}) }, select: { number: true } })).map((o) => o.number)
     : [];
-  const vip = customer?.loyaltyTier?.code === "PRIVE";
-  const priority: Priority = conv.priority === "HIGH" || vip || URGENT.test(msg.text) ? "HIGH" : "NORMAL";
+  const priority: Priority = conv.priority === "HIGH" || URGENT.test(msg.text) ? "HIGH" : "NORMAL";
 
   conv = await db.conversation.update({
     where: { id: conv.id },
@@ -150,7 +149,7 @@ export async function ingestInbound(channel: Channel, msg: Inbound) {
       closedAt: null,
       priority,
       customerId: conv.customerId ?? customer?.id ?? null,
-      tags: [...new Set([...conv.tags, ...topics, ...(vip ? ["privé"] : []), ...(verified ? [] : ["отправитель не подтверждён"])])],
+      tags: [...new Set([...conv.tags, ...topics, ...(verified ? [] : ["отправитель не подтверждён"])])],
       orderNumbers: [...new Set([...conv.orderNumbers, ...validNumbers])],
       unread: { increment: 1 },
       lastMessageAt: now,
@@ -235,11 +234,11 @@ export async function addInternalNote(conversationId: string, authorId: string, 
 }
 
 /** Подстановка переменных в шаблон ответа. */
-export function renderTemplate(text: string, ctx: { name?: string | null; tier?: string | null; points?: number | null; order?: number | null }) {
+export function renderTemplate(text: string, ctx: { name?: string | null; order?: number | null }) {
   return text
     .replace(/\{имя\}/g, ctx.name ?? "")
-    .replace(/\{уровень\}/g, ctx.tier ?? "")
-    .replace(/\{баллы\}/g, ctx.points != null ? ctx.points.toLocaleString("ru-RU") : "")
+    .replace(/\{уровень\}/g, "")
+    .replace(/\{баллы\}/g, "")
     .replace(/\{заказ\}/g, ctx.order ? `№${ctx.order}` : "")
     .replace(/\s{2,}/g, " ")
     .trim();

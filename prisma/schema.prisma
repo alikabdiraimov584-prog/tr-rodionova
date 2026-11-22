@@ -159,7 +159,7 @@ model Product {
   isFeatured   Boolean       @default(false)
   isPreorder   Boolean       @default(false) // можно заказать без остатка, отшив к дате
   preorderShipAt DateTime?
-  earlyAccessUntil DateTime? // до этой даты виден только Maison и Privé
+  earlyAccessUntil DateTime? // архивное поле
   isPreloved   Boolean       @default(false) // витрина pre-loved
   condition    String? // состояние pre-loved вещи
   material     String? // «шерсть», «кашемир», «шёлк» — фильтр каталога
@@ -835,7 +835,7 @@ model ReplyTemplate {
   id        String   @id @default(cuid())
   title     String
   shortcut  String?  @unique // например «/доставка»
-  text      String // поддерживает {имя}, {уровень}, {баллы}, {заказ}
+  text      String // поддерживает {имя}, {заказ}
   order     Int      @default(0)
   createdAt DateTime @default(now())
 }
@@ -844,7 +844,7 @@ model ReplyTemplate {
 
 enum ConsentType {
   PERSONAL_DATA // согласие на обработку ПДн
-  OFFER // принятие оферты и правил Circle
+  OFFER // принятие оферты
   MARKETING // рекламные рассылки
 }
 

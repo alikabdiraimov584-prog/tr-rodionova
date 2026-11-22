@@ -1,5 +1,5 @@
 // Воронка писем покупательнице на стенде: подставной SMTP принимает всё, что сайт отправляет, подставной Telegram —
-// оповещения владельцу. Проходит регистрацию, заказы с тремя способами оплаты, сборку, доставку, отзыв, баллы,
+// оповещения владельцу. Проходит регистрацию, заказы с тремя способами оплаты, сборку, доставку, отзыв,
 // напоминания об оплате и автоотмену, сертификат с получателем, ответ поддержки и «сообщить о поступлении».
 // Все письма сохраняются в FUNNEL_OUT (по умолчанию funnel-mail.txt) для чтения глазами.
 // Стенд: next start с CRON_SECRET=funnel-cron, TELEGRAM_API_URL=http://127.0.0.1:2626, APP_URL=http://127.0.0.1:3100.
@@ -173,14 +173,14 @@ for (const [doc, h1] of [["picking", "Сборочный лист"], ["invoice",
   check(`печать ${doc}: один документ «${h1}»`, count === 1 && html.includes(`<h1>${h1}`) && html.includes(`<title>${h1}`), `h1: ${count}`);
 }
 
-// 5. ночные задачи: просьба об отзыве (10 дней), баллы после срока возврата
+// 5. ночные задачи: просьба об отзыве (10 дней), завершение заказа после срока возврата
 await q(`UPDATE "Order" SET "deliveredAt"=now()-interval '11 days' WHERE id=$1`, [o1.id]);
 await cron();
 check("10 дней после доставки: просьба об отзыве", await wait(() => !!mailTo(email, /Как вам вещи/)));
 await q(`UPDATE "Order" SET "deliveredAt"=now()-interval '15 days' WHERE id=$1`, [o1.id]);
 await cron();
-const [st1] = await q('SELECT status, "pointsEarned" FROM "Order" WHERE id=$1', [o1.id]);
-check("после срока возврата: заказ завершён, письмо о баллах", st1.status === "COMPLETED" && (await wait(() => !!mailTo(email, /Баллы за заказ/))), `${st1.status}, ${st1.pointsEarned} баллов`);
+const [st1] = await q('SELECT status FROM "Order" WHERE id=$1', [o1.id]);
+check("после срока возврата: заказ завершён", st1.status === "COMPLETED", st1.status);
 
 // 6. неоплаченный заказ картой: напоминание через 2 ч, последний звонок, автоотмена
 const o4 = await checkout("CARD");

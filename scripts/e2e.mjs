@@ -26,7 +26,7 @@ const email = `test${stamp}@example.com`;
 let orderId = "";
 let orderNumber = 0;
 
-await step("Регистрация и 2 000 приветственных баллов", async () => {
+await step("Регистрация", async () => {
   await page.goto(`${base}/register`);
   await page.fill('input[name="firstName"]', "Тест");
   await page.fill('input[name="email"]', email);
@@ -35,10 +35,8 @@ await step("Регистрация и 2 000 приветственных бал�
   for (const cb of await page.locator('input[type="checkbox"]').all()) await cb.check().catch(() => {});
   await page.click("form button.btn-primary");
   await page.waitForURL(/\/account/, { timeout: 20000 });
-  const r = await sql.query('SELECT "pointsBalance" FROM "User" WHERE email=$1', [email]);
-  if (r.rows[0]?.pointsBalance !== 2000) throw new Error(`баланс ${r.rows[0]?.pointsBalance}`);
   await shot("01-account-new");
-  return "баланс 2000";
+  return "Личный кабинет открыт";
 });
 
 await step("Товар в корзину", async () => {
@@ -62,7 +60,7 @@ await step("Товар в корзину", async () => {
   return "в корзине 1 позиция";
 });
 
-await step("Оформление заказа: промокод WELCOME10 + баллы", async () => {
+await step("Оформление заказа: промокод WELCOME10", async () => {
   await page.goto(`${base}/checkout`);
   // шаг 1: доставка СДЭК с адресом
   await page.locator('label:has(input[name="deliveryMethod"][value="CDEK"])').click();
@@ -70,14 +68,13 @@ await step("Оформление заказа: промокод WELCOME10 + ба
   await page.fill('textarea[name="addressText"]', "Москва, ул. Тверская, д. 1, кв. 1, 125009");
   await page.locator('button:has-text("Далее")').first().click();
   await page.waitForTimeout(500);
-  // шаг 2: промокод, оплата картой, баллы
+  // шаг 2: промокод, оплата картой
   await page.locator("summary:has-text('Промокод')").click();
   await page.locator('input[placeholder="WELCOME10"]').fill("WELCOME10");
   await page.locator('button:has-text("Применить")').first().click();
   await page.waitForTimeout(1500);
   await page.locator('label:has(input[name="paymentMethod"][value="CARD"])').click();
   await page.waitForTimeout(500);
-  await page.locator('button:has-text("Макс.")').click();
   await page.waitForTimeout(1500);
   await page.locator('button:has-text("Далее")').first().click();
   await page.waitForTimeout(500);
@@ -86,13 +83,12 @@ await step("Оформление заказа: промокод WELCOME10 + ба
   await page.locator('button:has-text("Подтвердить заказ")').first().click({ noWaitAfter: true });
   await page.waitForURL(/\/account\/orders\/[^/?]+/, { timeout: 30000 });
   orderId = page.url().match(/orders\/([^/?]+)/)[1];
-  const o = await sql.query('SELECT number, status, subtotal, discount, "pointsUsed", total, "promoCodeId" FROM "Order" WHERE id=$1', [orderId]);
+  const o = await sql.query('SELECT number, status, subtotal, discount, total, "promoCodeId" FROM "Order" WHERE id=$1', [orderId]);
   const r = o.rows[0];
   orderNumber = r.number;
   if (!r.promoCodeId) throw new Error("промокод не применился");
-  if (r.pointsUsed <= 0) throw new Error("баллы не списались");
   const n = await sql.query('SELECT count(*)::int AS n FROM "Notification" WHERE "orderId"=$1 AND event=$2', [orderId, "ORDER_CREATED"]);
-  return `№${r.number}: subtotal ${r.subtotal / 100} ₽, скидка ${r.discount / 100} ₽, баллов ${r.pointsUsed}, к оплате ${r.total / 100} ₽; уведомлений ORDER_CREATED: ${n.rows[0].n}`;
+  return `№${r.number}: subtotal ${r.subtotal / 100} ₽, скидка ${r.discount / 100} ₽, к оплате ${r.total / 100} ₽; уведомлений ORDER_CREATED: ${n.rows[0].n}`;
 });
 
 await step("Демо-оплата заказа", async () => {
@@ -216,16 +212,6 @@ await step("Подарочный сертификат: покупка и дем�
   return `ACTIVE, ${g.rows[0].amount / 100} ₽`;
 });
 
-await step("CRM: ежедневные задачи лояльности", async () => {
-  await crm.goto(`${base}/crm/loyalty`);
-  await crm.click('button:has-text("Запустить ежедневные задачи")');
-  await crm.waitForTimeout(15000);
-  const a = await sql.query('SELECT payload FROM "AuditLog" WHERE action=$1 ORDER BY "createdAt" DESC LIMIT 1', ["jobs.daily"]);
-  if (!a.rows[0]) throw new Error("задачи не выполнились");
-  await crm.screenshot({ path: "e2e-12-jobs.png" });
-  return JSON.stringify(a.rows[0].payload);
-});
-
 await step("CRM: дашборд, клиенты, склад, аналитика открываются", async () => {
   const out = [];
   for (const p of ["/crm", "/crm/customers", "/crm/stock", "/crm/analytics", "/crm/campaigns", "/crm/staff", "/crm/audit"]) {
@@ -238,7 +224,7 @@ await step("CRM: дашборд, клиенты, склад, аналитика 
 
 await step("Сайт: публичные страницы открываются", async () => {
   const out = [];
-  for (const p of ["/", "/catalog", "/lookbook", "/journal", "/circle", "/gift", "/about", "/delivery", "/sizes", "/offer", "/privacy", "/nope-404"]) {
+  for (const p of ["/", "/catalog", "/lookbook", "/journal", "/gift", "/about", "/delivery", "/sizes", "/offer", "/privacy", "/nope-404"]) {
     const r = await page.goto(`${base}${p}`);
     out.push(`${p}:${r.status()}`);
   }

@@ -1,4 +1,4 @@
-// Продакшен без демо-сида: базовые справочники (уровни Circle, настройки, категории) и первый администратор
+// Продакшен без демо-сида: базовые справочники (настройки, категории) и первый администратор
 // из переменных ADMIN_EMAIL / ADMIN_PASSWORD. Идемпотентно: существующего администратора не трогает.
 import "dotenv/config";
 import { execSync } from "node:child_process";
@@ -31,8 +31,8 @@ async function disableDemoAccounts(db: PrismaClient) {
 
 async function main() {
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
-  const tiers = await db.loyaltyTier.count();
-  if (tiers === 0) {
+  const categories = await db.category.count();
+  if (categories === 0) {
     console.log("Справочники пусты — сид без демо-данных");
     execSync("npx prisma db seed", { stdio: "inherit", env: { ...process.env, SEED_DEMO: "0" } });
   }

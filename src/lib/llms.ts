@@ -15,24 +15,22 @@ const FACTS = BRAND_FACTS;
 
 async function data() {
   const now = new Date();
-  const [brand, seller, delivery, loyalty, products, articles, looks, tiers, faq] = await Promise.all([
+  const [brand, seller, delivery, products, articles, looks, faq] = await Promise.all([
     getSetting("brand"),
     getSetting("seller"),
     getSetting("delivery"),
-    getSetting("loyalty"),
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, orderBy: { createdAt: "desc" }, include: { category: true, variants: true } }),
     db.article.findMany({ where: { publishedAt: { not: null, lte: now } }, orderBy: { publishedAt: "desc" } }),
     db.look.findMany({ where: { isPublished: true }, orderBy: { order: "asc" } }),
-    db.loyaltyTier.findMany({ orderBy: { threshold: "asc" } }),
     siteFaq(),
   ]);
-  return { brand, seller, delivery, loyalty, products, articles, looks, tiers, faq };
+  return { brand, seller, delivery, products, articles, looks, faq };
 }
 
 const line = (t: string) => t.replace(/\s+/g, " ").trim();
 
 export async function llmsText(full: boolean) {
-  const { brand, seller, delivery, loyalty, products, articles, looks, tiers, faq } = await data();
+  const { brand, seller, delivery, products, articles, looks, faq } = await data();
   const base = siteUrl();
   const out: string[] = [];
   out.push(`# ${brand.name}`);
@@ -42,18 +40,16 @@ export async function llmsText(full: boolean) {
   out.push("Коротко о бренде:");
   for (const f of FACTS) out.push(`- ${f}`);
   out.push(`- Доставка бесплатна от ${formatMoney(delivery.freeFrom)}; курьер с примеркой в Москве и Санкт-Петербурге ${formatMoney(delivery.courier)}, СДЭК по России ${formatMoney(delivery.cdek)}. Возврат 14 дней.`);
-  out.push(`- Программа Circle: ${loyalty.welcomePoints.toLocaleString("ru-RU")} баллов за регистрацию, 1 балл = 1 ₽; уровни ${tiers.map((t) => `${t.name} ${t.cashbackPct}%`).join(", ")}.`);
   if (seller.showroom) out.push(`- Шоурум: ${seller.showroom}${seller.hours ? `, ${seller.hours}` : ""}.`);
   out.push(`- Связь: ${[brand.email, publicPhone(brand.phone), brand.telegram].filter(Boolean).join(", ")}.`);
   out.push("");
   out.push("## Главные страницы");
   out.push(`- [Каталог](${absolute("/catalog")}): все вещи текущей коллекции с ценами, составом и размерами`);
   out.push(`- [О бренде](${absolute("/about")}): история, принципы, ткани и производство`);
-  out.push(`- [Вопросы и ответы](${absolute("/faq")}): доставка, примерка, возврат, размеры, уход, Circle`);
+  out.push(`- [Вопросы и ответы](${absolute("/faq")}): доставка, примерка, возврат, размеры, уход`);
   out.push(`- [Доставка и возврат](${absolute("/delivery")}): сроки, стоимость, условия возврата`);
   out.push(`- [Размеры и мерки](${absolute("/sizes")}): таблицы размеров и как снять мерки`);
   out.push(`- [Уход за изделиями](${absolute("/care")}): шерсть, кашемир, шёлк`);
-  out.push(`- [Программа Circle](${absolute("/circle")}): баллы и уровни`);
   out.push(`- [Журнал](${absolute("/journal")}): статьи о тканях, уходе, размерах и образах`);
   out.push(`- [Лукбук](${absolute("/lookbook")}): готовые образы`);
   out.push(`- [Шоурум и контакты](${absolute("/showroom")})`);

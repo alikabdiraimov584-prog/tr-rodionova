@@ -18,7 +18,7 @@ export default async function StylistPage() {
   return (
     <div className="space-y-10">
       <PageTitle title="Мой стилист" actions={<Link href="/account/support?topic=stylist" className="btn-outline btn-sm">Записаться к стилисту</Link>}>
-        Персональные подборки от стилиста T.Rodionova: вещи под ваш гардероб, повод и размер. Консультация и примерка дома — бесплатно для Circle.
+        Персональные подборки от стилиста T.Rodionova: вещи под ваш гардероб, повод и размер. Консультация и примерка дома.
       </PageTitle>
       {selections.length === 0 ? (
         <Empty title="Подборок пока нет" action={<Link href="/account/support?topic=stylist" className="btn-primary">Записаться к стилисту</Link>}>

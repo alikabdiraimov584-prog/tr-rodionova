@@ -10,7 +10,7 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/crm/ord
   await requireSection("ordersEdit");
   const sp = await searchParams;
   const [customers, variants] = await Promise.all([
-    db.user.findMany({ where: { role: "CUSTOMER" }, include: { loyaltyTier: true }, orderBy: { firstName: "asc" } }),
+    db.user.findMany({ where: { role: "CUSTOMER" }, orderBy: { firstName: "asc" } }),
     db.productVariant.findMany({ where: { product: { status: "ACTIVE" } }, include: { product: true }, orderBy: [{ product: { name: "asc" } }, { sku: "asc" }] }),
   ]);
   return (
@@ -18,7 +18,7 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/crm/ord
       <PageTitle eyebrow="Офлайн-продажа" title="Новый заказ">Заказ резервирует товар. С отметкой «Оплачено» он сразу списывается со склада, попадает в финансы и уровень клиента.</PageTitle>
       <ManualOrderForm
         presetCustomer={typeof sp.customer === "string" ? sp.customer : undefined}
-        customers={customers.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName ?? ""} · ${c.phone ?? c.email} · ${c.loyaltyTier?.name ?? ""}`, points: c.pointsBalance, maxPayPct: c.loyaltyTier?.maxPayPct ?? 30 }))}
+        customers={customers.map((c) => ({ id: c.id, label: `${c.firstName} ${c.lastName ?? ""} · ${c.phone ?? c.email}` }))}
         variants={variants.map((v) => ({ id: v.id, label: `${v.product.name} · ${v.color ?? ""} · ${v.size}`, price: v.price ?? v.product.price, available: v.stock - v.reserved }))}
       />
     </div>

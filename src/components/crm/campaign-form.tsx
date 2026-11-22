@@ -6,7 +6,7 @@ import type { Segment } from "@/lib/campaigns";
 import { CHANNEL } from "@/lib/labels";
 import { SEGMENTS } from "@/lib/rfm";
 
-type Opts = { tiers: { code: string; name: string }[]; sources: string[]; tags: string[]; products: { id: string; name: string }[]; categories: { id: string; name: string }[]; presets: { key: string; name: string; hint: string; segment: Segment }[] };
+type Opts = { sources: string[]; tags: string[]; products: { id: string; name: string }[]; categories: { id: string; name: string }[]; presets: { key: string; name: string; hint: string; segment: Segment }[] };
 type C = { id?: string; name?: string; channel?: string; subject?: string | null; text?: string; segment?: Segment; scheduledAt?: string | null; trackingLinkId?: string | null };
 
 const CHANNELS = ["EMAIL", "TELEGRAM", "WHATSAPP", "SMS", "WEBSITE"] as const;
@@ -57,7 +57,6 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
       {c?.trackingLinkId && <input type="hidden" name="trackingLinkId" value={c.trackingLinkId} />}
       <input ref={modeRef} type="hidden" name="mode" defaultValue="draft" />
       {/* сегмент передаём и полями, и как есть */}
-      {(seg.tiers ?? []).map((v) => <input key={v} type="hidden" name="tiers" value={v} />)}
       {(seg.rfm ?? []).map((v) => <input key={v} type="hidden" name="rfm" value={v} />)}
       {(seg.sources ?? []).map((v) => <input key={v} type="hidden" name="sources" value={v} />)}
       {(seg.sizes ?? []).map((v) => <input key={v} type="hidden" name="sizes" value={v} />)}
@@ -77,10 +76,10 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
           {channel === "EMAIL" && <label><span className="label">Тема письма</span><input name="subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="input py-2" /></label>}
           <label>
             <span className="label">Текст · {text.length} симв.</span>
-            <textarea name="text" rows={7} value={text} onChange={(e) => setText(e.target.value)} className="input" placeholder="{имя}, в четверг открываем предзаказ коллекции для Privé…" />
+            <textarea name="text" rows={7} value={text} onChange={(e) => setText(e.target.value)} className="input" placeholder="{имя}, в четверг открываем предзаказ коллекции…" />
           </label>
           <div className="flex flex-wrap gap-2 text-xs">
-            {["{имя}", "{уровень}", "{баллы}", "{ссылка}"].map((v) => <button key={v} type="button" onClick={() => insert(v)} className="badge border-line hover:bg-ivory">{v}</button>)}
+            {["{имя}", "{ссылка}"].map((v) => <button key={v} type="button" onClick={() => insert(v)} className="badge border-line hover:bg-ivory">{v}</button>)}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex gap-2 text-sm"><input type="checkbox" name="withLink" defaultChecked={!!c?.trackingLinkId || !c} className="accent-black" /> Создать трекинговую ссылку для {"{ссылка}"} (клики, заказы, выручка)</label>
@@ -101,10 +100,6 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
             </select>
           </div>
           <div>
-            <span className="label">Уровень Circle</span>
-            <div className="flex flex-wrap gap-2">{opts.tiers.map((t) => <label key={t.code} className={`badge cursor-pointer ${seg.tiers?.includes(t.code) ? "border-ink bg-ink text-ivory" : "border-line"}`}><input type="checkbox" className="hidden" checked={!!seg.tiers?.includes(t.code)} onChange={() => toggle("tiers", t.code)} />{t.name}</label>)}</div>
-          </div>
-          <div>
             <span className="label">RFM-сегмент</span>
             <div className="flex flex-wrap gap-2">{Object.values(SEGMENTS).map((s) => <label key={s.code} className={`badge cursor-pointer ${seg.rfm?.includes(s.code) ? "border-ink bg-ink text-ivory" : "border-line"}`}><input type="checkbox" className="hidden" checked={!!seg.rfm?.includes(s.code)} onChange={() => toggle("rfm", s.code)} />{s.label}</label>)}</div>
           </div>
@@ -118,11 +113,9 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
             </label>
             <label><span className="label">Покупок от, ₽</span><input name="minLifetime" type="number" defaultValue={seg.minLifetime ?? ""} onChange={num("minLifetime")} className="input py-2" /></label>
             <label><span className="label">Покупок до, ₽</span><input name="maxLifetime" type="number" defaultValue={seg.maxLifetime ?? ""} onChange={num("maxLifetime")} className="input py-2" /></label>
-            <label><span className="label">Баллов на счету от</span><input name="hasPoints" type="number" defaultValue={seg.hasPoints ?? ""} onChange={num("hasPoints")} className="input py-2" /></label>
             <label><span className="label">Последний заказ ≥ дней назад</span><input name="lastOrderMinDays" type="number" defaultValue={seg.lastOrderMinDays ?? ""} onChange={num("lastOrderMinDays")} className="input py-2" /></label>
             <label><span className="label">Последний заказ ≤ дней назад</span><input name="lastOrderMaxDays" type="number" defaultValue={seg.lastOrderMaxDays ?? ""} onChange={num("lastOrderMaxDays")} className="input py-2" /></label>
             <label><span className="label">Регистрация за N дней</span><input name="registeredDays" type="number" defaultValue={seg.registeredDays ?? ""} onChange={num("registeredDays")} className="input py-2" /></label>
-            <label><span className="label">Баллы сгорают в N дней</span><input name="pointsExpiringDays" type="number" defaultValue={seg.pointsExpiringDays ?? ""} onChange={num("pointsExpiringDays")} className="input py-2" /></label>
             <label><span className="label">Месяц рождения</span>
               <select aria-label="Месяц рождения" name="birthdayMonth" value={seg.birthdayMonth ?? ""} onChange={(e) => setSeg((s) => ({ ...s, birthdayMonth: Number(e.target.value) || undefined }))} className="input py-2"><option value="">Любой</option>{Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>{new Date(2026, i, 1).toLocaleDateString("ru-RU", { month: "long" })}</option>)}</select>
             </label>

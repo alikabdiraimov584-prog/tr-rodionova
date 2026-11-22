@@ -95,7 +95,6 @@ export async function createManualOrderAction(_: ActionState, formData: FormData
       paymentMethod: String(formData.get("paymentMethod") ?? "CARD") as PaymentMethod,
       deliveryMethod: String(formData.get("deliveryMethod") ?? "PICKUP") as DeliveryMethod,
       addressText: String(formData.get("addressText") ?? "").trim() || null,
-      pointsToUse: Number(formData.get("pointsToUse") ?? 0) || 0,
       discount: toKopecks(String(formData.get("discount") ?? "0") || "0"),
       comment: String(formData.get("comment") ?? "").trim() || null,
       markPaid: formData.get("markPaid") === "on",

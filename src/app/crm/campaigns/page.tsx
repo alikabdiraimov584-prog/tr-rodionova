@@ -41,7 +41,7 @@ export default async function Campaigns() {
         <Stat label="Выручка из рассылок" value={formatMoney([...linkStats.values()].reduce((a, l) => a + l.revenue, 0))} hint="по трекинговым ссылкам" />
       </div>
       {campaigns.length === 0 ? (
-        <Empty title="Рассылок ещё нет" action={<Link href="/crm/campaigns/new" className="btn-primary">Создать первую</Link>}>Начните с готового сегмента: «Сгорают баллы» или «Спящие».</Empty>
+        <Empty title="Рассылок ещё нет" action={<Link href="/crm/campaigns/new" className="btn-primary">Создать первую</Link>}>Начните с готового сегмента: новые клиентки, ожидающие поступления или подписчики с согласием.</Empty>
       ) : (
         <div className="card overflow-x-auto" tabIndex={0}>
           <table className="table">

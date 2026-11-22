@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <>
       <h1>Вход</h1>
-      <p className="mb-8 mt-2 text-sm text-muted">Личный кабинет и программа T.Rodionova Circle</p>
+      <p className="mb-8 mt-2 text-sm text-muted">Личный кабинет</p>
       {codeLogin && (
         <details className="mb-6 border border-line bg-panel p-4" open={!!email}>
           <summary className="cursor-pointer text-sm">Войти по коду из письма, без пароля</summary>

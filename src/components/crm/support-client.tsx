@@ -7,7 +7,7 @@ import type { ActionState } from "@/lib/action-result";
 
 type Template = { id: string; title: string; shortcut: string | null; text: string };
 
-export function Composer({ conversationId, templates, ctx, hint }: { conversationId: string; templates: Template[]; ctx: { name?: string | null; tier?: string | null; points?: number | null; order?: number | null }; hint?: string }) {
+export function Composer({ conversationId, templates, ctx, hint }: { conversationId: string; templates: Template[]; ctx: { name?: string | null; order?: number | null }; hint?: string }) {
   const [text, setText] = useState("");
   const [note, setNote] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -21,8 +21,8 @@ export function Composer({ conversationId, templates, ctx, hint }: { conversatio
   const render = (t: string) =>
     t
       .replace(/\{имя\}/g, ctx.name ?? "")
-      .replace(/\{уровень\}/g, ctx.tier ?? "")
-      .replace(/\{баллы\}/g, ctx.points != null ? ctx.points.toLocaleString("ru-RU") : "")
+      .replace(/\{уровень\}/g, "")
+      .replace(/\{баллы\}/g, "")
       .replace(/\{заказ\}/g, ctx.order ? `№${ctx.order}` : "")
       .replace(/ {2,}/g, " ");
 
@@ -141,7 +141,7 @@ export function TemplateForm({ t }: { t?: Template }) {
         <input name="title" defaultValue={t?.title} placeholder="Название" className="input py-2" />
         <input name="shortcut" defaultValue={t?.shortcut ?? ""} placeholder="/команда" className="input py-2" />
       </div>
-      <textarea name="text" defaultValue={t?.text} rows={3} placeholder="Текст. Переменные: {имя} {уровень} {баллы} {заказ}" className="input" />
+      <textarea name="text" defaultValue={t?.text} rows={3} placeholder="Текст. Переменные: {имя} {заказ}" className="input" />
       <button className="btn-outline btn-sm" disabled={pending}>{t ? "Сохранить" : "Добавить шаблон"}</button>
       {state?.error && <p className="text-xs text-danger">{state.error}</p>}
     </form>

@@ -10,11 +10,6 @@ export function formatMoney(kopecks: number, opts: { withSign?: boolean } = {}):
   return `${sign}${rubStr}${kop ? "," + String(kop).padStart(2, "0") : ""} ₽`;
 }
 
-export function formatPoints(points: number, opts: { withSign?: boolean } = {}): string {
-  const sign = points < 0 ? "−" : opts.withSign && points > 0 ? "+" : "";
-  return `${sign}${Math.abs(points).toLocaleString("ru-RU")} ${plural(Math.abs(points), ["балл", "балла", "баллов"])}`;
-}
-
 export function plural(n: number, forms: [string, string, string]): string {
   const m10 = n % 10;
   const m100 = n % 100;

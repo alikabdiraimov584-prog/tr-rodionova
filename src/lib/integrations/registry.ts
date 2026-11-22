@@ -51,7 +51,7 @@ export const METRIKA_GOALS = [
   { id: "checkout", name: "Открыто оформление заказа" },
   { id: "cart", name: "Вещь добавлена в корзину" },
   { id: "waitlist", name: "Подписка на поступление размера" },
-  { id: "register", name: "Регистрация в Circle" },
+  { id: "register", name: "Регистрация на сайте" },
   { id: "product_view", name: "Просмотр карточки вещи" },
 ] as const;
 

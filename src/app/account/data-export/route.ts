@@ -8,10 +8,9 @@ import { audit } from "@/lib/audit";
  */
 export async function GET() {
   const user = await requireUser("/account/profile");
-  const [addresses, orders, points, consents, reviews, wishlist, giftCards, conversations, notifications, selections, resale] = await Promise.all([
+  const [addresses, orders, consents, reviews, wishlist, giftCards, conversations, notifications, selections, resale] = await Promise.all([
     db.address.findMany({ where: { userId: user.id } }),
-    db.order.findMany({ where: { userId: user.id }, include: { items: true, payments: { select: { method: true, status: true, amount: true, createdAt: true } }, history: true } }),
-    db.pointsTransaction.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } }),
+    db.order.findMany({ where: { userId: user.id }, omit: { pointsUsed: true, pointsEarned: true }, include: { items: true, payments: { select: { method: true, status: true, amount: true, createdAt: true } }, history: true } }),
     db.consent.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } }),
     db.review.findMany({ where: { userId: user.id } }),
     db.wishlistItem.findMany({ where: { userId: user.id }, include: { product: { select: { name: true, sku: true } } } }),
@@ -31,13 +30,11 @@ export async function GET() {
       birthday: user.birthday,
       measurements: { height: user.height, bust: user.bust, waist: user.waist, hips: user.hips, preferredSize: user.preferredSize },
       marketingConsent: user.marketingConsent,
-      loyalty: { tier: user.loyaltyTier?.name ?? null, pointsBalance: user.pointsBalance, lifetimeSpent: user.lifetimeSpent, yearSpent: user.yearSpent, referralCode: user.referralCode },
       source: user.source,
       createdAt: user.createdAt,
     },
     addresses,
     orders,
-    pointsHistory: points,
     consents,
     reviews,
     wishlist,

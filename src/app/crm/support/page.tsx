@@ -67,7 +67,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
   const [list, counts, overdue, firstResponses, staff, templates] = await Promise.all([
     db.conversation.findMany({
       where,
-      include: { contact: true, assignee: { select: { firstName: true } }, customer: { select: { firstName: true, lastName: true, loyaltyTier: { select: { name: true } } } }, messages: { orderBy: { createdAt: "desc" }, take: 1, where: { direction: { in: ["IN", "OUT", "SYSTEM"] } } } },
+      include: { contact: true, assignee: { select: { firstName: true } }, customer: { select: { firstName: true, lastName: true } }, messages: { orderBy: { createdAt: "desc" }, take: 1, where: { direction: { in: ["IN", "OUT", "SYSTEM"] } } } },
       orderBy: [{ priority: "desc" }, { lastMessageAt: "desc" }],
       take: 100,
     }),
@@ -91,7 +91,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
           contact: true,
           assignee: { select: { id: true, firstName: true } },
           messages: { orderBy: { createdAt: "asc" }, include: { author: { select: { firstName: true } } } },
-          customer: { include: { loyaltyTier: true, orders: { orderBy: { createdAt: "desc" }, take: 5, include: { items: { select: { productName: true, size: true } } } }, notes: { orderBy: { createdAt: "desc" }, take: 3 } } },
+          customer: { include: { orders: { orderBy: { createdAt: "desc" }, take: 5, include: { items: { select: { productName: true, size: true } } } }, notes: { orderBy: { createdAt: "desc" }, take: 3 } } },
         },
       })
     : null;
@@ -165,7 +165,6 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
                       </div>
                       <div className="truncate text-xs text-muted">{last ? `${last.direction === "IN" ? "" : "Вы: "}${last.text}` : ""}</div>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
-                        {c.customer?.loyaltyTier && <span className="text-[0.6rem] uppercase tracking-[0.1em] text-taupe-dark">{c.customer.loyaltyTier.name}</span>}
                         {c.tags.slice(0, 3).map((t) => <span key={t} className="text-[0.6rem] text-muted">#{t}</span>)}
                         <span className="ml-auto text-[0.6rem] text-muted">{c.assignee?.firstName ?? "—"}</span>
                         {c.unread > 0 && <span className="rounded-full bg-ink px-1.5 text-[0.6rem] text-ivory">{c.unread}</span>}
@@ -254,7 +253,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
               <Composer
                 conversationId={conv.id}
                 templates={templates}
-                ctx={{ name: conv.customer?.firstName ?? conv.contact.name?.split(" ")[0], tier: conv.customer?.loyaltyTier?.name, points: conv.customer?.pointsBalance, order: conv.orderNumbers.at(-1) ?? conv.customer?.orders[0]?.number }}
+                ctx={{ name: conv.customer?.firstName ?? conv.contact.name?.split(" ")[0], order: conv.orderNumbers.at(-1) ?? conv.customer?.orders[0]?.number }}
                 hint={conv.channel === "WHATSAPP" ? "WhatsApp: свободный ответ — в течение 24 ч после сообщения клиента" : undefined}
               />
             </>
@@ -270,8 +269,6 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
                 <Link href={`/crm/customers/${conv.customer.id}`} className="serif mt-1 block text-xl underline-offset-4 hover:underline">{conv.customer.firstName} {conv.customer.lastName}</Link>
                 <div className="text-xs text-muted">{conv.customer.phone} · {conv.customer.email}</div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-ivory p-2"><div className="text-muted">Уровень</div>{conv.customer.loyaltyTier?.name}</div>
-                  <div className="bg-ivory p-2"><div className="text-muted">Баллы</div>{conv.customer.pointsBalance.toLocaleString("ru-RU")}</div>
                   <div className="bg-ivory p-2"><div className="text-muted">LTV</div>{formatMoney(conv.customer.lifetimeSpent)}</div>
                   <div className="bg-ivory p-2"><div className="text-muted">Размер</div>{conv.customer.preferredSize ?? "—"}</div>
                 </div>
@@ -310,7 +307,7 @@ export default async function SupportInbox({ searchParams }: PageProps<"/crm/sup
                 <input name="tags" defaultValue={conv.tags.join(", ")} className="input py-1.5 text-xs" />
                 <button className="text-xs underline">ок</button>
               </form>
-              <p className="mt-1 text-[0.65rem] text-muted">Темы определяются автоматически по тексту: доставка, размер, возврат, оплата, баллы.</p>
+              <p className="mt-1 text-[0.65rem] text-muted">Темы определяются автоматически по тексту: доставка, размер, возврат, оплата, промокод.</p>
             </div>
             <div className="text-xs text-muted">
               Создан {formatDate(conv.createdAt, true)}<br />

@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
-import { addPoints, recalcTier } from "@/lib/loyalty";
 import { audit } from "@/lib/audit";
-import { errorMessage, type ActionState } from "@/lib/action-result";
+import type { ActionState } from "@/lib/action-result";
 
 export async function addNoteAction(formData: FormData) {
   const staff = await requireSection("customers");
@@ -24,26 +23,6 @@ export async function deleteNoteAction(formData: FormData) {
 }
 
 // Действия с задачами переехали в crm-tasks.ts (доска, этапы, чеклист, комментарии)
-
-export async function adjustPointsAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  const staff = await requireSection("points");
-  const userId = String(formData.get("userId"));
-  const amount = Math.trunc(Number(formData.get("amount")));
-  const comment = String(formData.get("comment") ?? "").trim();
-  if (!amount) return { error: "Укажите количество баллов (со знаком минус для списания)" };
-  if (!comment) return { error: "Укажите причину — она видна клиенту" };
-  if (staff.role !== "ADMIN" && Math.abs(amount) > 5000) return { error: "Менеджер может начислить или списать до 5 000 баллов. Больше — через администратора." };
-  try {
-    await db.$transaction(async (tx) => {
-      await addPoints(tx, userId, amount > 0 ? "EARN_MANUAL" : "SPEND_PURCHASE", amount, { comment, createdBy: staff.id, ...(amount < 0 ? { expiresAt: null } : {}) });
-      await audit(staff.id, "points.adjust", "User", userId, { amount, comment }, tx);
-    });
-  } catch (e) {
-    return { error: errorMessage(e) };
-  }
-  revalidatePath(`/crm/customers/${userId}`);
-  return { ok: true, message: amount > 0 ? `Начислено ${amount} баллов` : `Списано ${-amount} баллов` };
-}
 
 export async function updateCustomerAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const staff = await requireSection("customersEdit");
@@ -67,13 +46,6 @@ export async function updateCustomerAction(_: ActionState, formData: FormData): 
   await audit(staff.id, "customer.update", "User", userId, { tags });
   revalidatePath(`/crm/customers/${userId}`);
   return { ok: true, message: "Сохранено" };
-}
-
-export async function recalcCustomerTierAction(formData: FormData) {
-  await requireSection("customersEdit");
-  const userId = String(formData.get("userId"));
-  await db.$transaction((tx) => recalcTier(tx, userId));
-  revalidatePath(`/crm/customers/${userId}`);
 }
 
 /**

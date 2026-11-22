@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { TextPage, Section } from "@/components/shop/page-shell";
 
 export const metadata: Metadata = { title: "Уход за изделиями" };
@@ -15,9 +14,6 @@ export default function Care() {
       </Section>
       <Section id="coats" title="Пальто и жакеты">
         <p>Сухая чистка раз в сезон, не чаще. Между носками давать отдохнуть сутки на широких плечиках. Паром убирать заломы. На лето убирать в хлопковый чехол с кедровым блоком.</p>
-      </Section>
-      <Section id="atelier" title="Ателье">
-        <p>Участницам Privé доступны бесплатная чистка и мелкий ремонт в нашем ателье: замена пуговиц, подшив, восстановление кашемира. Запишитесь через <Link href="/account/support?topic=stylist" className="underline">службу заботы</Link>.</p>
       </Section>
     </TextPage>
   );

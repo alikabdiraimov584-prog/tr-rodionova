@@ -15,7 +15,7 @@ export default async function TemplatesPage() {
   return (
     <div className="max-w-4xl">
       <PageTitle eyebrow="Поддержка" title="Шаблоны ответов" actions={<Link href="/crm/support" className="btn-ghost btn-sm">← К диалогам</Link>}>
-        В окне ответа наберите команду и пробел, например «/доставка », или выберите шаблон из списка. Переменные: {"{имя} {уровень} {баллы} {заказ}"}.
+        В окне ответа наберите команду и пробел, например «/доставка », или выберите шаблон из списка. Переменные: {"{имя} {заказ}"}.
       </PageTitle>
       <div className="card mb-6 p-5"><TemplateForm /></div>
       <div className="space-y-4">

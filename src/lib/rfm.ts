@@ -11,9 +11,9 @@ export const SEGMENTS: Record<RfmSegment["code"], RfmSegment> = {
   champion: { code: "champion", label: "Чемпионы", tone: "gold", advice: "Ранний доступ, персональный стилист, закрытые показы" },
   loyal: { code: "loyal", label: "Лояльные", tone: "success", advice: "Предложить следующий уровень, кросс-продажи из капсулы" },
   potential: { code: "potential", label: "Перспективные", tone: "info", advice: "Второй заказ: подборка под первый, бонус за отзыв" },
-  new: { code: "new", label: "Новые", tone: "info", advice: "Welcome-цепочка, напоминание о приветственных баллах" },
+  new: { code: "new", label: "Новые", tone: "info", advice: "Приветственная рассылка" },
   at_risk: { code: "at_risk", label: "Под угрозой", tone: "warning", advice: "Личное сообщение менеджера, новинки коллекции" },
-  sleeping: { code: "sleeping", label: "Спящие", tone: "warning", advice: "Реактивация: баллы с коротким сроком, приглашение в шоурум" },
+  sleeping: { code: "sleeping", label: "Спящие", tone: "warning", advice: "Реактивация: приглашение в шоурум" },
   lost: { code: "lost", label: "Потерянные", tone: "danger", advice: "Win-back кампания раз в сезон, не чаще" },
   prospect: { code: "prospect", label: "Без покупок", tone: "neutral", advice: "Довести до первой покупки: промокод WELCOME10" },
 };

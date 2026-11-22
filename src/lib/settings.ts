@@ -1,13 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
 
-export type LoyaltySettings = {
-  welcomePoints: number;
-  referralPoints: number;
-  reviewPoints: number;
-  pointsExpireDays: number;
-  pointValueKopecks: number;
-};
 export type DeliverySettings = {
   freeFrom: number;
   courier: number;
@@ -75,7 +68,7 @@ export type FinanceSettings = {
   pnlCost: PnlCostMethod;
 };
 
-const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: DeliverySettings; brand: BrandSettings; seller: SellerSettings; finance: FinanceSettings } = {
+const defaults: { support: SupportSettings; delivery: DeliverySettings; brand: BrandSettings; seller: SellerSettings; finance: FinanceSettings } = {
   finance: { openingBalance: 0, openingDate: "", pnlCost: "production" },
   seller: {
     name: "ИП Родионова Татьяна Ивановна",
@@ -100,13 +93,6 @@ const defaults: { support: SupportSettings; loyalty: LoyaltySettings; delivery: 
     autoReplyText: "Здравствуйте! Спасибо за сообщение. Мы на связи ежедневно с 10:00 до 21:00 по Москве и ответим в начале рабочего дня. — Команда T.Rodionova",
     slaMinutes: 15,
     reopenDays: 3,
-  },
-  loyalty: {
-    welcomePoints: 2000,
-    referralPoints: 2000,
-    reviewPoints: 300,
-    pointsExpireDays: 365,
-    pointValueKopecks: 100,
   },
   delivery: { freeFrom: 1_500_000, courier: 50_000, cdek: 35_000, boxberry: 30_000, yandex: 45_000 },
   brand: {

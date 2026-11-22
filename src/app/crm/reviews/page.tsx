@@ -21,7 +21,7 @@ export default async function Reviews({ searchParams }: PageProps<"/crm/reviews"
   });
   return (
     <div>
-      <PageTitle title="Отзывы">После публикации клиентке начисляются баллы за отзыв (один раз).</PageTitle>
+      <PageTitle title="Отзывы">Модерация отзывов о товарах.</PageTitle>
       <div className="mb-4 flex gap-2">
         {[["pending", "На модерации"], ["published", "Опубликованы"]].map(([k, v]) => (
           <Link key={k} href={qs("/crm/reviews", { tab: k })} className={`badge ${tab === k ? "border-ink bg-ink text-ivory" : "border-line bg-white"}`}>{v}</Link>

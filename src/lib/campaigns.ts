@@ -9,7 +9,6 @@ import type { Channel } from "@/generated/prisma/enums";
 
 /** Фильтры аудитории. Все условия объединяются по «И». */
 export type Segment = {
-  tiers?: string[]; // коды уровней
   rfm?: RfmSegment["code"][];
   tags?: string[];
   sources?: string[];
@@ -20,8 +19,6 @@ export type Segment = {
   lastOrderMaxDays?: number;
   registeredDays?: number; // зарегистрированы за последние N дней
   birthdayMonth?: number; // 1–12
-  hasPoints?: number; // баланс от
-  pointsExpiringDays?: number; // есть баллы, сгорающие в ближайшие N дней
   waitlist?: boolean; // ждут поступления
   wishlist?: boolean; // есть избранное
   viewedProductId?: string; // смотрели товар за 30 дней
@@ -31,7 +28,7 @@ export type Segment = {
   marketing?: boolean; // требовать согласие (для рекламных — всегда)
 };
 
-export type AudienceRow = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; tier: string | null; points: number; address: string | null };
+export type AudienceRow = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; address: string | null };
 
 /** Адрес доставки сообщения по каналу. */
 async function addresses(channel: Channel, userIds: string[]): Promise<Map<string, string>> {
@@ -61,29 +58,26 @@ async function addresses(channel: Channel, userIds: string[]): Promise<Map<strin
 }
 
 export async function buildAudience(seg: Segment, channel: Channel, opts: { limit?: number } = {}): Promise<{ rows: AudienceRow[]; total: number; noAddress: number }> {
+  if ("tiers" in seg || "hasPoints" in seg || "pointsExpiringDays" in seg) return { rows: [], total: 0, noAddress: 0 };
   const now = Date.now();
   const users = await db.user.findMany({
     where: {
       role: "CUSTOMER",
       isActive: true,
       ...(seg.marketing !== false ? { marketingConsent: true } : {}),
-      ...(seg.tiers?.length ? { loyaltyTier: { code: { in: seg.tiers } } } : {}),
       ...(seg.tags?.length ? { tags: { hasSome: seg.tags } } : {}),
       ...(seg.sources?.length ? { source: { in: seg.sources } } : {}),
       ...(seg.sizes?.length ? { preferredSize: { in: seg.sizes } } : {}),
       ...(seg.minLifetime ? { lifetimeSpent: { gte: seg.minLifetime * 100 } } : {}),
       ...(seg.maxLifetime ? { lifetimeSpent: { lte: seg.maxLifetime * 100 } } : {}),
       ...(seg.registeredDays ? { createdAt: { gte: new Date(now - seg.registeredDays * 86_400_000) } } : {}),
-      ...(seg.hasPoints ? { pointsBalance: { gte: seg.hasPoints } } : {}),
       ...(seg.waitlist ? { stockAlerts: { some: { notifiedAt: null } } } : {}),
       ...(seg.wishlist ? { wishlist: { some: {} } } : {}),
-      ...(seg.pointsExpiringDays ? { points: { some: { amount: { gt: 0 }, expiresAt: { gt: new Date(), lt: new Date(now + seg.pointsExpiringDays * 86_400_000) } } } } : {}),
       ...(seg.productBought ? { orders: { some: { status: { notIn: ["NEW", "CANCELLED"] }, items: { some: { variant: { productId: seg.productBought } } } } } } : {}),
       ...(seg.categoryBought ? { orders: { some: { status: { notIn: ["NEW", "CANCELLED"] }, items: { some: { variant: { product: { categoryId: seg.categoryBought } } } } } } } : {}),
       ...(seg.viewedProductId ? { sessions: { some: { events: { some: { type: "PRODUCT_VIEW", productId: seg.viewedProductId, createdAt: { gte: new Date(now - 30 * 86_400_000) } } } } } } : {}),
       ...(seg.cartAbandoned ? { cart: { some: {} }, NOT: { orders: { some: { createdAt: { gte: new Date(now - 7 * 86_400_000) } } } } } : {}),
     },
-    include: { loyaltyTier: { select: { name: true } } },
     orderBy: { lifetimeSpent: "desc" },
   });
   const needStats = !!(seg.rfm?.length || seg.lastOrderMinDays || seg.lastOrderMaxDays);
@@ -103,12 +97,12 @@ export async function buildAudience(seg: Segment, channel: Channel, opts: { limi
     return true;
   });
   const addr = await addresses(channel, filtered.map((u) => u.id));
-  const rows = filtered.map((u) => ({ id: u.id, firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone, tier: u.loyaltyTier?.name ?? null, points: u.pointsBalance, address: addr.get(u.id) ?? null }));
+  const rows = filtered.map((u) => ({ id: u.id, firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone, address: addr.get(u.id) ?? null }));
   return { rows: opts.limit ? rows.slice(0, opts.limit) : rows, total: rows.length, noAddress: rows.filter((r) => !r.address).length };
 }
 
-export function personalize(text: string, r: { firstName: string; tier: string | null; points: number }, link: string | null, unsubscribe: string | null) {
-  let t = renderTemplate(text, { name: r.firstName, tier: r.tier, points: r.points }).replace(/\{ссылка\}/g, link ?? "");
+export function personalize(text: string, r: { firstName: string }, link: string | null, unsubscribe: string | null) {
+  let t = renderTemplate(text, { name: r.firstName }).replace(/\{ссылка\}/g, link ?? "");
   if (unsubscribe) t += `\n\n${unsubscribe}`;
   return t;
 }
@@ -143,6 +137,11 @@ export async function sendOne(channel: Channel, address: string, text: string, s
 export async function runCampaign(campaignId: string, baseUrl: string) {
   const c = await db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
   if (c.status === "SENT" || c.status === "CANCELLED") return c;
+  const segment = c.segment as Segment;
+  if ("tiers" in segment || "hasPoints" in segment || "pointsExpiringDays" in segment ||
+      /\bcircle\b|балл|лояльност|\{уровень\}/i.test([c.name, c.subject, c.text].join(" "))) {
+    return db.campaign.update({ where: { id: c.id }, data: { status: "CANCELLED" } });
+  }
   await db.campaign.update({ where: { id: c.id }, data: { status: "SENDING", startedAt: c.startedAt ?? new Date() } });
   const seg = c.segment as Segment;
   const existing = await db.campaignRecipient.count({ where: { campaignId: c.id } });
@@ -158,11 +157,11 @@ export async function runCampaign(campaignId: string, baseUrl: string) {
   }
   const link = c.trackingLinkId ? await db.trackingLink.findUnique({ where: { id: c.trackingLinkId } }) : null;
   const linkUrl = link ? `${baseUrl}/go/${link.slug}` : null;
-  const queued = await db.campaignRecipient.findMany({ where: { campaignId: c.id, status: "QUEUED" }, include: { user: { include: { loyaltyTier: true } } } });
+  const queued = await db.campaignRecipient.findMany({ where: { campaignId: c.id, status: "QUEUED" }, include: { user: true } });
   for (const r of queued) {
     const unsub =
       c.channel === "EMAIL" ? `Отписаться от рассылок: ${baseUrl}/unsubscribe/${r.user.unsubscribeToken}` : c.channel === "WEBSITE" ? null : "Чтобы отписаться, ответьте СТОП.";
-    const text = personalize(c.text, { firstName: r.user.firstName, tier: r.user.loyaltyTier?.name ?? null, points: r.user.pointsBalance }, linkUrl, unsub);
+    const text = personalize(c.text, { firstName: r.user.firstName }, linkUrl, unsub);
     const res = await sendOne(c.channel, r.address, text, c.subject, r.userId, c.channel === "EMAIL" ? `${baseUrl}/unsubscribe/${r.user.unsubscribeToken}` : null);
     await db.campaignRecipient.update({ where: { id: r.id }, data: res.ok ? { status: "SENT", sentAt: new Date() } : { status: "FAILED", error: res.error } });
   }
@@ -184,11 +183,9 @@ export async function runDueCampaigns(baseUrl: string) {
 /** Готовые сегменты для быстрого старта. */
 export const PRESETS: { key: string; name: string; hint: string; segment: Segment }[] = [
   { key: "all", name: "Все с согласием", hint: "Все клиентки, давшие согласие на рассылки", segment: {} },
-  { key: "prive", name: "Privé и Maison", hint: "Закрытый показ, предзаказ", segment: { tiers: ["PRIVE", "MAISON"] } },
   { key: "sleeping", name: "Спящие и под угрозой", hint: "Реактивация: без покупок 120–365 дней", segment: { rfm: ["at_risk", "sleeping"] } },
-  { key: "expiring", name: "Сгорают баллы", hint: "Баллы сгорят в ближайшие 30 дней", segment: { pointsExpiringDays: 30 } },
   { key: "waitlist", name: "Ждут поступления", hint: "Подписаны на «сообщить о поступлении»", segment: { waitlist: true } },
   { key: "cart", name: "Брошенные корзины", hint: "В корзине есть вещи, заказа за 7 дней не было", segment: { cartAbandoned: true } },
   { key: "new", name: "Новые без покупок", hint: "Зарегистрировались за 30 дней, покупок нет", segment: { registeredDays: 30, rfm: ["prospect"] } },
-  { key: "birthday", name: "Дни рождения в этом месяце", hint: "Поздравление и подарочные баллы", segment: { birthdayMonth: new Date().getMonth() + 1 } },
+  { key: "birthday", name: "Дни рождения в этом месяце", hint: "Поздравление", segment: { birthdayMonth: new Date().getMonth() + 1 } },
 ];

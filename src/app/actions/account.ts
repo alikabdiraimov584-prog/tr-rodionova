@@ -31,7 +31,7 @@ export async function updateProfileAction(_: ActionState, formData: FormData): P
   const parsed = ProfileSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
-  // День рождения можно указать один раз — защита от злоупотребления подарочными баллами
+  // День рождения можно указать один раз
   const birthday = user.birthday ?? (d.birthday ? new Date(d.birthday) : null);
   const marketing = d.marketingConsent === "on";
   if (marketing !== user.marketingConsent) {
