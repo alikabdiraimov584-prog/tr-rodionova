@@ -1,103 +1,119 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireSection } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { formatDate } from "@/lib/money";
-import { Eyebrow, PageTitle } from "@/components/ui";
+import { analyticsDayStart, dayKey, DAY_MS, journalAnalytics } from "@/lib/analytics-reports";
+import { formatDate, formatMoney } from "@/lib/money";
+import { TRAFFIC_CHANNEL } from "@/lib/labels";
+import { Eyebrow, PageTitle, Stat } from "@/components/ui";
+import { BarChart } from "@/components/crm/charts";
 
-export const metadata: Metadata = { title: "Охват журнала" };
+export const metadata: Metadata = { title: "Аналитика журнала" };
 
-type ArticleReach = {
-  slug: string;
-  title: string;
-  category: string | null;
-  publishedAt: Date;
-  views: number;
-  visits: number;
-  readers: number;
-};
+const periods = ["7", "30", "90", "all"] as const;
+const number = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+const zero = { views: 0, visits: 0, readers: 0 };
 
-const format = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
-const WINDOW_DAYS = 14;
-const WINDOW_MS = WINDOW_DAYS * 86_400_000;
-
-function median(values: number[]) {
-  const ordered = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(ordered.length / 2);
-  return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
-}
-
-export default async function JournalAnalyticsPage() {
+export default async function JournalAnalyticsPage({ searchParams }: PageProps<"/crm/analytics/journal">) {
   await requireSection("analytics");
-  // Сопоставляем статьи с полным и одинаковым сроком наблюдения, включая статьи без просмотров.
-  const cutoff = new Date(new Date().getTime() - WINDOW_MS);
-  const articles = await db.$queryRaw<ArticleReach[]>`
-    WITH journal_hits AS (
-      SELECT e.id, e."sessionId", rtrim(split_part(split_part(e.path, '?', 1), '#', 1), '/') AS path, e."createdAt"
-      FROM "AnalyticsEvent" e
-      WHERE e.type = 'PAGEVIEW' AND e.path LIKE '/journal/%'
-    )
-    SELECT a.slug, a.title, a.category, a."publishedAt",
-      COUNT(h.id)::int AS views,
-      COUNT(DISTINCT h."sessionId")::int AS visits,
-      COUNT(DISTINCT s."visitorId")::int AS readers
-    FROM "Article" a
-    LEFT JOIN journal_hits h
-      ON h.path = '/journal/' || a.slug
-      AND h."createdAt" >= a."publishedAt"
-      AND h."createdAt" < a."publishedAt" + INTERVAL '336 hours'
-    LEFT JOIN "VisitorSession" s ON s.id = h."sessionId"
-    WHERE a."publishedAt" <= ${cutoff}
-    GROUP BY a.id
-    ORDER BY readers DESC, views DESC, a."publishedAt" DESC, a.slug
-  `;
-  const groups = new Map<string, ArticleReach[]>();
-  for (const article of articles) {
-    const label = article.category || "Без рубрики";
-    const list = groups.get(label) ?? [];
-    list.push(article);
-    groups.set(label, list);
+  const { days } = await searchParams;
+  const period = periods.find((value) => value === days) ?? "30";
+  const today = analyticsDayStart(dayKey(new Date()));
+  const to = new Date(today.getTime() + DAY_MS);
+  const from = period === "all" ? null : new Date(to.getTime() - Number(period) * DAY_MS);
+  const { articles, reach, orders, revenue } = await journalAnalytics({ from, to });
+  const totals = reach.find((row) => row.dimension === "total") ?? zero;
+  const articleReach = new Map(reach.filter((row) => row.dimension === "article").map((row) => [row.key, row]));
+  const daily = new Map(reach.filter((row) => row.dimension === "day").map((row) => [row.key, row]));
+  const rows = articles.map((article) => ({ ...article, ...(articleReach.get(article.slug) ?? zero) }))
+    .sort((a, b) => b.readers - a.readers || b.views - a.views);
+  const counts = new Map<string, number>();
+  for (const article of rows) {
+    const category = article.category || "Без рубрики";
+    counts.set(category, (counts.get(category) ?? 0) + 1);
   }
-  const formats = [...groups].map(([label, rows]) => ({
-    label,
-    count: rows.length,
-    medianReaders: median(rows.map((r) => r.readers)),
-    averageViews: rows.reduce((sum, r) => sum + r.views, 0) / rows.length,
-  })).sort((a, b) => b.medianReaders - a.medianReaders || b.averageViews - a.averageViews);
+  const categories = new Map(reach.filter((row) => row.dimension === "category").map((row) => [row.key, row]));
+  const formats = [...counts].map(([label, count]) => ({
+    label, count, ...(categories.get(label) ?? zero),
+  })).sort((a, b) => b.readers - a.readers || b.views - a.views);
+  const channels = reach.filter((row) => row.dimension === "channel").sort((a, b) => b.visits - a.visits);
+  const firstDay = [...daily.keys()].sort()[0];
+  const chartStart = from ?? (firstDay ? analyticsDayStart(firstDay) : today);
+  const chart = Array.from({ length: Math.round((to.getTime() - chartStart.getTime()) / DAY_MS) }, (_, i) => {
+    const date = dayKey(new Date(chartStart.getTime() + i * DAY_MS));
+    return { date, ...(daily.get(date) ?? zero) };
+  });
 
   return (
     <div className="space-y-6">
-      <PageTitle title="Охват журнала" actions={<Link href="/crm/analytics" className="btn-outline btn-sm">Вся аналитика</Link>}>
-        Первые {WINDOW_DAYS} дней после публикации. Читатели — уникальные идентификаторы посетителей в счётчике сайта.
-        Поисковые показы измеряются отдельно в Вебмастере или Search Console.
+      <PageTitle title="Аналитика журнала" actions={<>
+        <Link href="/crm/analytics" className="btn-outline btn-sm">Вся аналитика</Link>
+        {periods.map((value) => <Link
+          key={value} href={`/crm/analytics/journal?days=${value}`}
+          aria-current={period === value ? "page" : undefined}
+          className={`btn btn-sm ${period === value ? "bg-ink text-ivory" : "border border-line"}`}
+        >{value === "all" ? "За всё время" : `${value} дн.`}</Link>)}
+      </>}>
+        Статистика просмотров отдельных статей. Дни считаются по Москве. Посетители определяются по идентификатору счётчика.
       </PageTitle>
-      {!articles.length ? <p className="text-sm text-muted">Пока нет статей с полными 14 днями после публикации.</p> : <>
-        {!articles.some((a) => a.views > 0) && <p className="text-sm text-muted">В этом окне счётчик не зарегистрировал просмотров статей.</p>}
-        <section className="card overflow-x-auto" aria-label="Охват по рубрикам">
-          <div className="p-5 pb-2"><Eyebrow>Сравнение рубрик</Eyebrow></div>
-          <table className="table">
-            <thead><tr><th>Рубрика</th><th className="text-right">Статей</th><th className="text-right">Медиана читателей на статью</th><th className="text-right">Среднее просмотров на статью</th></tr></thead>
-            <tbody>{formats.map((row) => <tr key={row.label}>
-              <td>{row.label}</td><td className="text-right">{format.format(row.count)}</td>
-              <td className="text-right">{format.format(row.medianReaders)}</td>
-              <td className="text-right">{format.format(row.averageViews)}</td>
-            </tr>)}</tbody>
-          </table>
-        </section>
-        <section className="card overflow-x-auto" aria-label="Охват по статьям">
-          <div className="p-5 pb-2"><Eyebrow>Все статьи с полным периодом</Eyebrow></div>
-          <table className="table">
-            <thead><tr><th>Статья</th><th>Рубрика</th><th>Выпуск</th><th className="text-right">Читатели</th><th className="text-right">Визиты</th><th className="text-right">Просмотры</th></tr></thead>
-            <tbody>{articles.map((row) => <tr key={row.slug}>
-              <td><Link href={`/journal/${row.slug}`} className="underline">{row.title}</Link></td>
-              <td>{row.category || "—"}</td><td className="whitespace-nowrap">{formatDate(row.publishedAt)}</td>
-              <td className="text-right">{format.format(row.readers)}</td>
-              <td className="text-right">{format.format(row.visits)}</td>
-              <td className="text-right">{format.format(row.views)}</td>
-            </tr>)}</tbody>
-          </table>
-        </section>
-      </>}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <Stat label="Визиты" value={totals.visits} />
+        <Stat label="Посетители" value={totals.readers} />
+        <Stat label="Просмотры" value={totals.views} />
+        <Stat label="Оплаченные заказы" value={orders} hint="В визитах после просмотра статьи" />
+        <Stat label="Заказов на 100 визитов" value={number.format(totals.visits ? orders / totals.visits * 100 : 0)} />
+        <Stat label="Выручка" value={formatMoney(revenue)} hint="По оплаченным заказам из этих визитов" />
+      </div>
+      {!totals.views && <p className="text-sm text-muted">Счётчик не зарегистрировал просмотров статей за выбранный период.</p>}
+
+      <section className="card min-w-0 p-5" aria-label="Посещения по дням">
+        <Eyebrow>Визиты и просмотры по дням</Eyebrow>
+        <BarChart money={false} data={chart.map(({ date, views, visits }) => ({
+          label: `${date.slice(8)}.${date.slice(5, 7)}`, value: visits, sub: views,
+          title: `${date}: визиты — ${visits}, просмотры — ${views}`,
+        }))} />
+        <div className="mt-2 flex gap-4 text-xs text-muted">
+          <span><span className="mr-1 inline-block h-2 w-2 bg-taupe" />визиты</span>
+          <span><span className="mr-1 inline-block h-2 w-2 bg-champagne" />просмотры</span>
+        </div>
+      </section>
+
+      <section className="card overflow-x-auto" aria-label="Каналы трафика">
+        <div className="p-5 pb-2"><Eyebrow>Каналы трафика</Eyebrow></div>
+        <table className="table">
+          <thead><tr><th>Канал</th><th className="text-right">Визиты</th><th className="text-right">Посетители</th><th className="text-right">Просмотры</th></tr></thead>
+          <tbody>{channels.map((row) => <tr key={row.key}>
+            <td>{TRAFFIC_CHANNEL[row.key] ?? row.key}</td><td className="text-right">{number.format(row.visits)}</td>
+            <td className="text-right">{number.format(row.readers)}</td><td className="text-right">{number.format(row.views)}</td>
+          </tr>)}</tbody>
+        </table>
+        {!channels.length && <p className="p-5 text-sm text-muted">За период пока нет данных о каналах.</p>}
+      </section>
+
+      <section className="card overflow-x-auto" aria-label="Охват по рубрикам">
+        <div className="p-5 pb-2"><Eyebrow>Сравнение рубрик</Eyebrow></div>
+        <table className="table">
+          <thead><tr><th>Рубрика</th><th className="text-right">Статей</th><th className="text-right">Посетители</th><th className="text-right">Визиты</th><th className="text-right">Просмотры</th><th className="text-right">Просмотров на статью</th></tr></thead>
+          <tbody>{formats.map((row) => <tr key={row.label}>
+            <td>{row.label}</td><td className="text-right">{number.format(row.count)}</td>
+            <td className="text-right">{number.format(row.readers)}</td><td className="text-right">{number.format(row.visits)}</td>
+            <td className="text-right">{number.format(row.views)}</td><td className="text-right">{number.format(row.views / row.count)}</td>
+          </tr>)}</tbody>
+        </table>
+      </section>
+
+      <section className="card overflow-x-auto" aria-label="Охват по статьям">
+        <div className="p-5 pb-2"><Eyebrow>По статьям</Eyebrow></div>
+        <table className="table">
+          <thead><tr><th>Статья</th><th>Рубрика</th><th>Выпуск</th><th className="text-right">Посетители</th><th className="text-right">Визиты</th><th className="text-right">Просмотры</th></tr></thead>
+          <tbody>{rows.map((row) => <tr key={row.slug}>
+            <td><Link href={`/journal/${row.slug}`} className="underline">{row.title}</Link></td>
+            <td>{row.category || "—"}</td><td className="whitespace-nowrap">{formatDate(row.publishedAt)}</td>
+            <td className="text-right">{number.format(row.readers)}</td><td className="text-right">{number.format(row.visits)}</td>
+            <td className="text-right">{number.format(row.views)}</td>
+          </tr>)}</tbody>
+        </table>
+      </section>
     </div>
   );
 }
