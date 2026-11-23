@@ -23,7 +23,12 @@ for (const a of batch) {
   if (a.metaTitle.length > 70) errors.push(`${where}: metaTitle ${a.metaTitle.length} > 70 символов`);
   if (a.metaDescription.length > 170) errors.push(`${where}: metaDescription ${a.metaDescription.length} > 170 символов`);
   if (a.excerpt.length > 320) errors.push(`${where}: аннотация ${a.excerpt.length} > 320 символов`);
-  if (a.body.length < 2200) errors.push(`${where}: текст короче 2200 символов (${a.body.length})`);
+  // Короткая редакционная карточка содержит ответ, два практических раздела и метку формата.
+  const shortGuide = a.editorialFormat !== undefined;
+  if (shortGuide && (!a.keywords.includes(a.editorialFormat!) || (a.body.match(/^## /gm) ?? []).length < 2))
+    errors.push(`${where}: у карточки отсутствуют разделы или метка формата`);
+  const minimumLength = shortGuide ? 400 : 2200;
+  if (a.body.length < minimumLength) errors.push(`${where}: текст короче ${minimumLength} символов (${a.body.length})`);
   if (/\|.*\|/.test(a.body)) errors.push(`${where}: таблицы Markdown сайт не показывает`);
   if (/выходит \d/.test(a.body)) errors.push(`${where}: анонс «выходит …» — ссылаться можно только на вышедшие статьи`);
   for (const [, href] of a.body.matchAll(/\]\(([^)\s]+)\)/g)) {
