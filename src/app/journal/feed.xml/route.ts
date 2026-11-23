@@ -12,7 +12,7 @@ export async function GET() {
     where: { publishedAt: { not: null, lte: new Date() } },
     orderBy: { publishedAt: "desc" },
     take: 50,
-    select: { slug: true, title: true, excerpt: true, coverUrl: true, category: true, publishedAt: true },
+    select: { slug: true, title: true, excerpt: true, coverUrl: true, category: true, keywords: true, publishedAt: true },
   });
   const items = articles
     .map(
@@ -21,14 +21,14 @@ export async function GET() {
   <link>${base}/journal/${a.slug}</link>
   <guid isPermaLink="true">${base}/journal/${a.slug}</guid>
   <pubDate>${a.publishedAt!.toUTCString()}</pubDate>
-  ${a.category ? `<category>${esc(a.category)}</category>` : ""}
+  ${[...new Set([a.category, ...a.keywords])].filter((tag): tag is string => !!tag).map((tag) => `<category>${esc(tag)}</category>`).join("\n  ")}
   ${a.excerpt ? `<description>${esc(a.excerpt)}</description>` : ""}
-  ${a.coverUrl ? `<enclosure url="${base}${a.coverUrl}" type="image/jpeg" />` : ""}
+  ${a.coverUrl ? `<media:thumbnail url="${esc(new URL(a.coverUrl, base).href)}" />` : ""}
 </item>`,
     )
     .join("\n");
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
 <channel>
   <title>Журнал T.Rodionova</title>
   <link>${base}/journal</link>
