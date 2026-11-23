@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSection } from "@/lib/auth";
-import { byDay, dayKey, dayVisits } from "@/lib/analytics-reports";
+import { ANALYTICS_TIME_ZONE, DAY_MS, analyticsDayStart, byDay, dayKey, dayVisits } from "@/lib/analytics-reports";
 import { formatMoney } from "@/lib/money";
 import { TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Empty, PageTitle, Stat } from "@/components/ui";
@@ -24,7 +24,7 @@ const EVENT: Record<string, { label: string; tone: "neutral" | "info" | "warning
   ORDER: { label: "Заказ", tone: "success" },
 };
 
-const time = (d: Date) => d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+const time = (d: Date) => d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: ANALYTICS_TIME_ZONE });
 
 /** Один день аналитики: сводка, переход к соседним дням и каждый визит с его действиями по порядку. */
 export default async function AnalyticsDayPage({ params, searchParams }: PageProps<"/crm/analytics/day/[date]">) {
@@ -32,18 +32,16 @@ export default async function AnalyticsDayPage({ params, searchParams }: PagePro
   const { date } = await params;
   const sp = await searchParams;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) notFound();
-  const from = new Date(`${date}T00:00:00`);
+  const from = analyticsDayStart(date);
   if (Number.isNaN(from.getTime()) || dayKey(from) !== date) notFound();
-  const to = new Date(from);
-  to.setDate(to.getDate() + 1);
-  const prev = new Date(from);
-  prev.setDate(prev.getDate() - 1);
+  const to = new Date(from.getTime() + DAY_MS);
+  const prev = new Date(from.getTime() - DAY_MS);
   const goalsOnly = str(sp.goals) === "1";
   const page = Math.max(1, Number(str(sp.page)) || 1);
 
   const [[day], visits] = await Promise.all([byDay({ from, to }), dayVisits({ from, to }, { goalsOnly, skip: (page - 1) * PER_PAGE, take: PER_PAGE })]);
   const pages = Math.max(1, Math.ceil(visits.total / PER_PAGE));
-  const title = from.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
+  const title = from.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric", weekday: "long", timeZone: ANALYTICS_TIME_ZONE });
   // следующий день показывается, только если он уже наступил
   const hasNext = dayKey(to) <= dayKey(new Date());
   const href = (p: { goals?: boolean; page?: number }) => qs(`/crm/analytics/day/${date}`, { goals: (p.goals ?? goalsOnly) ? 1 : undefined, page: p.page && p.page > 1 ? p.page : undefined });

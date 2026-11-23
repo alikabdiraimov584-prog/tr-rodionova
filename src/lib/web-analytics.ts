@@ -1,12 +1,14 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import type { EventType, TrafficChannel } from "@/generated/prisma/enums";
 
 export const VISITOR_COOKIE = "tr_vid";
 export const SESSION_COOKIE_A = "tr_sid";
 export const CONSENT_COOKIE = "tr_consent";
 const SESSION_TTL_MIN = 30;
+const HIT_REPLAY_MS = 60_000;
 
 const SEARCH = /(^|\.)(google|yandex|ya|bing|duckduckgo|mail|rambler|yahoo)\./i;
 // ИИ-ассистенты и нейропоиск: по рефереру видно, что покупательница пришла из ответа ИИ (GEO-канал)
@@ -48,56 +50,75 @@ export function pathToEvent(path: string): { type: EventType; slug?: string } {
   return { type: "PAGEVIEW" };
 }
 
-export type Hit = { path: string; referrer: string | null; utm: Utm; ua: string; host: string | null; userId: string | null; trackingLinkId?: string | null };
+export type Hit = { path: string; eventId?: string; referrer: string | null; utm: Utm; ua: string; host: string | null; userId: string | null; trackingLinkId?: string | null };
 
-/** Регистрирует просмотр. Возвращает id сессии и флаг, нужно ли выставить cookie. */
+/** Регистрирует просмотр и возвращает идентификаторы для cookie. */
 export async function recordHit(hit: Hit, cookie: { visitorId: string | null; sessionId: string | null }) {
   const ua = parseUA(hit.ua);
   if (ua.bot) return null;
-  const now = new Date();
-  let session = cookie.sessionId ? await db.visitorSession.findUnique({ where: { id: cookie.sessionId } }) : null;
-  // без согласия на долгоживущий cookie идентификатор посетителя живёт только в рамках визита
-  const visitorId = cookie.visitorId ?? session?.visitorId ?? crypto.randomUUID();
-  const expired = session && now.getTime() - session.lastSeenAt.getTime() > SESSION_TTL_MIN * 60_000;
-  // новая UTM-метка в середине сессии = новый визит (новая кампания)
-  const newCampaign = session && hit.utm.source && (session.source !== hit.utm.source.toLowerCase() || (hit.utm.campaign ?? null) !== (session.campaign ?? null));
-  if (!session || expired || newCampaign || session.visitorId !== visitorId) {
-    let referrerHost: string | null = null;
-    try {
-      referrerHost = hit.referrer ? new URL(hit.referrer).hostname.toLowerCase() : null;
-    } catch {
-      referrerHost = null;
-    }
-    const { channel, source } = classify(referrerHost, hit.utm, hit.host);
-    session = await db.visitorSession.create({
-      data: {
-        visitorId,
-        userId: hit.userId,
-        landingPath: hit.path.slice(0, 300),
-        referrer: hit.referrer?.slice(0, 500) ?? null,
-        referrerHost: referrerHost && hit.host !== referrerHost ? referrerHost : null,
-        channel,
-        source,
-        medium: hit.utm.medium?.toLowerCase().slice(0, 100) ?? null,
-        campaign: hit.utm.campaign?.slice(0, 150) ?? null,
-        content: hit.utm.content?.slice(0, 150) ?? null,
-        term: hit.utm.term?.slice(0, 150) ?? null,
-        trackingLinkId: hit.trackingLinkId ?? null,
-        device: ua.device,
-        browser: ua.browser,
-        os: ua.os,
-      },
-    });
-    if (hit.userId) await attributeFirstTouch(hit.userId, session.id);
-  }
+  const path = hit.path.slice(0, 300);
   const ev = pathToEvent(hit.path);
-  const product = ev.slug ? await db.product.findUnique({ where: { slug: ev.slug }, select: { id: true } }) : null;
-  await db.$transaction([
-    db.visitorSession.update({ where: { id: session.id }, data: { lastSeenAt: now, pageviews: { increment: 1 }, ...(hit.userId && !session.userId ? { userId: hit.userId } : {}) } }),
-    db.analyticsEvent.create({ data: { sessionId: session.id, type: ev.type, path: hit.path.slice(0, 300), productId: product?.id ?? null } }),
-  ]);
-  if (hit.userId && !session.userId) await attributeFirstTouch(hit.userId, session.id);
-  return { visitorId, sessionId: session.id };
+  let result;
+  try {
+    result = await db.$transaction(async (tx) => {
+      const now = new Date();
+      let session = cookie.sessionId ? await tx.visitorSession.findUnique({ where: { id: cookie.sessionId } }) : null;
+      // без согласия на долгоживущий cookie идентификатор посетителя живёт только в рамках визита
+      const visitorId = cookie.visitorId ?? session?.visitorId ?? crypto.randomUUID();
+      const expired = session && now.getTime() - session.lastSeenAt.getTime() > SESSION_TTL_MIN * 60_000;
+      // новая UTM-метка в середине сессии = новый визит (новая кампания)
+      const newCampaign = !!(session && hit.utm.source && (session.source !== hit.utm.source.toLowerCase() || (hit.utm.campaign ?? null) !== (session.campaign ?? null)));
+      const isNew = !session || expired || newCampaign || session.visitorId !== visitorId;
+      if (isNew || !session) {
+        let referrerHost: string | null = null;
+        try {
+          referrerHost = hit.referrer ? new URL(hit.referrer).hostname.toLowerCase() : null;
+        } catch {
+          referrerHost = null;
+        }
+        const { channel, source } = classify(referrerHost, hit.utm, hit.host);
+        session = await tx.visitorSession.create({
+          data: {
+            visitorId,
+            userId: hit.userId,
+            landingPath: path,
+            referrer: hit.referrer?.slice(0, 500) ?? null,
+            referrerHost: referrerHost && hit.host !== referrerHost ? referrerHost : null,
+            channel,
+            source,
+            medium: hit.utm.medium?.toLowerCase().slice(0, 100) ?? null,
+            campaign: hit.utm.campaign?.slice(0, 150) ?? null,
+            content: hit.utm.content?.slice(0, 150) ?? null,
+            term: hit.utm.term?.slice(0, 150) ?? null,
+            trackingLinkId: hit.trackingLinkId ?? null,
+            device: ua.device,
+            browser: ua.browser,
+            os: ua.os,
+          },
+        });
+      }
+      const product = ev.slug ? await tx.product.findUnique({ where: { slug: ev.slug }, select: { id: true } }) : null;
+      // При повторе id вставка откатывает и возможное создание визита, и увеличение счётчика.
+      await tx.analyticsEvent.create({ data: { id: hit.eventId, sessionId: session.id, type: ev.type, path, productId: product?.id ?? null } });
+      await tx.visitorSession.update({
+        where: { id: session.id },
+        data: { lastSeenAt: now, pageviews: { increment: 1 }, ...(hit.userId && !session.userId ? { userId: hit.userId } : {}) },
+      });
+      return { visitorId, sessionId: session.id, attribute: isNew || !session.userId };
+    });
+  } catch (error) {
+    if (!hit.eventId || !(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    const recorded = await db.analyticsEvent.findUnique({
+      where: { id: hit.eventId },
+      select: { path: true, type: true, createdAt: true, session: { select: { id: true, visitorId: true } } },
+    });
+    if (recorded?.path !== path || recorded.type !== ev.type) return null;
+    if (Date.now() - recorded.createdAt.getTime() > HIT_REPLAY_MS) return null;
+    if (cookie.sessionId && cookie.sessionId !== recorded.session.id) return null;
+    return { visitorId: recorded.session.visitorId, sessionId: recorded.session.id };
+  }
+  if (hit.userId && result.attribute) await attributeFirstTouch(hit.userId, result.sessionId);
+  return { visitorId: result.visitorId, sessionId: result.sessionId };
 }
 
 /** Первое касание: источник первой известной сессии клиента (не перезаписывается). */

@@ -6,6 +6,7 @@ import { recordHit, VISITOR_COOKIE, SESSION_COOKIE_A, CONSENT_COOKIE } from "@/l
 
 const YEAR = 365 * 24 * 3600;
 const MAX_BODY_BYTES = 16 * 1024;
+const EVENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function readBoundedBody(req: Request, maxBytes: number): Promise<string | null> {
   if (!req.body) return "";
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
   const consentAll = req.cookies.get(CONSENT_COOKIE)?.value === "all";
   const contentLength = Number(req.headers.get("content-length") ?? 0);
   if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) return new NextResponse(null, { status: 413, headers: { "Cache-Control": "no-store" } });
-  let body: { path?: string; referrer?: string; utm?: Record<string, string> };
+  let body: { path?: string; referrer?: string; utm?: Record<string, string>; eventId?: unknown };
   try {
     const raw = await readBoundedBody(req, MAX_BODY_BYTES);
     if (raw === null) return new NextResponse(null, { status: 413, headers: { "Cache-Control": "no-store" } });
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
   const res = await recordHit(
     {
       path,
+      eventId: typeof body.eventId === "string" && EVENT_ID.test(body.eventId) ? body.eventId : undefined,
       referrer: safeReferrer,
       utm: { source: utm.utm_source, medium: utm.utm_medium, campaign: utm.utm_campaign, content: utm.utm_content, term: utm.utm_term },
       ua: req.headers.get("user-agent") ?? "",

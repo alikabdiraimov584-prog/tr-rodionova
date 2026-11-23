@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { requireSection } from "@/lib/auth";
-import { overview, byDay, breakdown, funnel, productInterest, firstTouch, trackingLinks, type Dim } from "@/lib/analytics-reports";
+import { overview, byDay, breakdown, funnel, productInterest, firstTouch, trackingLinks, analyticsDayStart, dayKey, DAY_MS, type Dim } from "@/lib/analytics-reports";
 import { formatMoney, pct } from "@/lib/money";
 import { TRAFFIC_CHANNEL } from "@/lib/labels";
 import { Badge, Eyebrow, PageTitle, Stat } from "@/components/ui";
@@ -28,9 +28,9 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
   const sp = await searchParams;
   const days = [7, 30, 90].includes(Number(str(sp.days))) ? Number(str(sp.days)) : 30;
   const dim = (DIMS.find((d) => d.key === str(sp.dim))?.key ?? "channel") as Dim;
-  const to = new Date();
-  to.setHours(24, 0, 0, 0);
-  const from = new Date(to.getTime() - days * 86_400_000);
+  const today = analyticsDayStart(dayKey(new Date()));
+  const to = new Date(today.getTime() + DAY_MS);
+  const from = new Date(to.getTime() - days * DAY_MS);
   const p = { from, to };
   const [ov, daily, rows, fun, products, first, links] = await Promise.all([overview(p), byDay(p), breakdown(p, dim), funnel(p), productInterest(p), firstTouch(), trackingLinks(p)]);
   const h = await headers();
@@ -45,7 +45,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
           {[7, 30, 90].map((d) => <Link key={d} href={qs("/crm/analytics", { days: d, dim })} className={`btn btn-sm ${days === d ? "bg-ink text-ivory" : "border border-line"}`}>{d} дн.</Link>)}
         </>}
       >
-        Собственный счётчик без передачи данных третьим лицам: визиты учитываются после согласия на cookie. Заказы привязываются к визиту (последний клик), клиенты — к первому источнику.
+        Внутренняя статистика учитывает визиты и без согласия на cookie. После согласия браузер можно узнавать между визитами. Дни считаются по Москве. Заказы привязываются к визиту, клиенты — к первому источнику.
       </PageTitle>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
@@ -121,7 +121,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <p className="p-6 text-center text-sm text-muted">Данных за период пока нет. Счётчик начинает собирать визиты после согласия посетителя на cookie.</p>}
+        {rows.length === 0 && <p className="p-6 text-center text-sm text-muted">За выбранный период визиты пока не зарегистрированы.</p>}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">

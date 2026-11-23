@@ -18,15 +18,23 @@ export async function overview(p: Period) {
   return { visits, visitors, pageviews, orders: orders._count, revenue, conversion: visits ? Math.round((orders._count / visits) * 1000) / 10 : 0, revenuePerVisit: visits ? Math.round(revenue / visits) : 0, prevVisits: prev };
 }
 
-/** Дата дня как в адресе страницы дня: 2026-11-20 (по часовому поясу сервера, как и границы дней в запросах). */
+export const ANALYTICS_TIME_ZONE = "Europe/Moscow";
+export const DAY_MS = 86_400_000;
+const dayFormatter = new Intl.DateTimeFormat("sv-SE", { timeZone: ANALYTICS_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+
+/** Дата дня в отчёте и адресе детализации по Москве. */
 export function dayKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return dayFormatter.format(d);
+}
+
+export function analyticsDayStart(day: string) {
+  return new Date(`${day}T00:00:00+03:00`);
 }
 
 /** По дням: визиты, посетители, целевые действия (число визитов, где действие было), оплаченные заказы и выручка. */
 export async function byDay(p: Period) {
   const rows = await db.$queryRaw<{ d: Date; visits: bigint; visitors: bigint; views: bigint; carts: bigint; checkouts: bigint; registers: bigint; orders: bigint; revenue: bigint | null }[]>`
-    SELECT d::date AS d,
+    SELECT d,
       (SELECT count(*) FROM "VisitorSession" s WHERE s."startedAt" >= d AND s."startedAt" < d + interval '1 day')::bigint AS visits,
       (SELECT count(DISTINCT s."visitorId") FROM "VisitorSession" s WHERE s."startedAt" >= d AND s."startedAt" < d + interval '1 day')::bigint AS visitors,
       (SELECT count(DISTINCT e."sessionId") FROM "AnalyticsEvent" e WHERE e.type = 'PRODUCT_VIEW' AND e."createdAt" >= d AND e."createdAt" < d + interval '1 day')::bigint AS views,
@@ -37,10 +45,10 @@ export async function byDay(p: Period) {
          AND o.status IN ('PAID','CONFIRMED','PACKING','SHIPPED','DELIVERED','COMPLETED'))::bigint AS orders,
       (SELECT sum(o.total) FROM "Order" o WHERE o."sessionId" IS NOT NULL AND o."createdAt" >= d AND o."createdAt" < d + interval '1 day'
          AND o.status IN ('PAID','CONFIRMED','PACKING','SHIPPED','DELIVERED','COMPLETED'))::bigint AS revenue
-    FROM generate_series(${p.from}::date, (${p.to}::date - interval '1 day'), interval '1 day') d ORDER BY d`;
+    FROM generate_series(${p.from}::timestamp, (${p.to}::timestamp - interval '1 day'), interval '1 day') d ORDER BY d`;
   return rows.map((r) => ({
     date: dayKey(r.d),
-    label: r.d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+    label: r.d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", timeZone: ANALYTICS_TIME_ZONE }),
     visits: Number(r.visits),
     visitors: Number(r.visitors),
     views: Number(r.views),
