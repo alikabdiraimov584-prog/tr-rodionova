@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 /**
  * Минимальный рендер Markdown для статей журнала, SEO-текстов каталога и юридических документов:
@@ -29,6 +30,7 @@ function inline(text: string): ReactNode[] {
 
 const BULLET = /^- /;
 const NUMBERED = /^\d+\.\s/;
+const ARTICLE_IMAGE = /^!\[([^\]\n]+)\]\((\/images\/brand\/[\w/-]+\.(?:jpg|png|webp))\)$/i;
 
 const ANCHORS: [RegExp, string][] = [
   [/^\d+\.\s*Согласие на обработку/i, "consent"],
@@ -42,14 +44,20 @@ function anchor(title: string) {
   return "h-" + title.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 60);
 }
 
-export function Markdown({ source }: { source: string }) {
+export function Markdown({ source, images = false }: { source: string; images?: boolean }) {
   const blocks = source.replace(/\r/g, "").split(/\n{2,}/);
   const out: ReactNode[] = [];
   const toc: { id: string; title: string }[] = [];
   blocks.forEach((block, i) => {
     const b = block.trim();
     if (!b) return;
-    if (b.startsWith("# ")) {
+    const photo = images ? b.match(ARTICLE_IMAGE) : null;
+    if (photo) {
+      out.push(<figure key={i} className="my-8 max-w-md">
+        <Image src={photo[2]} alt={photo[1]} width={720} height={900} sizes="(min-width: 480px) 448px, 100vw" className="h-auto w-full" />
+        <figcaption className="mt-2 text-xs text-muted">{photo[1]}</figcaption>
+      </figure>);
+    } else if (b.startsWith("# ")) {
       out.push(<h1 key={i}>{b.slice(2)}</h1>);
     } else if (b.startsWith("## ")) {
       const title = b.slice(3);

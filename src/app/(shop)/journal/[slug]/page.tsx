@@ -94,7 +94,7 @@ export default async function ArticlePage({ params }: PageProps<"/journal/[slug]
         </div>
       )}
       <div className="mx-auto mt-12 max-w-5xl">
-        <Markdown source={a.body} />
+        <Markdown source={a.body} images />
       </div>
       {a.products.length > 0 && (
         <section className="mt-20">

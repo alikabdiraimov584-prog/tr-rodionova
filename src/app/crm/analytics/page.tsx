@@ -40,7 +40,10 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
     <div className="space-y-6">
       <PageTitle
         title="Аналитика сайта"
-        actions={[7, 30, 90].map((d) => <Link key={d} href={qs("/crm/analytics", { days: d, dim })} className={`btn btn-sm ${days === d ? "bg-ink text-ivory" : "border border-line"}`}>{d} дн.</Link>)}
+        actions={<>
+          <Link href="/crm/analytics/journal" className="btn-outline btn-sm">Охват журнала</Link>
+          {[7, 30, 90].map((d) => <Link key={d} href={qs("/crm/analytics", { days: d, dim })} className={`btn btn-sm ${days === d ? "bg-ink text-ivory" : "border border-line"}`}>{d} дн.</Link>)}
+        </>}
       >
         Собственный счётчик без передачи данных третьим лицам: визиты учитываются после согласия на cookie. Заказы привязываются к визиту (последний клик), клиенты — к первому источнику.
       </PageTitle>
