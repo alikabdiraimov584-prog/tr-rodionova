@@ -125,6 +125,7 @@ body {
 
 /* Пункты шапки витрины: мелкие заглавные с разрядкой */
 .nav-link { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; transition: color 0.2s; }
+:is(.nav-link, .btn-primary, .btn-outline, .btn-ghost, [data-shop-menu], #site-menu a):not(.crm *) { font-family: var(--font-brand); }
 .nav-link:hover { opacity: 0.55; }
 /* Заголовок раздела витрины: антиква, как надпись логотипа */
 .section-title { font-family: var(--font-brand); font-size: 1.6rem; font-weight: 300; line-height: 1.15; }

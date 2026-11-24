@@ -7,7 +7,7 @@ import { getSetting } from "@/lib/settings";
 import { getCurrentCustomer } from "@/lib/auth";
 import { formatMoney, formatDate } from "@/lib/money";
 import { AddToCart } from "@/components/shop/add-to-cart";
-import { RowGrid, SANS, PLAIN_HEADING } from "@/components/shop/row-grid";
+import { RowGrid, BRAND_TYPE, PLAIN_HEADING } from "@/components/shop/row-grid";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { MobileBuyBar } from "@/components/shop/mobile-buy-bar";
 import { isRealPhoto, photoFirst } from "@/lib/photos";
@@ -101,7 +101,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   // карточка по образцу therow.com: кадры слева (на компьютере друг под другом, на телефоне листаются), справа узкая
   // колонка обычным гротеском — путь, название, цена, цвет, размеры строкой, кнопка в рамке, описание и список разделов
   return (
-    <div style={SANS} className="text-[0.84rem] leading-relaxed">
+    <div style={BRAND_TYPE} className="text-[0.84rem] leading-relaxed">
       {/* цель Метрики для ретаргетинга в Директе: «смотрела вещь, не купила» */}
       <MetrikaGoal goal="product_view" dedupe={p.slug} />
       <JsonLd data={[ld, faqJsonLd(faq.map(({ q, a }) => ({ q, a }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(category ? [{ name: category.name, path: `/catalog?category=${category.slug}` }] : []), { name: p.name, path: `/product/${p.slug}` }])]} />

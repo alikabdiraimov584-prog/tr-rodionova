@@ -1,10 +1,9 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { photoFirst } from "@/lib/photos";
-import { PLAIN_HEADING, RowGrid, SANS } from "@/components/shop/row-grid";
+import { RowGrid, BRAND_TYPE } from "@/components/shop/row-grid";
 
 // сколько вещей показывает главная: коллекция маленькая, вся помещается в одну-две строки сетки
 const SHOWN = 8;
@@ -16,8 +15,6 @@ export const metadata: Metadata = {
   title: { absolute: "T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка" },
   alternates: { canonical: "/", types: { "application/rss+xml": "/journal/feed.xml" } },
 };
-
-const things = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "вещь" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "вещи" : "вещей"}`;
 
 async function Season() {
   const collection = await db.collection.findFirst({
@@ -41,27 +38,19 @@ async function CollectionGrid() {
     orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
   });
   const items = photoFirst(products);
-  return (
-    <>
-      <div className="flex items-baseline justify-between px-5 pb-6 pt-10 md:pt-14">
-        <h2 style={PLAIN_HEADING} className="flex gap-2"><span>Коллекция</span><span aria-hidden>·</span><span>{things(items.length)}</span></h2>
-        <Link href="/about">О бренде</Link>
-      </div>
-      <RowGrid items={items} />
-    </>
-  );
+  return <RowGrid items={items} />;
 }
 
 export default function Home() {
   return (
-    <div style={SANS} className="text-[0.82rem] md:text-[0.84rem]">
+    <div style={BRAND_TYPE} className="text-[0.82rem] md:text-[0.84rem]">
       <h1 className="sr-only">T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка</h1>
       <section aria-label="Коллекция" className="relative h-[calc(100svh-3.5rem)] min-h-[520px] overflow-hidden bg-[#f6f5f3] md:h-[calc(100svh-4rem)]">
         <Image src={HOME_SHOT} alt="Коллекция T.Rodionova" fill preload sizes="100vw" className="object-cover object-[50%_22%]" />
         {/* пока виден баннер cookie, строка поднимается над ним (--consent-h ставит баннер) */}
-        <a href="#collection" className="absolute bottom-[calc(1.25rem+var(--consent-h,0px))] left-5 text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.3)]" aria-label="Перейти к коллекции"><Suspense fallback={null}><Season /></Suspense></a>
+        <a href="#collection" className="absolute bottom-[calc(1.25rem+var(--consent-h,0px))] left-[clamp(12px,3vw,32px)] bg-black/70 px-3 py-2 text-base font-medium !text-white md:text-lg" aria-label="Перейти к коллекции"><Suspense fallback={null}><Season /></Suspense></a>
       </section>
-      <div id="collection" className="scroll-mt-16">
+      <div id="collection" className="scroll-mt-16 pt-5 md:pt-8">
         <Suspense fallback={null}>
           <CollectionGrid />
         </Suspense>
