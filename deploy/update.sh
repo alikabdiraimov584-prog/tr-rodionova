@@ -5,11 +5,17 @@
 # Весь код в функции: файл заменяется git reset во время выполнения, bash не должен читать его построчно.
 set -euo pipefail
 
+archive_static() {
+  docker compose exec -T caddy sh -ec "$(cat deploy/cache-static.sh)" sh "$1"
+}
+
 main() {
   cd "$(dirname "$0")/.."
-  local prev old new count status encryption_active encryption_key auth_secret maintenance running_key c
-  prev=$(git rev-parse HEAD)
-  git fetch origin main && git reset --hard origin/main
+  exec 8>/tmp/tr-rollout.lock
+  flock 8
+  local old_release old new count status encryption_active encryption_key auth_secret maintenance running_key c
+  git fetch origin main
+  git reset --hard origin/main
   export GIT_SHA BUILD_AT
   GIT_SHA=$(git rev-parse --short HEAD)
   BUILD_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -50,9 +56,26 @@ main() {
       exit 1
     fi
   fi
+  # The sampler writes to the same log as this rollout and cannot hold its lock.
+  python3 deploy/rollout-metrics.py 8>&- &
+  metrics_pid=$!
+  trap 'kill "$metrics_pid" 2>/dev/null || true; wait "$metrics_pid" 2>/dev/null || true' EXIT
   docker compose build web init
 
   old=$(docker compose ps -q web || true)
+
+  # Serve content-hashed files by deployment ID before mixing web versions behind the proxy.
+  if [ -n "$(docker compose ps -q caddy)" ]; then
+    for c in $old; do
+      old_release=$(docker exec "$c" printenv GIT_SHA)
+      if [[ "$old_release" =~ ^[0-9a-f]{7,40}$ ]]; then
+        docker exec "$c" tar -C /app/.next -cf - static | archive_static "$old_release"
+      fi
+    done
+    docker compose run --rm --no-deps -T --entrypoint tar web -C /app/.next -cf - static | archive_static "$GIT_SHA"
+    # A single-file bind mount can refer to the old inode after git reset.
+    docker compose exec -T caddy caddy reload --config - --adapter caddyfile < deploy/Caddyfile
+  fi
 
   # Режим обслуживания нужен, только пока работающий сайт не знает ENCRYPTION_KEY: новая версия начнёт писать
   # enc:v2, а старая не сможет их прочитать. Если у всех работающих контейнеров тот же ключ, смена без простоя безопасна.
@@ -73,7 +96,7 @@ main() {
     # not know how to decrypt them. Use a deliberate maintenance rollout while this flag is on.
     echo "ENCRYPTION_KEY_ACTIVE=1: using maintenance rollout to prevent mixed-version secret writes."
     docker compose stop web >/dev/null 2>&1 || true
-    docker compose up --no-deps init
+    docker compose up --no-deps --exit-code-from init init
     docker compose up -d web cron backup
     new=$(docker compose ps -q web | head -n 1)
     if [ -z "$new" ]; then echo "Веб-контейнер не создан"; exit 1; fi
@@ -91,7 +114,7 @@ main() {
     fi
   else
     # Run migrations/seeds before switching the serving image. If this fails, the old web stays up.
-    docker compose up --no-deps init
+    docker compose up --no-deps --exit-code-from init init
     if [ -z "$old" ]; then
       # первый запуск или web остановлен: обычный старт
       docker compose up -d web cron backup
@@ -126,11 +149,6 @@ main() {
   # После остановки старых контейнеров шифруем ранее сохранённые TOTP-секреты.
   # Скрипт идемпотентен; новая версия поддерживает и старые, и зашифрованные записи.
   docker compose run --rm --no-deps init node --conditions=react-server --import tsx scripts/encrypt-totp-secrets.ts
-
-  # Caddy: конфиг перечитывается без разрыва соединений, если он менялся
-  if ! git diff --quiet "$prev" HEAD -- deploy/Caddyfile; then
-    docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || docker compose restart caddy
-  fi
 
   docker image prune -f >/dev/null
   # прогрев кэша картинок в фоне: новые кадры собираются в AVIF/WebP до первой покупательницы
