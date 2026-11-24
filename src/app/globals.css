@@ -262,3 +262,16 @@ body { padding-bottom: var(--consent-h, 0px); }
 @media (max-width: 767px) {
   body:has([data-buy-bar]) { padding-bottom: calc(var(--consent-h, 0px) + 4.5rem + env(safe-area-inset-bottom)); }
 }
+
+
+/* Keep touch feedback neutral and keyboard focus visible on the drawer controls. */
+[data-shop-menu], #site-menu button, #site-menu a {
+  -webkit-tap-highlight-color: transparent;
+}
+[data-shop-menu]:focus, #site-menu :is(button, a):focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+[data-shop-menu]:focus:not(:focus-visible), #site-menu :is(button, a):focus:not(:focus-visible) {
+  outline: none;
+}

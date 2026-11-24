@@ -9,11 +9,14 @@ import { IconClose, IconMenu } from "@/components/shop/icons";
 
 
 /** Меню витрины для всех экранов: кнопка «Меню» в шапке и выезжающая слева панель с разделами (как у ACTE). */
-export function SiteMenu({ account, cartCount }: { account: readonly [string, string]; cartCount: number }) {
-  // панель «привязана» к адресу, на котором её открыли: переход на другую страницу закрывает её сам
-  const path = usePathname();
-  const [openedAt, setOpenedAt] = useState<string | null>(null);
-  const open = openedAt === path;
+type MenuProps = { account: readonly [string, string]; cartCount: number };
+
+export function SiteMenu(props: MenuProps) {
+  return <MenuDrawer key={usePathname()} {...props} />;
+}
+
+function MenuDrawer({ account, cartCount }: MenuProps) {
+  const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -24,7 +27,7 @@ export function SiteMenu({ account, cartCount }: { account: readonly [string, st
     const background = [...document.body.children].filter((el) => el !== root.current && !el.hasAttribute("inert"));
     background.forEach((el) => el.setAttribute("inert", ""));
     root.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenedAt(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     const button = trigger.current;
     return () => {
@@ -35,7 +38,7 @@ export function SiteMenu({ account, cartCount }: { account: readonly [string, st
       button?.focus({ preventScroll: true });
     };
   }, [open]);
-  const close = () => setOpenedAt(null);
+  const close = () => setOpen(false);
   const big = "block py-2 font-serif text-[1.6rem] font-light leading-tight transition-colors hover:opacity-60";
   const small = "block py-2.5 text-[0.82rem] text-muted hover:text-ink";
   return (
@@ -47,7 +50,7 @@ export function SiteMenu({ account, cartCount }: { account: readonly [string, st
         aria-expanded={open}
         aria-controls={open ? "site-menu" : undefined}
         data-shop-menu
-        onClick={() => setOpenedAt(path)}
+        onClick={() => setOpen(true)}
         className="flex h-11 min-w-11 items-center justify-center gap-2 px-2 transition-opacity hover:opacity-60"
       >
         <IconMenu />
