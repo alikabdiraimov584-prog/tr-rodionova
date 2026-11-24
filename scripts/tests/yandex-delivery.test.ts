@@ -153,7 +153,7 @@ check("заявка создана и оценена: ждёт подтверж�
 const body1 = created[0] as { route_points: { type: string; address: { coordinates: number[]; fullname: string; sflat?: string }; contact: { phone: string; name: string }; skip_confirmation: boolean }[]; items: { cost_value: string; weight: number; quantity: number; title: string }[]; client_requirements: { taxi_class: string }; callback_properties?: unknown; comment: string };
 check("координаты в порядке [долгота, широта], телефон клиентки нормализован", body1.route_points[1].address.coordinates[0] === 37.618423 && body1.route_points[1].contact.phone === "+79991234567" && body1.route_points[0].contact.phone === "+79990000001", JSON.stringify(body1.route_points.map((p) => [p.type, p.address.coordinates, p.contact.phone])));
 check("позиции: цена в рублях строкой, вес из настроек, тариф courier, в комментарии номер заказа и интервал", body1.items[0].cost_value === (o1.subtotal / 100).toFixed(2) && body1.items[0].weight === 0.6 && body1.client_requirements.taxi_class === "courier" && body1.comment.includes(`Заказ №${o1.number}`) && body1.comment.includes("14:00–18:00"), `${body1.items[0].cost_value} ${body1.items[0].weight} ${body1.comment}`);
-check("callback_url передаётся только с боевым APP_URL", process.env.APP_URL ? !!body1.callback_properties : !body1.callback_properties);
+check("callback_url передаётся только с боевым APP_URL", process.env.APP_URL && !/localhost|127\.0\.0\.1/.test(process.env.APP_URL) ? !!body1.callback_properties : !body1.callback_properties);
 check("события заказа: создана, ждёт подтверждения с ценой", (await events(o1.id)).some((m) => m.includes("подтвердите заявку") && m.includes("349")), (await events(o1.id)).join(" | "));
 let dup: string | null = null;
 await createYandexClaim(o1.id, null).catch((e: Error) => (dup = e.message));
@@ -217,7 +217,11 @@ const o4 = await newOrder("Москва, Пресненская наб., д. 12"
 const s4 = await createYandexClaim(o4.id, null);
 await acceptYandexClaim(o4.id, null);
 drive(s4.claimId, "pickuped", true);
-const r1 = await callback(new Request("https://tr-rodionova.ru/api/delivery/yandex", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ claim_id: s4.claimId, status: "pickuped", updated_ts: new Date().toISOString() }) }));
+const sendPickup = () => callback(new Request("https://tr-rodionova.ru/api/delivery/yandex", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ claim_id: s4.claimId, status: "pickuped", updated_ts: new Date().toISOString() }) }));
+const immediate = await sendPickup();
+check("повтор вскоре после сверки не запускает новый опрос", immediate.status === 200 && (await fresh(o4.id)).status === "PAID");
+await db.order.update({ where: { id: o4.id }, data: { shipmentSyncedAt: new Date(Date.now() - 6000) } });
+const r1 = await sendPickup();
 check("callback по заявке → сверка → заказ «В доставке»", r1.status === 200 && (await fresh(o4.id)).status === "SHIPPED", `${r1.status} ${(await fresh(o4.id)).status}`);
 const r2 = await callback(new Request("https://tr-rodionova.ru/api/delivery/yandex", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ claim_id: "unknown-claim", status: "delivered" }) }));
 check("callback с чужим claim_id — 200 без действий", r2.status === 200);

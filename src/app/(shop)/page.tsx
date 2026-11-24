@@ -38,8 +38,8 @@ export default function Home() {
   return (
     <div style={SANS} className="text-[0.82rem] md:text-[0.84rem]">
       <h1 className="sr-only">T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка</h1>
-      <section aria-label="Коллекция" className="relative h-[calc(100svh-3.5rem)] min-h-[520px] overflow-hidden bg-[#f6f5f3] md:h-[calc(100svh-4rem)]">
-        <Image src={HOME_SHOT} alt="Коллекция T.Rodionova" fill preload sizes="100vw" className="object-cover object-[50%_22%]" />
+      <section aria-label="Коллекция" style={{ position: "relative", overflow: "hidden", minHeight: "min(520px, 100svh)" }} className="h-[calc(100svh-3.5rem)] bg-[#f6f5f3] md:h-[calc(100svh-4rem)]">
+        <Image src={HOME_SHOT} alt="Коллекция T.Rodionova" fill preload sizes="100vw" style={{ objectFit: "cover", objectPosition: "50% 22%" }} />
       </section>
       <div id="collection" className="scroll-mt-16 pt-5 md:pt-8">
         <Suspense fallback={null}>

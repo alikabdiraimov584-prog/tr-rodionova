@@ -6,8 +6,8 @@ import { verificationCode } from "@/lib/site-verification";
 
 // Шрифты витрины подобраны по логотипу: заголовки — Noto Serif Display (узкая контрастная антиква, как знак T.Rodionova),
 // текст и подписи — Spectral (заглавные с разрядкой повторяют дескриптор PREMIUM WOMENSWEAR). Оба с полной кириллицей.
-const display = Noto_Serif_Display({ variable: "--font-display", subsets: ["latin", "cyrillic"], weight: ["300", "400", "500"], style: ["normal", "italic"] });
-const text = Spectral({ variable: "--font-text", subsets: ["latin", "cyrillic"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
+const display = Noto_Serif_Display({ variable: "--font-display", preload: false, subsets: ["latin", "cyrillic"], weight: ["300", "400", "500"], style: ["normal", "italic"] });
+const text = Spectral({ variable: "--font-text", preload: false, subsets: ["latin", "cyrillic"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
 // CRM — рабочий интерфейс с таблицами, остаётся на гротеске
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"] });
 

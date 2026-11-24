@@ -23,14 +23,14 @@
     "jose": "^6.2.12",
     "mailparser": "^3.9.36",
     "next": "16.4.6",
-    "nodemailer": "^10.0.15",
+    "nodemailer": "^10.1.4",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
     "sharp": "^0.35.5",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -56,6 +56,9 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2",
-    "mysql2": "^3.24.4"
+    "mysql2": "^3.24.4",
+    "effect": "3.22.5",
+    "fast-uri": "^3.1.9",
+    "nodemailer": "$nodemailer"
   }
 }

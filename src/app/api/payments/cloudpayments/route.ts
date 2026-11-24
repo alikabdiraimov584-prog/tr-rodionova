@@ -12,7 +12,7 @@ import { checkRate, clientIp } from "@/lib/ratelimit";
 export async function POST(request: Request) {
   // Как у ЮKassa и Долями: поток с одного адреса ограничен, иначе запросы с неверной подписью
   // нагружают базу и непрерывно переписывают статус интеграции в CRM.
-  const ip = await clientIp();
+  const ip = await clientIp(request.headers);
   if (ip) {
     const rate = await checkRate(`cloudpayments-webhook:${ip}`, { limit: 120, windowSec: 60, lockSec: 60 });
     if (!rate.ok) return new Response("rate limited", { status: 429, headers: { "Retry-After": String(rate.retryAfterSec), "Cache-Control": "no-store" } });

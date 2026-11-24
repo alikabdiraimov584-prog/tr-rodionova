@@ -9,7 +9,7 @@ import { syncYandexClaim } from "@/lib/delivery/yandex";
  * запросом к API. Повтор того же статуса чаще раза в 5 секунд пропускаем — страховка от шторма уведомлений.
  */
 export async function POST(request: Request) {
-  const ip = await clientIp();
+  const ip = await clientIp(request.headers);
   const rate = await checkRate(`yandex-callback:${ip ?? "unknown"}`, { limit: 60, windowSec: 60, lockSec: 60 });
   if (!rate.ok) return Response.json({ ok: false }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSec), "Cache-Control": "no-store" } });
   const raw = await readBoundedBody(request, 16_384);
