@@ -275,3 +275,22 @@ body { padding-bottom: var(--consent-h, 0px); }
 [data-shop-menu]:focus:not(:focus-visible), #site-menu :is(button, a):focus:not(:focus-visible) {
   outline: none;
 }
+
+
+#shop-intro:not([hidden]) {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: white;
+  color: var(--ink);
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+#shop-intro svg { animation: shop-wordmark-in 850ms ease-in-out both; }
+.shop-intro-exit { opacity: 0; }
+@keyframes shop-wordmark-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  #shop-intro:not([hidden]) { display: none; }
+}
