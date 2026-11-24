@@ -5,33 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const CONSENT = "tr_consent";
-const CONSENT_RELOAD = "tr_analytics_consent_reload";
-const RELOAD_TTL_MS = 30_000;
 const listeners = new Set<() => void>();
-
-type PageHit = { key: string; id: string };
-
-function rememberHitForReload(hit: PageHit | null) {
-  if (!hit) return;
-  try {
-    sessionStorage.setItem(CONSENT_RELOAD, JSON.stringify({ ...hit, expiresAt: Date.now() + RELOAD_TTL_MS }));
-  } catch {
-    // В некоторых браузерах хранилище вкладки недоступно.
-  }
-}
-
-function takeHitFromReload(key: string) {
-  try {
-    const value = sessionStorage.getItem(CONSENT_RELOAD);
-    if (!value) return null;
-    sessionStorage.removeItem(CONSENT_RELOAD);
-    const hit = JSON.parse(value) as Partial<PageHit> & { expiresAt?: number };
-    if (hit.key === key && typeof hit.id === "string" && (hit.expiresAt ?? 0) > Date.now()) return hit.id;
-  } catch {
-    // Без сохранённого события считаем загрузку обычным просмотром.
-  }
-  return null;
-}
 
 function readConsent() {
   return document.cookie.match(/(?:^|; )tr_consent=([^;]*)/)?.[1] ?? null;
@@ -40,15 +14,10 @@ function subscribe(cb: () => void) {
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
-function setConsent(v: "all" | "necessary", hit: PageHit | null) {
+function setConsent(v: "all" | "necessary") {
   document.cookie = `${CONSENT}=${v}; max-age=${180 * 24 * 3600}; path=/; samesite=lax`;
   listeners.forEach((l) => l());
-  // сторонние счётчики (Метрика, GA) ставятся сервером только после согласия — перерисовываем страницу.
-  // Кроме оформления заказа: перезагрузка стёрла бы введённые данные, счётчики подключатся на следующей странице
-  if (v === "all" && !window.location.pathname.startsWith("/checkout")) {
-    rememberHitForReload(hit);
-    window.location.reload();
-  }
+  if (v === "all") window.dispatchEvent(new Event("tr:analytics-consent"));
 }
 
 /** Собственный счётчик: без согласия идентификатор посетителя действует в пределах визита. */
@@ -90,13 +59,16 @@ export function Analytics() {
   }, [visible]);
 
   // адрес, о котором уже сообщили: ответ на баннер cookie меняет consent, но это тот же просмотр — второй раз не отправляется
-  const sent = useRef<PageHit | null>(null);
+  const sent = useRef<{ key: string; id: string; consentAll: boolean } | null>(null);
   useEffect(() => {
     if (consent === "pending") return;
     const key = `${path}?${params.toString()}`;
-    if (sent.current?.key === key) return;
-    const eventId = (!sent.current && takeHitFromReload(key)) || crypto.randomUUID();
-    sent.current = { key, id: eventId };
+    const previous = sent.current;
+    const consentAll = consent === "all";
+    if (previous?.key === key && previous.consentAll === consentAll) return;
+    // Повтор с тем же ID даёт серверу установить cookie посетителя без второго просмотра.
+    const eventId = previous?.key === key ? previous.id : crypto.randomUUID();
+    sent.current = { key, id: eventId, consentAll };
     const utm: Record<string, string> = {};
     for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
       const v = params.get(k);
@@ -117,8 +89,8 @@ export function Analytics() {
         <Link href="/privacy#section-14" className="text-ink underline underline-offset-2">Подробнее</Link>
       </p>
       <div className="mt-2.5 flex gap-2">
-        <button type="button" className="btn-outline btn-sm flex-1 !min-h-10 whitespace-nowrap !px-2 normal-case tracking-normal" onClick={() => setConsent("necessary", sent.current)}>Только необходимые</button>
-        <button type="button" className="btn-primary btn-sm flex-1 !min-h-10 whitespace-nowrap !px-2 normal-case tracking-normal" onClick={() => setConsent("all", sent.current)}>Принять</button>
+        <button type="button" className="btn-outline btn-sm flex-1 !min-h-10 whitespace-nowrap !px-2 normal-case tracking-normal" onClick={() => setConsent("necessary")}>Только необходимые</button>
+        <button type="button" className="btn-primary btn-sm flex-1 !min-h-10 whitespace-nowrap !px-2 normal-case tracking-normal" onClick={() => setConsent("all")}>Принять</button>
       </div>
     </div>
   );
