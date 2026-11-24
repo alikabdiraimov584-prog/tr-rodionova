@@ -285,7 +285,6 @@ body { padding-bottom: var(--consent-h, 0px); }
   place-items: center;
   background: white;
   color: var(--ink);
-  pointer-events: none;
   transition: opacity 150ms ease-out;
 }
 #shop-intro svg { animation: shop-wordmark-in 850ms ease-in-out both; }
