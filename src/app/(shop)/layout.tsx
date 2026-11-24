@@ -24,7 +24,6 @@ const introScript = `(() => {
     intro.classList.add("shop-intro-exit");
     setTimeout(dismiss, 160);
   };
-  window.addEventListener("load", finish, { once: true });
   window.addEventListener("pagehide", dismiss, { once: true });
   document.addEventListener("keydown", dismiss, { once: true });
   setTimeout(finish, 850);
