@@ -23,12 +23,12 @@ const introScript = `(() => {
   const finish = () => {
     if (intro.hidden) return;
     intro.classList.add("shop-intro-exit");
-    setTimeout(dismiss, 610);
+    setTimeout(dismiss, 160);
   };
   window.addEventListener("pagehide", dismiss, { once: true });
   document.addEventListener("keydown", dismiss, { once: true });
   intro.addEventListener("click", dismiss, { once: true });
-  setTimeout(finish, 1900);
+  setTimeout(finish, 850);
 })();`;
 
 // Витрина читает каталог и настройки из базы на каждый запрос; при сборке база недоступна
