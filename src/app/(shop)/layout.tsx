@@ -19,14 +19,25 @@ const introScript = `(() => {
     sessionStorage.setItem(key, "1");
   } catch { return; }
   intro.hidden = false;
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const firstScreenReady = new Promise(resolve => {
+    window.addEventListener("load", resolve, { once: true });
+  }).then(() => {
+    const visibleImages = Array.from(document.querySelectorAll("main img")).filter(image => {
+      const box = image.getBoundingClientRect();
+      return box.width && box.height && box.top < innerHeight && box.bottom > 0;
+    });
+    return Promise.allSettled([document.fonts.ready, ...visibleImages.map(image => image.decode())]);
+  });
   const dismiss = () => { intro.hidden = true; };
   const finish = () => {
+    if (intro.hidden) return;
     intro.classList.add("shop-intro-exit");
-    setTimeout(dismiss, 160);
+    setTimeout(dismiss, 610);
   };
   window.addEventListener("pagehide", dismiss, { once: true });
   document.addEventListener("keydown", dismiss, { once: true });
-  setTimeout(finish, 850);
+  Promise.all([wait(2600), Promise.race([firstScreenReady, wait(10000)])]).then(finish);
 })();`;
 
 // Витрина читает каталог и настройки из базы на каждый запрос; при сборке база недоступна
