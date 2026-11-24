@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { PLAIN_HEADING, RowGrid, BRAND_TYPE } from "@/components/shop/row-grid";
+import { PLAIN_HEADING, RowGrid, SANS } from "@/components/shop/row-grid";
 import { photoFirst } from "@/lib/photos";
 import { Empty } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
@@ -100,7 +100,7 @@ export default async function Catalog({ searchParams }: PageProps<"/catalog">) {
     <div>
       {plain && products.length > 0 && <JsonLd data={[itemListJsonLd(`${listName} — T.Rodionova`, products.map((p) => ({ name: p.name, path: `/product/${p.slug}` }))), breadcrumbJsonLd([{ name: "Главная", path: "/" }, { name: "Каталог", path: "/catalog" }, ...(current ? [{ name: current.name, path: `/catalog?category=${current.slug}` }] : [])])]} />}
       {/* строка над сеткой по образцу therow.com: путь слева, число вещей и сброс фильтра справа */}
-      <div style={BRAND_TYPE} className="flex items-baseline justify-between gap-4 px-5 pb-6 pt-8 text-[0.82rem] md:pt-10 md:text-[0.84rem]">
+      <div style={SANS} className="flex items-baseline justify-between gap-4 px-5 pb-6 pt-8 text-[0.82rem] md:pt-10 md:text-[0.84rem]">
         <h1 style={PLAIN_HEADING} className="flex flex-wrap gap-2">
           {current || onlyNew || searching ? <><Link href="/catalog" className="hover:opacity-60">Коллекция</Link><span aria-hidden>·</span><span>{listName}</span></> : <span>Коллекция</span>}
         </h1>

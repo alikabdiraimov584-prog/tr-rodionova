@@ -5,9 +5,9 @@ import { isRealPhoto } from "@/lib/photos";
 import { MonogramMark } from "@/components/brand-marks";
 import type { CardProduct } from "@/components/shop/product-card";
 
-export const BRAND_TYPE = { fontFamily: "var(--font-brand)" } as const;
+export const SANS = { fontFamily: "var(--font-manrope), system-ui, sans-serif" } as const;
 /** Заголовок строкой текста (h1/h2 над сеткой): общие стили заголовков витрины перебиваются только так, они вне слоёв Tailwind. */
-export const PLAIN_HEADING = { ...BRAND_TYPE, fontSize: "inherit", fontWeight: 400, letterSpacing: "normal", lineHeight: "inherit", fontSizeAdjust: "none" } as const;
+export const PLAIN_HEADING = { ...SANS, fontSize: "inherit", fontWeight: 400, letterSpacing: "normal", lineHeight: "inherit", fontSizeAdjust: "none" } as const;
 
 /**
  * Сетка вещей для маленькой коллекции: 2 колонки на телефоне, 3 на планшете, 4 на компьютере, кадры 2:3.
@@ -17,7 +17,7 @@ export const PLAIN_HEADING = { ...BRAND_TYPE, fontSize: "inherit", fontWeight: 4
 export function RowGrid({ items, priority = 0 }: { items: CardProduct[]; priority?: number }) {
   const sizes = "(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw";
   return (
-    <div style={BRAND_TYPE} className="grid grid-cols-2 gap-x-1.5 gap-y-10 px-[clamp(12px,3vw,32px)] text-sm md:grid-cols-3 md:gap-x-4 md:gap-y-14 lg:grid-cols-4 lg:gap-x-6">
+    <div style={SANS} className="grid grid-cols-2 gap-x-1.5 gap-y-10 px-[clamp(12px,3vw,32px)] text-[0.82rem] md:text-[0.84rem] md:grid-cols-3 md:gap-x-4 md:gap-y-14 lg:grid-cols-4 lg:gap-x-6">
       {items.map((p, i) => {
         const shots = p.images.filter((s) => isRealPhoto(s.url));
         const soldOut = p.variants.length === 0 || (!p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0));
