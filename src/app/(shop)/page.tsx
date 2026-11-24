@@ -24,8 +24,20 @@ const things = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "вещь
  */
 export default async function Home() {
   const [products, collection] = await Promise.all([
-    db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, take: SHOWN, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }] }),
-    db.collection.findFirst({ where: { isActive: true }, orderBy: { slug: "desc" } }),
+    db.product.findMany({
+      where: { status: "ACTIVE", isPreloved: false },
+      select: {
+        slug: true, name: true, price: true, compareAt: true, isNew: true, isPreorder: true,
+        images: { orderBy: { order: "asc" }, select: { url: true, alt: true } },
+        variants: {
+          where: { archivedAt: null },
+          select: { size: true, color: true, colorHex: true, stock: true, reserved: true },
+        },
+      },
+      take: SHOWN,
+      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+    }),
+    db.collection.findFirst({ where: { isActive: true }, orderBy: { slug: "desc" }, select: { name: true } }),
   ]);
   const items = photoFirst(products);
   const season = collection?.name ?? "Осень–зима 2026";
@@ -43,7 +55,7 @@ export default async function Home() {
           <h2 style={PLAIN_HEADING} className="flex gap-2"><span>Коллекция</span><span aria-hidden>·</span><span>{things(items.length)}</span></h2>
           <Link href="/about">О бренде</Link>
         </div>
-        <RowGrid items={items} priority={4} />
+        <RowGrid items={items} />
       </div>
     </div>
   );
