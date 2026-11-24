@@ -45,35 +45,42 @@ export async function ShopHeader() {
 /** Подвал: логотип, несколько ссылок для покупательниц, контакты и документы. Реквизиты целиком — на странице «Информация о продавце». */
 export async function ShopFooter() {
   const [brand, seller] = await Promise.all([getSettingOrDefault("brand"), getSettingOrDefault("seller")]);
-  const links: [string, string][] = [
-    ["/about", "О бренде"],
-    ["/delivery", "Доставка и возврат"],
-    ["/sizes", "Размеры"],
-    ["/care", "Уход"],
-    ["/faq", "Вопросы и ответы"],
-    ["/journal", "Журнал"],
+  const groups = [
+    { title: "Бренд", links: [["/#collection", "Коллекция"], ["/about", "О бренде"], ["/journal", "Журнал"]] },
+    { title: "Покупательницам", links: [["/delivery", "Доставка и возврат"], ["/sizes", "Размеры"], ["/care", "Уход"], ["/faq", "Вопросы и ответы"]] },
   ];
-  const legal: [string, string][] = [
-    ["/offer", "Оферта"],
-    ["/privacy", "Политика конфиденциальности"],
-    ["/seller", "Информация о продавце"],
-  ];
+  const legal = [["/offer", "Оферта"], ["/privacy", "Политика конфиденциальности"], ["/seller", "Информация о продавце"]];
+  const phone = publicPhone(brand.phone);
+  const linkStyle = "inline-flex min-h-11 max-w-full items-center py-1 leading-snug hover:underline underline-offset-4 focus-visible:outline-2";
+  const heading = "mb-3 text-xs font-semibold tracking-wide text-muted";
   return (
-    <footer className="mt-32 border-t border-line md:mt-48">
-      <div className="mx-auto flex max-w-[1400px] flex-col items-center gap-8 px-4 py-14 text-center md:px-10 md:py-20">
-        <BrandLockup className="h-auto w-[190px] text-ink md:w-[230px]" />
-        <nav aria-label="Покупательницам" className="flex flex-wrap justify-center gap-x-7 gap-y-2 text-[0.9rem]">
-          {links.map(([href, label]) => <Link key={href} href={href} className="py-1 text-muted transition-colors hover:text-ink">{label}</Link>)}
-        </nav>
-        <p className="text-[0.9rem] text-muted">
-          <a href={`mailto:${brand.email}`} className="hover:text-ink">{brand.email}</a>
-          {publicPhone(brand.phone) && <> · <span className="whitespace-nowrap">{publicPhone(brand.phone)}</span></>}
-          {seller.hours && <> · {seller.hours}</>}
-        </p>
-        <nav aria-label="Документы" className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-[0.75rem] text-muted">
-          {legal.map(([href, label]) => <Link key={href} href={href} className="hover:text-ink">{label}</Link>)}
-          <span>© {new Date().getFullYear()} {brand.name}</span>
-        </nav>
+    <footer className="mt-16 border-t border-line bg-ivory text-ink sm:mt-24 lg:mt-32">
+      <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
+        <div className="grid gap-x-8 gap-y-7 py-9 sm:grid-cols-3 sm:py-12 lg:grid-cols-[1.2fr_0.8fr_1fr_1.2fr] lg:py-16">
+          <div className="border-b border-line pb-6 sm:col-span-3 lg:col-span-1 lg:border-0 lg:pb-0">
+            <Link href="/" aria-label={`${brand.name} — на главную`} className="inline-flex min-h-11 max-w-full items-center">
+              <BrandLockup className="h-auto w-44 max-w-full xl:w-56" />
+            </Link>
+          </div>
+          {groups.map(({ title, links }) => (
+            <nav key={title} aria-label={title} className="min-w-0">
+              <h2 className={heading}>{title}</h2>
+              <ul>{links.map(([href, label]) => <li key={href}><Link href={href} className={linkStyle}>{label}</Link></li>)}</ul>
+            </nav>
+          ))}
+          <section aria-labelledby="footer-contact" className="min-w-0">
+            <h2 id="footer-contact" className={heading}>Контакты</h2>
+            {brand.email && <div><a href={`mailto:${brand.email}`} className={linkStyle}><span className="[overflow-wrap:anywhere]">{brand.email}</span></a></div>}
+            {phone && <div><a href={`tel:${phone.replace(/[^+0-9]/g, "")}`} className={linkStyle}>{phone}</a></div>}
+            {seller.hours && <p className="mt-2 text-sm leading-relaxed text-muted">{seller.hours}</p>}
+          </section>
+        </div>
+        <div className="flex flex-col gap-3 border-t border-line py-5 text-sm text-muted lg:flex-row lg:items-center lg:justify-between">
+          <nav aria-label="Документы" className="flex flex-col items-start sm:flex-row sm:flex-wrap sm:gap-x-6">
+            {legal.map(([href, label]) => <Link key={href} href={href} className={linkStyle}>{label}</Link>)}
+          </nav>
+          <p>© {new Date().getFullYear()} {brand.name}</p>
+        </div>
       </div>
     </footer>
   );
