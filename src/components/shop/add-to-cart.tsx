@@ -37,7 +37,6 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
       {colors.length > 0 && colors[0].color && (
         <div className="flex flex-wrap items-center gap-x-1">
           <span className="sr-only">Цвет:</span>
-          {/* один цвет — квадрат и название без выбора; несколько — квадраты-кнопки */}
           {colors.length > 1 ? colors.map((c) => (
             <button
               key={c.color}
@@ -51,11 +50,11 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
               }}
               aria-label={`Цвет: ${c.color ?? ""}`}
               aria-pressed={color === c.color}
-              className="flex h-11 w-9 items-center justify-center focus-visible:outline-2 focus-visible:outline-ink"
+              className="relative flex min-h-11 min-w-11 items-center justify-center focus-visible:outline-2 focus-visible:outline-ink aria-pressed:after:absolute aria-pressed:after:bottom-1 aria-pressed:after:size-1 aria-pressed:after:rounded-full aria-pressed:after:bg-ink"
             >
-              <span className={`block h-4 w-4 border ${color === c.color ? "border-ink outline outline-1 outline-offset-2 outline-ink" : "border-line"}`} style={{ background: c.colorHex ?? undefined }} />
+              {c.colorHex ? <span aria-hidden className="block h-3 w-9" style={{ backgroundColor: c.colorHex }} /> : c.color}
             </button>
-          )) : <span className="mr-2 block h-4 w-4 border border-ink outline outline-1 outline-offset-2 outline-ink" style={{ background: colors[0].colorHex ?? undefined }} aria-hidden />}
+          )) : colors[0].colorHex && <span aria-hidden className="block h-3 w-9" style={{ backgroundColor: colors[0].colorHex }} />}
           <span className="ml-2">{color}</span>
         </div>
       )}
