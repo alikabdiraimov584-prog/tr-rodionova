@@ -27,7 +27,8 @@ const introScript = `(() => {
   };
   window.addEventListener("pagehide", dismiss, { once: true });
   document.addEventListener("keydown", dismiss, { once: true });
-  setTimeout(finish, 2600);
+  intro.addEventListener("click", dismiss, { once: true });
+  setTimeout(finish, 1900);
 })();`;
 
 // Витрина читает каталог и настройки из базы на каждый запрос; при сборке база недоступна
