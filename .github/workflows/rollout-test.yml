@@ -1,0 +1,63 @@
+name: Docker rollout
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'deploy/**'
+      - '.github/workflows/rollout-test.yml'
+      - 'scripts/tests/rollout-browser.py'
+permissions:
+  contents: read
+jobs:
+  rollout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Build and start the base release with disposable data
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git clone --bare . "$RUNNER_TEMP/origin.git"
+          git --git-dir="$RUNNER_TEMP/origin.git" update-ref refs/heads/main "$(git rev-parse HEAD)"
+          git clone -b main "$RUNNER_TEMP/origin.git" "$RUNNER_TEMP/shop"
+          cd "$RUNNER_TEMP/shop"
+          git checkout --detach "$BASE_SHA"
+          cat >.env <<ENV
+          COMPOSE_PROJECT_NAME=rollouttest
+          COMPOSE_PROFILES=localdb
+          DOMAIN=localhost
+          APP_URL=https://localhost
+          DATABASE_URL=postgresql://tr:testonly@db:5432/tr_rodionova
+          DB_PASSWORD=testonly
+          SEED_ON_START=1
+          AUTH_SECRET=$(openssl rand -hex 32)
+          CRON_SECRET=$(openssl rand -hex 32)
+          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(openssl rand -base64 32)
+          ENV
+          docker compose up -d --wait db
+          export GIT_SHA=$(git rev-parse --short HEAD)
+          docker compose build web init
+          docker compose up -d web caddy
+          curl -kfsS --retry 40 --retry-all-errors --retry-delay 2 https://localhost/api/health
+      - name: Keep the old tab open while deploying the candidate
+        run: |
+          python -m venv "$RUNNER_TEMP/browser"
+          "$RUNNER_TEMP/browser/bin/pip" -q install selenium==4.38.0
+          sudo install -d -o "$USER" /home/deploy
+          cd "$RUNNER_TEMP/shop"
+          git merge --ff-only origin/main
+          "$RUNNER_TEMP/browser/bin/python" scripts/tests/rollout-browser.py
+      - if: always()
+        name: Remove test containers and volumes
+        run: |
+          if test -f "$RUNNER_TEMP/shop/.env"; then
+            cd "$RUNNER_TEMP/shop"
+            docker compose down -v --remove-orphans
+          fi
