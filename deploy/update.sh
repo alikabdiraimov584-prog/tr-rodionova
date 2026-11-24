@@ -56,6 +56,10 @@ main() {
       exit 1
     fi
   fi
+  # The sampler writes to the same log as this rollout and cannot hold its lock.
+  python3 deploy/rollout-metrics.py 8>&- &
+  metrics_pid=$!
+  trap 'kill "$metrics_pid" 2>/dev/null || true; wait "$metrics_pid" 2>/dev/null || true' EXIT
   docker compose build web init
 
   old=$(docker compose ps -q web || true)
