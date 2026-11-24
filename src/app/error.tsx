@@ -1,28 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Wordmark } from "@/components/brand-marks";
 import { Logo } from "@/components/ui";
 import { browserErrorLabel, isNetworkError, isStaleBuildError, reloadOnceForStaleBuild } from "@/lib/stale-build";
 
 /** Внутренний сбой на витрине: покупательница видит страницу в стиле сайта, а не серый экран Next.js. */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const stale = isStaleBuildError(error);
+  const attempted = useRef<Error | null>(null);
+  const [failedRecovery, setFailedRecovery] = useState<Error | null>(null);
   useEffect(() => {
     console.error(error);
-    if (stale) reloadOnceForStaleBuild();
+    if (stale && attempted.current !== error) {
+      attempted.current = error;
+      if (!reloadOnceForStaleBuild()) setFailedRecovery(error);
+    }
   }, [error, stale]);
-  if (stale) {
+  if (stale && failedRecovery !== error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-        <Logo />
-        <h1 className="mt-10">Сайт обновился</h1>
-        <p className="mt-2 max-w-md text-sm text-muted">Эта страница была открыта до обновления. Она перезагружается; если не перезагрузилась сама, нажмите кнопку.</p>
-        <div className="mt-6"><button type="button" onClick={() => window.location.reload()} className="btn-primary">Перезагрузить</button></div>
+      <div role="status" aria-label="Загрузка витрины" className="fixed inset-0 z-[100] grid place-items-center bg-white">
+        <Wordmark className="w-[clamp(160px,28vw,225px)]" />
       </div>
     );
   }
-  if (isNetworkError(error)) {
+  if (stale || isNetworkError(error)) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
         <Logo />
