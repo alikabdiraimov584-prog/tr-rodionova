@@ -15,7 +15,14 @@ import { IconBag, IconUser } from "@/components/shop/icons";
  * справа кабинет и корзина. Без каталога, поиска и разделов.
  */
 export async function ShopHeader() {
-  const user = await getCurrentUser();
+  const [user, categories] = await Promise.all([
+    getCurrentUser(),
+    db.category.findMany({
+      where: { isActive: true, products: { some: { status: "ACTIVE", isPreloved: false } } },
+      orderBy: { order: "asc" },
+      select: { slug: true, name: true },
+    }),
+  ]);
   const customer = user && !isStaff(user.role) ? user : null; // счётчик корзины: у сотрудника на витрине гостевая корзина
   const cabinet = cabinetLink(user);
   const cartCount = await (customer ? db.cartItem.aggregate({ where: { userId: customer.id, variant: { archivedAt: null } }, _sum: { quantity: true } }).then((r) => r._sum.quantity ?? 0) : getGuestToken().then(guestCartCount));
@@ -25,7 +32,7 @@ export async function ShopHeader() {
     <header className="sticky top-0 z-30 border-b border-line bg-ivory">
       <div className="mx-auto grid h-14 max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center px-2 md:h-16 md:px-5">
         <div className="flex items-center gap-1 md:gap-6">
-          <SiteMenu account={cabinet} cartCount={count} />
+          <SiteMenu categories={categories} account={cabinet} cartCount={count} />
           <Link href="/#collection" className="nav-link hidden md:inline">Коллекция</Link>
           <Link href="/about" className="nav-link hidden lg:inline">О бренде</Link>
         </div>

@@ -9,13 +9,13 @@ import { IconClose, IconMenu } from "@/components/shop/icons";
 
 
 /** Меню витрины для всех экранов: кнопка «Меню» в шапке и выезжающая слева панель с разделами (как у ACTE). */
-type MenuProps = { account: readonly [string, string]; cartCount: number };
+type MenuProps = { categories: { slug: string; name: string }[]; account: readonly [string, string]; cartCount: number };
 
 export function SiteMenu(props: MenuProps) {
   return <MenuDrawer key={usePathname()} {...props} />;
 }
 
-function MenuDrawer({ account, cartCount }: MenuProps) {
+function MenuDrawer({ categories, account, cartCount }: MenuProps) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -67,15 +67,29 @@ function MenuDrawer({ account, cartCount }: MenuProps) {
               <button type="button" data-autofocus aria-label="Закрыть меню" onClick={close} className="-mr-2 flex h-11 w-11 items-center justify-center"><IconClose /></button>
             </div>
             <nav aria-label="Разделы" className="flex-1 px-4 pb-8 pt-4 md:px-6">
+              <Link href="/catalog" className={big}>Весь каталог</Link>
+              <div className="mb-3 border-l border-line pl-4">
+                <Link href="/catalog?new=1" className={small}>Новинки</Link>
+                {categories.map(({ slug, name }) => (
+                  <Link key={slug} href={{ pathname: "/catalog", query: { category: slug } }} className={small}>{name}</Link>
+                ))}
+                <Link href="/catalog?q=" className={small}>Поиск по каталогу</Link>
+              </div>
               <Link href="/#collection" className={big}>Коллекция</Link>
+              <Link href="/lookbook" className={big}>Лукбук</Link>
+              <Link href="/gift" className={big}>Подарочная карта</Link>
               <Link href="/about" className={big}>О бренде</Link>
               <div className="mt-8 border-t border-line pt-4">
+                <Link href="/collections" className={small}>Все коллекции</Link>
+                <Link href="/journal" className={small}>Журнал</Link>
+                <Link href="/showroom" className={small}>Шоурум и контакты</Link>
                 <Link href="/delivery" className={small}>Доставка и возврат</Link>
                 <Link href="/sizes" className={small}>Размеры</Link>
                 <Link href="/faq" className={small}>Вопросы и ответы</Link>
               </div>
               <div className="mt-4 border-t border-line pt-4">
                 <Link href={account[0]} className={small}>{account[1]}</Link>
+                <Link href="/account/wishlist" className={small}>Избранное</Link>
                 <Link href="/cart" className={small}>Корзина · {cartCount}</Link>
               </div>
             </nav>
