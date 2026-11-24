@@ -21,7 +21,8 @@ export function reloadOnceForStaleBuild() {
     if (Date.now() - last < 60_000) return false;
     sessionStorage.setItem(KEY, String(Date.now()));
   } catch {
-    // приватный режим: перезагружаем без защёлки
+    // Без отметки в хранилище нельзя ограничить число автоматических попыток.
+    return false;
   }
   window.location.reload();
   return true;
