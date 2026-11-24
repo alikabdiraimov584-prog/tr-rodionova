@@ -50,7 +50,7 @@ function urlParts(value: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = await clientIp();
+  const ip = await clientIp(req.headers);
   const rate = await checkRate(`analytics:${ip ?? "unknown"}`, { limit: 120, windowSec: 60, lockSec: 60 });
   if (!rate.ok) return new NextResponse(null, { status: 429, headers: { "Retry-After": String(rate.retryAfterSec), "Cache-Control": "no-store" } });
   // Собственная обезличенная статистика ведётся всегда (законный интерес, IP не хранится).

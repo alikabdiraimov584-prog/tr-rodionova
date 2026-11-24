@@ -9,7 +9,7 @@ import { checkRate, clientIp } from "@/lib/ratelimit";
  */
 export async function POST(request: Request) {
   // Обработчик перепроверяет статус через API партнёра; ограничиваем число внешних запросов.
-  const ip = await clientIp();
+  const ip = await clientIp(request.headers);
   if (ip) {
     const rate = await checkRate(`dolyame-webhook:${ip}`, { limit: 120, windowSec: 60, lockSec: 60 });
     if (!rate.ok) return new Response("rate limited", { status: 429, headers: { "Retry-After": String(rate.retryAfterSec), "Cache-Control": "no-store" } });

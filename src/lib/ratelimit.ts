@@ -44,8 +44,8 @@ export async function clearRate(key: string) {
 }
 
 /** IP клиента: последний адрес в X-Forwarded-For добавлен доверенным прокси, остальные мог подставить клиент. */
-export async function clientIp() {
-  const h = await headers();
+export async function clientIp(requestHeaders?: Headers) {
+  const h = requestHeaders ?? await headers();
   const xff = h.get("x-forwarded-for");
   if (xff) {
     const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
