@@ -17,7 +17,7 @@ export const PLAIN_HEADING = { ...SANS, fontSize: "inherit", fontWeight: 400, le
 export function RowGrid({ items, priority = 0 }: { items: CardProduct[]; priority?: number }) {
   const sizes = "(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw";
   return (
-    <div style={SANS} className="grid grid-cols-2 gap-x-1.5 gap-y-10 px-[clamp(12px,3vw,32px)] text-[0.82rem] md:text-[0.84rem] md:grid-cols-3 md:gap-x-4 md:gap-y-14 lg:grid-cols-4 lg:gap-x-6">
+    <div style={SANS} className="grid grid-cols-2 gap-x-1.5 gap-y-10 px-[6px] text-[0.82rem] md:text-[0.84rem] md:grid-cols-3 md:gap-x-4 md:gap-y-14 lg:grid-cols-4 lg:gap-x-6">
       {items.map((p, i) => {
         const shots = p.images.filter((s) => isRealPhoto(s.url));
         const soldOut = p.variants.length === 0 || (!p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0));
