@@ -40,7 +40,7 @@ export async function guestCartItems(token: string | null) {
 }
 
 /**
- * Добавить одну единицу варианта в корзину гостя с проверкой остатка (у предзаказа — не больше PREORDER_MAX).
+ * Добавить одну единицу варианта в корзину гостя с проверкой остатка.
  * quantity — сколько теперь в корзине; limit — больше добавить нельзя, но вещь уже в корзине (это не ошибка).
  */
 export async function addToGuestCart(token: string, variantId: string) {
@@ -56,16 +56,14 @@ export async function addToGuestCart(token: string, variantId: string) {
   return { variant, quantity: have + 1, limit: false };
 }
 
-/** Предзаказ отшивается под заказ: одной вещи не больше пяти штук, как в корзине и оформлении. */
-export const PREORDER_MAX = 5;
 /** Сколько штук варианта можно держать в корзине. */
-export function cartLimit(v: { stock: number; reserved: number; product: { isPreorder: boolean } }) {
-  return v.product.isPreorder ? PREORDER_MAX : Math.max(0, v.stock - v.reserved);
+export function cartLimit(v: { stock: number; reserved: number }) {
+  return Math.max(0, v.stock - v.reserved);
 }
 
 /** Ответ покупательнице после «Добавить в корзину»: сколько уже лежит и почему больше нельзя. */
-export function addedMessage(quantity: number, limit: boolean, preorder: boolean) {
-  if (limit) return preorder ? `В корзине уже ${quantity} шт.: больше для предзаказа не добавить` : quantity === 1 ? "Последний экземпляр уже в корзине" : `В корзине все ${quantity} шт., больше нет в наличии`;
+export function addedMessage(quantity: number, limit: boolean) {
+  if (limit) return quantity === 1 ? "Последний экземпляр уже в корзине" : `В корзине все ${quantity} шт., больше нет в наличии`;
   return quantity === 1 ? "Добавлено в корзину" : `Добавлено. В корзине: ${quantity} шт.`;
 }
 
@@ -89,7 +87,7 @@ export async function mergeGuestCart(userId: string) {
   for (const i of items) {
     if (i.variant.product.status !== "ACTIVE") continue;
     const own = await db.cartItem.findUnique({ where: { userId_variantId: { userId, variantId: i.variantId } } });
-    const free = i.variant.product.isPreorder ? 5 : Math.max(0, i.variant.stock - i.variant.reserved);
+    const free = Math.max(0, i.variant.stock - i.variant.reserved);
     const qty = Math.min(free, (own?.quantity ?? 0) + i.quantity);
     if (qty <= 0) continue;
     await db.cartItem.upsert({ where: { userId_variantId: { userId, variantId: i.variantId } }, update: { quantity: qty }, create: { userId, variantId: i.variantId, quantity: qty } });

@@ -4,13 +4,11 @@ import Image from "next/image";
 import { getCurrentCustomer } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
-import { getSetting } from "@/lib/settings";
 import { PageTitle } from "@/components/ui";
 import { updateCartAction } from "@/app/actions/shop";
 import { getGuestToken, guestCartItems } from "@/lib/guest-cart";
 import { ProductCard } from "@/components/shop/product-card";
 import { isRealPhoto } from "@/lib/photos";
-import { dolyameAvailableFor } from "@/lib/payments/dolyame";
 
 export const metadata: Metadata = { title: "Корзина" };
 
@@ -23,13 +21,11 @@ export default async function CartPage() {
         orderBy: { id: "asc" },
       })
     : await guestCartItems(await getGuestToken());
-  const delivery = await getSetting("delivery");
   // пустая корзина — не тупик: показываем новинки со съёмкой
   const suggestions = items.length === 0
     ? (await db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, isNew: true }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, orderBy: { createdAt: "desc" }, take: 12 })).filter((p) => isRealPhoto(p.images[0]?.url)).slice(0, 4)
     : [];
   const subtotal = items.reduce((s, i) => s + (i.variant.price ?? i.variant.product.price) * i.quantity, 0);
-  const installments = subtotal > 0 && (await dolyameAvailableFor(subtotal).catch(() => false));
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
       <PageTitle title="Корзина" />
@@ -49,7 +45,7 @@ export default async function CartPage() {
           <div className="divide-y divide-line border-y border-line">
             {items.map((i) => {
               const price = i.variant.price ?? i.variant.product.price;
-              const available = i.variant.product.isPreorder ? 5 : i.variant.stock - i.variant.reserved;
+              const available = i.variant.stock - i.variant.reserved;
               return (
                 <div key={i.id} className="flex gap-4 py-5 sm:gap-5">
                   {/* фото дублирует ссылку с названием рядом: для Tab и диктора одна ссылка */}
@@ -60,7 +56,7 @@ export default async function CartPage() {
                     <div className="flex justify-between gap-3">
                       <div className="min-w-0">
                         <Link href={`/product/${i.variant.product.slug}`}>{i.variant.product.name}</Link>
-                        <div className="mt-1 text-xs text-muted">{i.variant.color} · {i.variant.size}{i.variant.product.isPreorder ? " · предзаказ" : ""}</div>
+                        <div className="mt-1 text-xs text-muted">{i.variant.color} · {i.variant.size}</div>
                         {available < i.quantity && <div className="mt-1 text-xs text-danger">Доступно только {Math.max(0, available)} шт.</div>}
                       </div>
                       <div className="shrink-0 text-sm">{formatMoney(price * i.quantity)}</div>
@@ -95,13 +91,12 @@ export default async function CartPage() {
             <div className="flex justify-between text-sm"><span>Товары</span><span>{formatMoney(subtotal)}</span></div>
             <div className="mt-2 flex justify-between text-sm text-muted">
               <span>Доставка</span>
-              <span>{subtotal >= delivery.freeFrom ? "бесплатно" : "при оформлении"}</span>
+              <span>при оформлении</span>
             </div>
             <Link href="/checkout" className="btn-primary mt-6 w-full">Оформить заказ</Link>
             <ul className="mt-5 space-y-1.5 text-[0.75rem] text-muted">
-              <li>Примерка курьером по Москве и Петербургу</li>
-              <li>Возврат 14 дней</li>
-              {installments && <li>Можно оплатить частями — Долями</li>}
+              <li>СДЭК, Яндекс Доставка и Яндекс Экспресс</li>
+              <li>Возврат через поддержку в течение 14 дней</li>
             </ul>
           </aside>
         </div>

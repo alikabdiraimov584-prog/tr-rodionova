@@ -10,5 +10,4 @@ else
 fi
 npx tsx scripts/seed-brand.ts
 npx tsx scripts/attach-brand-photos.ts
-npx tsx scripts/seed-journal.ts || echo "journal seed skipped"
 npx tsx scripts/seed-campaigns.ts || echo "campaigns seed skipped"

@@ -34,7 +34,6 @@ export async function seedBrand(db: PrismaClient) {
       colors: [["Чёрный", "#0E0E0E"]],
       image: "knit",
       featured: true,
-      preorder: false,
     },
     {
       slug: "bryuki-tr-palazzo",
@@ -51,7 +50,6 @@ export async function seedBrand(db: PrismaClient) {
       colors: [["Чёрный", "#0E0E0E"]],
       image: "trousers",
       featured: true,
-      preorder: false,
     },
     {
       slug: "yubka-tr-01",
@@ -67,7 +65,6 @@ export async function seedBrand(db: PrismaClient) {
       sizes: ["XS", "S", "M", "L"],
       colors: [["Чёрный", "#0E0E0E"]],
       image: "skirt",
-      preorder: false,
     },
     {
       slug: "zhaket-tr-noir",
@@ -84,7 +81,6 @@ export async function seedBrand(db: PrismaClient) {
       colors: [["Чёрный", "#0E0E0E"]],
       image: "jacket",
       featured: true,
-      preorder: false,
     },
     {
       slug: "plate-tr-halter",
@@ -101,7 +97,6 @@ export async function seedBrand(db: PrismaClient) {
       colors: [["Айвори", "#F8F5EE"]],
       image: "dress",
       featured: true,
-      preorder: true,
     },
     {
       slug: "kostyum-tr-blanc",
@@ -119,17 +114,11 @@ export async function seedBrand(db: PrismaClient) {
       colors: [["Белый", "#F3F0E9"]],
       image: "jacket",
       featured: true,
-      preorder: false,
     },
   ];
-  const shipAt = () => new Date(Date.now() + 35 * 86_400_000);
   for (const it of items) {
-    const existing = await db.product.findUnique({ where: { slug: it.slug }, select: { id: true, isPreorder: true, preorderShipAt: true } });
-    if (existing) {
-      // у предзаказа дата отшива всегда впереди; остальное в карточке ведёт CRM
-      if (existing.isPreorder && (!existing.preorderShipAt || existing.preorderShipAt < new Date())) await db.product.update({ where: { id: existing.id }, data: { preorderShipAt: shipAt() } });
-      continue;
-    }
+    const existing = await db.product.findUnique({ where: { slug: it.slug }, select: { id: true } });
+    if (existing) continue;
     const product = await db.product.create({
       data: {
         slug: it.slug,
@@ -143,8 +132,6 @@ export async function seedBrand(db: PrismaClient) {
         price: it.price * RUB,
         isNew: true,
         isFeatured: it.featured ?? false,
-        isPreorder: !!it.preorder,
-        preorderShipAt: it.preorder ? shipAt() : null,
         categoryId: await cat(it.category),
         collectionId: collection?.id ?? null,
         images: { create: [{ url: `/images/placeholder/${it.image}.svg`, alt: it.name, order: 0 }, { url: `/images/placeholder/${it.image}-2.svg`, alt: `${it.name} — деталь`, order: 1 }] },
@@ -161,55 +148,4 @@ export async function seedBrand(db: PrismaClient) {
     }
   }
 
-  // Образы из вещей бренда — для лукбука и «купить образом»
-  const looks: { slug: string; title: string; description: string; cover: string | null; order: number; items: [string, string][] }[] = [
-    {
-      slug: "look-03-tr-halter",
-      title: "Look 03 — Платье TR Halter",
-      description: "Платье мини с воротником-халтер и съёмным шарфом по спине: открытая спина, монограмма TR на молнии и застёжке шарфа. Съёмка в студии, на модели размер S.",
-      // обложка не задана: берётся первое фото платья из карточки — новая съёмка попадает в лукбук сама
-      cover: null,
-      order: 0,
-      items: [["plate-tr-halter", "Шарф съёмный: с ним — вечер, без него — день"]],
-    },
-    {
-      slug: "look-01-body-trousers",
-      title: "Look 01 — Боди и брюки",
-      description: "Высокая горловина, открытые плечи и широкие брюки с разрезами. Строгий силуэт, в котором читается женственность: фирменная молния на спине и пуговица TR на поясе.",
-      cover: "/images/brand/looks/look-01.jpg",
-      order: 1,
-      items: [["bodi-tr-01", "Основа образа"], ["bryuki-tr-palazzo", "С разрезами на переде"]],
-    },
-    {
-      slug: "look-02-jacket-skirt",
-      title: "Look 02 — Жакет и юбка",
-      description: "Жакет с открытой спиной и юбка-трапеция с фирменной пряжкой: вечерний комплект, который держит форму весь день.",
-      cover: "/images/brand/TR-JK-101/01.jpg",
-      order: 2,
-      items: [["zhaket-tr-noir", "Пряжка TR по талии"], ["yubka-tr-01", "Запах с разрезом"], ["bodi-tr-01", "Под жакет"]],
-    },
-    {
-      slug: "look-04-tr-blanc",
-      title: "Look 04 — Костюм TR Blanc",
-      description: "Укороченный жакет с кольцом TR под горлом, топ-бюстье на молнии и юбка с запахом на пряжке TR: белый комплект из трёх вещей, который носится вместе и по отдельности. Съёмка в студии.",
-      cover: null,
-      order: 3,
-      items: [["kostyum-tr-blanc", "Жакет, топ и юбка одним комплектом"]],
-    },
-  ];
-  // образы бренда создаются один раз; дальше обложку, порядок, публикацию и состав ведёт CRM
-  const fresh = [];
-  for (const l of looks) if (!(await db.look.findUnique({ where: { slug: l.slug }, select: { id: true } }))) fresh.push(l);
-  // демо-образы уходят ниже образов бренда — только когда образы бренда появляются впервые
-  if (fresh.length > 0) await db.look.updateMany({ where: { slug: { notIn: looks.map((l) => l.slug) }, order: { lt: 10 } }, data: { order: { increment: 10 } } });
-  for (const l of fresh) {
-    const look = await db.look.create({ data: { slug: l.slug, title: l.title, description: l.description, coverUrl: l.cover, order: l.order, season: "AW26", isPublished: true } });
-    let order = 0;
-    for (const [slug, note] of l.items) {
-      const product = await db.product.findUnique({ where: { slug } });
-      if (!product) continue;
-      await db.lookItem.create({ data: { lookId: look.id, productId: product.id, order, note } });
-      order++;
-    }
-  }
 }

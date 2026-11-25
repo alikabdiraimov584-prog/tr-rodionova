@@ -1,3 +1,4 @@
+import { ACTIVE_DELIVERY } from "@/lib/labels";
 import "server-only";
 import { updateCustomerSpending } from "@/lib/customer-spending";
 import { db } from "@/lib/db";
@@ -82,8 +83,8 @@ export async function loadCart(userId: string): Promise<CartLine[]> {
       size: i.variant.size,
       color: i.variant.color,
       sku: i.variant.sku,
-      available: i.variant.product.isPreorder ? 999 : i.variant.stock - i.variant.reserved,
-      isPreorder: i.variant.product.isPreorder,
+      available: i.variant.stock - i.variant.reserved,
+      isPreorder: false,
     }));
 }
 
@@ -111,11 +112,12 @@ export async function evaluatePromo(code: string | null | undefined, subtotal: n
 }
 
 export async function deliveryCost(method: DeliveryMethod, subtotalAfterDiscount: number, opts: { freeShipping?: boolean }) {
-  if (method === "PICKUP" || opts.freeShipping) return 0;
+  if (!ACTIVE_DELIVERY.some((active) => active === method)) throw new Error("Выберите доступный способ доставки");
+  if (opts.freeShipping) return 0;
   const d = await getSetting("delivery");
   if (subtotalAfterDiscount >= d.freeFrom) return 0;
-  const map: Record<Exclude<DeliveryMethod, "PICKUP">, number> = { COURIER: d.courier, CDEK: d.cdek, BOXBERRY: d.boxberry, YANDEX: d.yandex };
-  return map[method];
+  if (method === "CDEK") return d.cdek;
+  return method === "YANDEX_STANDARD" ? d.yandexStandard ?? d.yandex : d.yandex;
 }
 
 export type GiftResult =
@@ -195,7 +197,6 @@ export type CheckoutInput = {
   comment?: string | null;
   promoCode?: string | null;
   giftCode?: string | null;
-  fittingRequested?: boolean;
   deliverySlot?: string | null;
 };
 
@@ -214,8 +215,8 @@ export async function quoteGuestCart(token: string | null, input: { promoCode?: 
       size: i.variant.size,
       color: i.variant.color,
       sku: i.variant.sku,
-      available: i.variant.product.isPreorder ? 999 : i.variant.stock - i.variant.reserved,
-      isPreorder: i.variant.product.isPreorder,
+      available: i.variant.stock - i.variant.reserved,
+      isPreorder: false,
     }));
   const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
   const promo = await evaluatePromo(input.promoCode, subtotal, null);
@@ -236,7 +237,8 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
   for (const l of quote.lines) {
     if (l.available < l.quantity) throw new Error(`«${l.productName}», размер ${l.size}: доступно ${Math.max(0, l.available)} шт.`);
   }
-  if (input.deliveryMethod !== "PICKUP" && !input.addressId && !input.addressText) throw new Error("Укажите адрес доставки");
+  if (!ACTIVE_DELIVERY.some((method) => method === input.deliveryMethod)) throw new Error("Выберите доступный способ доставки");
+  if (!input.addressId && !input.addressText) throw new Error("Укажите адрес доставки");
   if (input.addressId) {
     const own = await db.address.count({ where: { id: input.addressId, userId } });
     if (!own) throw new Error("Адрес не найден");
@@ -245,7 +247,7 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
 
   const session = await currentSession();
   const order = await db.$transaction(async (tx) => {
-    // Предзаказ не резервирует остаток, поэтому отдельно проверяем и блокируем варианты до конца оформления.
+    // Блокируем варианты до конца оформления, чтобы архивирование не пересеклось с резервом.
     const variantIds = [...new Set(quote.lines.map((line) => line.variantId))];
     const activeVariants = await tx.$queryRaw<{ id: string }[]>`
       SELECT id FROM "ProductVariant"
@@ -286,7 +288,6 @@ export async function createOrderFromCart(userId: string, input: CheckoutInput) 
         total: quote.total,
         promoCodeId: quote.promo?.ok ? quote.promo.promo.id : null,
         comment: input.comment ?? null,
-        fittingRequested: !!input.fittingRequested,
         deliverySlot: input.deliverySlot ?? null,
         items: {
           create: quote.lines.map((l) => ({
@@ -543,6 +544,7 @@ export type ManualOrderInput = {
 };
 
 export async function createManualOrder(input: ManualOrderInput) {
+  if (!ACTIVE_DELIVERY.some((method) => method === input.deliveryMethod)) throw new Error("Выберите доступный способ доставки");
   const lines = input.lines.filter((l) => l.variantId && l.quantity > 0);
   if (lines.length === 0) throw new Error("Добавьте хотя бы одну позицию");
   const variants = await db.productVariant.findMany({ where: { id: { in: lines.map((l) => l.variantId) }, archivedAt: null }, include: { product: true } });

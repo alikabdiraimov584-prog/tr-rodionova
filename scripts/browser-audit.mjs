@@ -43,14 +43,14 @@ async function staffLogin(page, email, password) {
   }
 }
 const maxPages = Number(process.env.MAX_PAGES ?? 120);
-const perTemplate = Number(process.env.PER_TEMPLATE ?? 4); // сколько страниц одного шаблона (/product/*, /journal/*) обходить
+const perTemplate = Number(process.env.PER_TEMPLATE ?? 4); // сколько страниц одного шаблона (/product/*) обходить
 const budgetMs = Number(process.env.TIME_BUDGET_MIN ?? 20) * 60_000;
 let startedAt = Date.now();
 const overBudget = () => Date.now() - startedAt > budgetMs;
 const resetBudget = () => { startedAt = Date.now(); };
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 // шаблон маршрута: /product/abc → /product/*, /crm/orders/123 → /crm/orders/*
-const template = (path) => path.replace(/\/(product|journal|lookbook|orders|customers|products|returns|tickets|collections|staff|promos|reviews|stock|notifications)\/[^/?]+/g, "/$1/*");
+const template = (path) => path.replace(/\/(product|orders|customers|products|returns|tickets|collections|staff|promos|reviews|stock|notifications)\/[^/?]+/g, "/$1/*");
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 
 const problems = [];
@@ -179,7 +179,7 @@ async function crawl(role, viewport, startPaths, login) {
       walk(nodes);
       const text = body.replace(/\s+/g, " ");
       const has = (t) => !!t && text.includes(String(t).replace(/\s+/g, " ").trim().slice(0, 60));
-      const expect = asked.startsWith("/product/") ? ["Product", "ProductGroup"] : asked.startsWith("/journal/") && !asked.includes("feed") ? ["Article"] : asked === "/faq" ? ["FAQPage"] : null;
+      const expect = asked.startsWith("/product/") ? ["Product", "ProductGroup"] : asked === "/faq" ? ["FAQPage"] : null;
       if (expect && !expect.some((t) => types.includes(t))) note("jsonld", `${role} ${path}`, `нет разметки ${expect.join("/")} (есть: ${types.join(", ") || "ничего"})`);
       for (const n of nodes) {
         const offerOk = (o) => o && typeof o === "object" && o.price && o.priceCurrency && o.availability;
@@ -420,9 +420,9 @@ async function crmAudit() {
 console.log("Аудит:", base, `(лимит ${maxPages} страниц, ${budgetMs / 60000} мин)`);
 const only = process.env.ONLY ?? ""; // ONLY=journey|crm — запустить одну часть
 const siteDesktop = only && only !== "site" ? 0 : await crawl("site-desktop", { width: 1366, height: 900 }, ["/"]);
-const siteMobile = only && only !== "site" ? 0 : await crawl("site-mobile", { width: 390, height: 844 }, ["/", "/catalog", "/cart", "/login", "/register", "/journal", "/lookbook", "/gift"]);
+const siteMobile = only && only !== "site" ? 0 : await crawl("site-mobile", { width: 390, height: 844 }, ["/", "/catalog", "/cart", "/login", "/register", "/gift"]);
 // витрина глазами вошедшей клиентки и сотрудника: те же страницы, но ссылки «Кабинет», «Вступить», избранное зависят от роли
-const SITE_START = ["/", "/catalog", "/cart", "/journal", "/lookbook", "/gift", "/sizes", "/showroom", "/account"];
+const SITE_START = ["/", "/catalog", "/cart", "/gift", "/sizes", "/showroom", "/account"];
 if ((!only || only === "site") && customerEmail && customerPassword) await crawl("site-customer", { width: 1366, height: 900 }, SITE_START, { email: customerEmail, password: customerPassword });
 if ((!only || only === "site") && crmEmail && crmPassword) await crawl("site-staff", { width: 1366, height: 900 }, SITE_START, { email: crmEmail, password: crmPassword });
 log("гостевой путь");

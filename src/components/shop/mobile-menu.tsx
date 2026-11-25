@@ -76,12 +76,10 @@ function MenuDrawer({ categories, account, cartCount }: MenuProps) {
                 <Link href="/catalog?q=" className={small}>Поиск по каталогу</Link>
               </div>
               <Link href="/#collection" className={big}>Коллекция</Link>
-              <Link href="/lookbook" className={big}>Лукбук</Link>
               <Link href="/gift" className={big}>Подарочная карта</Link>
               <Link href="/about" className={big}>О бренде</Link>
               <div className="mt-8 border-t border-line pt-4">
                 <Link href="/collections" className={small}>Все коллекции</Link>
-                <Link href="/journal" className={small}>Журнал</Link>
                 <Link href="/showroom" className={small}>Шоурум и контакты</Link>
                 <Link href="/delivery" className={small}>Доставка и возврат</Link>
                 <Link href="/sizes" className={small}>Размеры</Link>

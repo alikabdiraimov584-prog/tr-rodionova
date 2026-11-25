@@ -10,7 +10,6 @@ test("CRM section permissions follow the explicit least-privilege matrix", () =>
     ads: ["MANAGER", "ADMIN"],
     adsEdit: ["ADMIN"],
     campaigns: ["MANAGER", "ADMIN"],
-    content: ["MANAGER", "ADMIN"],
     giftcards: ["SUPPORT", "MANAGER", "ADMIN"],
     stylist: ["SUPPORT", "MANAGER", "ADMIN"],
     support: ["SUPPORT", "MANAGER", "ADMIN"],

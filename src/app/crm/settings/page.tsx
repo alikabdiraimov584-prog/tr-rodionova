@@ -77,10 +77,9 @@ export default async function Settings() {
             <SettingsForm section="delivery">
               <div className="grid gap-3 sm:grid-cols-3">
                 <label><span className="label">Бесплатно от</span><input name="freeFrom" defaultValue={rub(delivery.freeFrom)} className="input py-2" /></label>
-                <label><span className="label">Курьер</span><input name="courier" defaultValue={rub(delivery.courier)} className="input py-2" /></label>
                 <label><span className="label">СДЭК</span><input name="cdek" defaultValue={rub(delivery.cdek)} className="input py-2" /></label>
-                <label><span className="label">Boxberry</span><input name="boxberry" defaultValue={rub(delivery.boxberry)} className="input py-2" /></label>
-                <label><span className="label">Яндекс</span><input name="yandex" defaultValue={rub(delivery.yandex)} className="input py-2" /></label>
+                <label><span className="label">Яндекс Доставка</span><input name="yandexStandard" defaultValue={rub(delivery.yandexStandard ?? delivery.yandex)} className="input py-2" /></label>
+                <label><span className="label">Яндекс Экспресс</span><input name="yandex" defaultValue={rub(delivery.yandex)} className="input py-2" /></label>
               </div>
             </SettingsForm>
           </div>

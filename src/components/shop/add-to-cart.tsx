@@ -13,11 +13,11 @@ type V = { id: string; size: string; color: string | null; colorHex: string | nu
  * Размер заранее не выбирается (кроме единственного или подсказанного по меркам): покупательница выбирает его сама,
  * иначе в корзину молча уходит первый размер в наличии и растут возвраты.
  */
-export function AddToCart({ slug, variants, preorder = false, defaultSize, defaultColor, children }: { slug: string; variants: V[]; loggedIn?: boolean; preorder?: boolean; defaultSize?: string | null; defaultColor?: string | null; children?: React.ReactNode }) {
+export function AddToCart({ slug, variants, defaultSize, defaultColor, children }: { slug: string; variants: V[]; loggedIn?: boolean; defaultSize?: string | null; defaultColor?: string | null; children?: React.ReactNode }) {
   const colors = [...new Map(variants.map((v) => [v.color ?? "", v])).values()];
   const [color, setColor] = useState((colors.find((c) => defaultColor && c.color === defaultColor) ?? colors[0])?.color ?? "");
   const sizes = variants.filter((v) => (v.color ?? "") === color);
-  const can = (v: V) => preorder || v.available > 0;
+  const can = (v: V) => v.available > 0;
   const initial = sizes.find((s) => defaultSize && s.size === defaultSize && can(s)) ?? (sizes.length === 1 && can(sizes[0]) ? sizes[0] : undefined);
   const [variantId, setVariantId] = useState<string>(initial?.id ?? "");
   const [state, action, pending] = useActionState(addToCartAction, undefined);
@@ -68,7 +68,7 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
                 type="button"
                 onClick={() => setVariantId(s.id)}
                 aria-pressed={variantId === s.id}
-                className={`min-h-11 min-w-10 px-2 underline-offset-[6px] transition-opacity hover:opacity-60 ${variantId === s.id ? "underline" : ""} ${s.available <= 0 && !preorder ? "text-[#a8a8a8] line-through" : ""}`}
+                className={`min-h-11 min-w-10 px-2 underline-offset-[6px] transition-opacity hover:opacity-60 ${variantId === s.id ? "underline" : ""} ${s.available <= 0 ? "text-[#a8a8a8] line-through" : ""}`}
               >
                 {s.size}
               </button>
@@ -76,9 +76,9 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
           </div>
           <Link href="/sizes" className="shrink-0 py-2 underline underline-offset-4 hover:opacity-60">Таблица размеров</Link>
         </div>
-        {selected && !preorder && selected.available > 0 && selected.available <= 2 && <div className="mt-1 text-[#6f6f6f]">Осталось {selected.available} шт.</div>}
+        {selected && selected.available > 0 && selected.available <= 2 && <div className="mt-1 text-[#6f6f6f]">Осталось {selected.available} шт.</div>}
       </div>
-      {selected && selected.available <= 0 && !preorder ? (
+      {selected && selected.available <= 0 ? (
         <div className="space-y-2">
           <form id="buy-cta" action={waitAction}>
             <input type="hidden" name="variantId" value={selected.id} />
@@ -95,7 +95,7 @@ export function AddToCart({ slug, variants, preorder = false, defaultSize, defau
             <input type="hidden" name="variantId" value={variantId} />
             <input type="hidden" name="slug" value={slug} />
             <button className={btn} disabled={pending || !variantId || (mine && atMax === "max")}>
-              {pending ? "Добавляем…" : !variantId ? "Выберите размер" : mine && atMax === "max" ? "Уже в корзине" : mine && state?.ok ? "Добавить ещё" : preorder ? "Оформить предзаказ" : "Добавить в корзину"}
+              {pending ? "Добавляем…" : !variantId ? "Выберите размер" : mine && atMax === "max" ? "Уже в корзине" : mine && state?.ok ? "Добавить ещё" : "Добавить в корзину"}
             </button>
           </form>
           {mine && state?.ok && (

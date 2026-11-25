@@ -76,7 +76,7 @@ export function CampaignForm({ c, opts }: { c?: C; opts: Opts }) {
           {channel === "EMAIL" && <label><span className="label">Тема письма</span><input name="subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="input py-2" /></label>}
           <label>
             <span className="label">Текст · {text.length} симв.</span>
-            <textarea name="text" rows={7} value={text} onChange={(e) => setText(e.target.value)} className="input" placeholder="{имя}, в четверг открываем предзаказ коллекции…" />
+            <textarea name="text" rows={7} value={text} onChange={(e) => setText(e.target.value)} className="input" placeholder="{имя}, в четверг представляем коллекцию…" />
           </label>
           <div className="flex flex-wrap gap-2 text-xs">
             {["{имя}", "{ссылка}"].map((v) => <button key={v} type="button" onClick={() => insert(v)} className="badge border-line hover:bg-ivory">{v}</button>)}

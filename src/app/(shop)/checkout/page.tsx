@@ -6,7 +6,6 @@ import { PageTitle } from "@/components/ui";
 import { CheckoutForm } from "@/components/shop/checkout-form";
 import { quoteAction } from "@/app/actions/shop";
 import { getGuestToken, guestCartCount } from "@/lib/guest-cart";
-import { getSettingOrDefault } from "@/lib/settings";
 import { activeIntegration } from "@/lib/integrations/store";
 import { onlinePaymentsAvailable } from "@/lib/payments/provider";
 
@@ -16,11 +15,10 @@ export default async function CheckoutPage() {
   const user = await getCurrentCustomer();
   const count = user ? await db.cartItem.count({ where: { userId: user.id, variant: { archivedAt: null } } }) : await guestCartCount(await getGuestToken());
   if (count === 0) redirect("/cart");
-  const [addresses, seller, dadata, initialQuote, online] = await Promise.all([
+  const [addresses, dadata, initialQuote, online] = await Promise.all([
     user ? db.address.findMany({ where: { userId: user.id, NOT: { label: "Архив" } }, orderBy: { isDefault: "desc" } }) : [],
-    getSettingOrDefault("seller"),
     activeIntegration("dadata"),
-    quoteAction({ deliveryMethod: "COURIER" }),
+    quoteAction({ deliveryMethod: "CDEK" }),
     onlinePaymentsAvailable(),
   ]);
   return (
@@ -30,7 +28,6 @@ export default async function CheckoutPage() {
         initialQuote={initialQuote}
         online={online}
         guest={!user}
-        showroom={seller.showroom || null}
         suggestions={!!dadata?.config.token}
         profile={user ? {
           firstName: user.firstName,

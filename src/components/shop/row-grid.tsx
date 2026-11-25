@@ -12,7 +12,7 @@ export const PLAIN_HEADING = { ...SANS, fontSize: "inherit", fontWeight: 400, le
 /**
  * Сетка вещей для маленькой коллекции: 2 колонки на телефоне, 3 на планшете, 4 на компьютере, кадры 2:3.
  * Под кадром название слева и цена справа (на телефоне — цена строкой ниже), при наведении второй кадр.
- * «Предзаказ» / «Нет в наличии» — серым в углу кадра. Вещь без съёмки — серая плитка с монограммой.
+ * «Нет в наличии» — серым в углу кадра. Вещь без съёмки — серая плитка с монограммой.
  */
 export function RowGrid({ items, priority = 0 }: { items: CardProduct[]; priority?: number }) {
   const sizes = "(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw";
@@ -31,8 +31,8 @@ export function RowGrid({ items, priority = 0 }: { items: CardProduct[]; priorit
       `}</style>
       {items.map((p, i) => {
         const shots = p.images.filter((s) => isRealPhoto(s.url));
-        const soldOut = p.variants.length === 0 || (!p.isPreorder && !p.variants.some((v) => v.stock - v.reserved > 0));
-        const label = soldOut ? "Нет в наличии" : p.isPreorder ? "Предзаказ" : null;
+        const soldOut = p.variants.length === 0 || (!p.variants.some((v) => v.stock - v.reserved > 0));
+        const label = soldOut ? "Нет в наличии" : null;
         return (
           <Link key={p.slug} href={`/product/${p.slug}`} className="group block">
             <div style={{ position: "relative", aspectRatio: "2 / 3", overflow: "hidden" }} className="bg-[#f6f5f3]">

@@ -222,7 +222,7 @@ export async function saveSettingsAction(_: ActionState, formData: FormData): Pr
       });
     } else if (section === "delivery") {
       const r = (k: string) => toKopecks(String(formData.get(k) ?? "0"));
-      await setSetting("delivery", { freeFrom: r("freeFrom"), courier: r("courier"), cdek: r("cdek"), boxberry: r("boxberry"), yandex: r("yandex") });
+      await setSetting("delivery", { freeFrom: r("freeFrom"), cdek: r("cdek"), yandexStandard: r("yandexStandard"), yandex: r("yandex") });
     } else if (section === "support") {
       const n = (k: string) => Math.trunc(Number(formData.get(k) ?? 0));
       const workFrom = Math.min(23, Math.max(0, n("workFrom")));

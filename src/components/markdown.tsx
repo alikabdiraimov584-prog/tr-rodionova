@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 /**
- * Минимальный рендер Markdown для статей журнала, SEO-текстов каталога и юридических документов:
+ * Минимальный рендер Markdown для SEO-текстов каталога и юридических документов:
  * заголовки, абзацы, маркированные и нумерованные списки, жирный, ссылки [текст](/адрес).
  */
 const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
@@ -15,7 +15,7 @@ function bold(text: string, key: string): ReactNode[] {
 }
 
 function inline(text: string): ReactNode[] {
-  // ссылки: внутренние (/journal/…) — переходом внутри сайта, внешние — в новой вкладке; остальной текст — с жирным
+  // ссылки: внутренние (/catalog) — переходом внутри сайта, внешние — в новой вкладке; остальной текст — с жирным
   return text.split(/(\[[^\]]+\]\([^)\s]+\))/g).flatMap<ReactNode>((part, i) => {
     const m = part.match(LINK);
     if (!m || m[0] !== part) return bold(part, `t${i}`);

@@ -19,7 +19,7 @@ export function CategoryForm({ c }: { c: Cat }) {
       <label><span className="label">SEO title (до 70)</span><input name="seoTitle" maxLength={70} defaultValue={c.seoTitle ?? ""} placeholder={`${c.name} — купить в T.Rodionova`} className="input py-2" /></label>
       <label><span className="label">SEO description (до 200)</span><input name="seoDescription" maxLength={200} defaultValue={c.seoDescription ?? ""} className="input py-2" /></label>
       <label className="md:col-span-2"><span className="label">Текст под каталогом — Markdown (про крой, ткани, с чем носить; 300–600 слов под поисковые запросы)</span><textarea name="seoText" rows={8} defaultValue={c.seoText ?? ""} className="input font-mono text-xs leading-relaxed" /></label>
-      <label className="md:col-span-2"><span className="label">Вопросы и ответы: вопрос на одной строке, ответ на следующей, пары через пустую строку</span><textarea name="faq" rows={6} defaultValue={faqText} placeholder={"Как подобрать размер жакета?\nИзмерьте обхват груди…\n\nМожно ли примерить перед покупкой?\nДа, курьером в Москве и Петербурге."} className="input font-mono text-xs leading-relaxed" /></label>
+      <label className="md:col-span-2"><span className="label">Вопросы и ответы: вопрос на одной строке, ответ на следующей, пары через пустую строку</span><textarea name="faq" rows={6} defaultValue={faqText} placeholder={"Как подобрать размер жакета?\nИзмерьте обхват груди…"} className="input font-mono text-xs leading-relaxed" /></label>
       <div className="flex items-center gap-4 md:col-span-2">
         <button className="btn-primary btn-sm" disabled={pending}>{pending ? "Сохраняем…" : "Сохранить"}</button>
         {state?.error && <span className="text-sm text-danger">{state.error}</span>}

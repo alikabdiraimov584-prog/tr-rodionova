@@ -2,7 +2,6 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@/lib/db";
-import { getSetting } from "@/lib/settings";
 import { metrikaAccess, metrikaGoalIds, ensureRetargetingFlag } from "@/lib/metrika-api";
 import { MIN_WEEKLY_RUB, PROVIDER, directCall, errorsOf, idOf, mskDate, suspendCampaigns, syncCampaigns, toMicro, type ActionResult, type DirectConfig } from "@/lib/ads/direct";
 
@@ -163,7 +162,7 @@ async function addSitelinks(cfg: DirectConfig, base: string, warnings: string[])
     const r = await directCall<{ AddResults?: ActionResult[] }>(cfg, "sitelinks", "add", {
       SitelinksSets: [{ Sitelinks: [
         { Title: "Каталог", Href: `${base}/catalog?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Боди, брюки, юбки, жакеты и платья" },
-        { Title: "Доставка и примерка", Href: `${base}/delivery?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Примерка курьером в Москве и Петербурге" },
+        { Title: "Доставка", Href: `${base}/delivery?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "СДЭК и Яндекс Доставка" },
         { Title: "Размеры и мерки", Href: `${base}/sizes?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Таблица размеров XS–L и подсказки по посадке" },
         { Title: "О бренде", Href: `${base}/about?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Ткани из Италии, пошив в Португалии и Литве" },
       ] }],
@@ -217,9 +216,8 @@ export async function createStarterCampaigns(cfg: DirectConfig, input: StarterIn
   const base = (process.env.APP_URL ?? "https://tr-rodionova.ru").replace(/\/$/, "");
   const regionIds = [...new Set(input.regions.flatMap((r) => REGIONS[r]?.ids ?? []))];
   if (!regionIds.length) throw new Error("Выберите хотя бы один регион показа");
-  const [categories, delivery, access] = await Promise.all([
+  const [categories, access] = await Promise.all([
     db.category.findMany({ where: { slug: { in: input.categories }, isActive: true }, include: { products: { where: { status: "ACTIVE" }, select: { price: true, material: true, name: true } } } }),
-    getSetting("delivery"),
     metrikaAccess(),
   ]);
   // номера целей Метрики: заказ — для стратегий и отчётов, просмотр вещи — для ретаргетинга
@@ -241,7 +239,7 @@ export async function createStarterCampaigns(cfg: DirectConfig, input: StarterIn
   const avgPrice = categories.flatMap((c) => c.products.map((p) => p.price));
   const aov = avgPrice.length ? avgPrice.reduce((s, p) => s + p, 0) / avgPrice.length : 30_000_00;
   const goal = goals.order ? { id: goals.order, valueRub: Math.round(aov / 100) } : null;
-  const fitting = `Примерка курьером в Москве и СПб${delivery.freeFrom ? `, бесплатно от ${fmtRub(delivery.freeFrom)}` : ""}`;
+  const shipping = "Доставка по России";
   const created: { externalId: string; name: string; kind: string; category: string | null; weekly: number; utm: string }[] = [];
 
   const run = async (name: string, kind: string, fn: () => Promise<{ id: number; weekly: number; utm: string; category: string | null }>) => {
@@ -261,8 +259,8 @@ export async function createStarterCampaigns(cfg: DirectConfig, input: StarterIn
       const group = await addGroup(cfg, id, "Бренд", regionIds);
       await addKeywords(cfg, group, ["t.rodionova", "trodionova", "tr rodionova", "t rodionova", "родионова одежда", "родионова бренд одежды", "татьяна родионова одежда", "tr rodionova одежда", "t.rodionova официальный сайт"], out.warnings);
       await addAds(cfg, group, [
-        { Title: "T.Rodionova — официальный сайт бренда", Title2: "Женская одежда", Text: `Боди, брюки, юбки, жакеты и платья из натуральных тканей. ${fitting}.`, Href: utmHref(base, "/", utm, "&utm_term={keyword}") },
-        { Title: "T.Rodionova — женская одежда", Title2: "Тираж до 60 вещей на модель", Text: `Шерсть из Бьеллы, шёлк из Комо, пошив в Португалии и Литве. ${fitting}.`, Href: utmHref(base, "/", utm, "&utm_term={keyword}") },
+        { Title: "T.Rodionova — официальный сайт бренда", Title2: "Женская одежда", Text: `Боди, брюки, юбки, жакеты и платья из натуральных тканей. ${shipping}.`, Href: utmHref(base, "/", utm, "&utm_term={keyword}") },
+        { Title: "T.Rodionova — женская одежда", Title2: "Тираж до 60 вещей на модель", Text: `Шерсть из Бьеллы, шёлк из Комо, пошив в Португалии и Литве. ${shipping}.`, Href: utmHref(base, "/", utm, "&utm_term={keyword}") },
       ], sitelinks ? { SitelinkSetId: sitelinks } : {}, out.warnings);
       return { id, weekly: budget.brand, utm, category: null };
     });
@@ -285,8 +283,8 @@ export async function createStarterCampaigns(cfg: DirectConfig, input: StarterIn
       const priceTitle = minPrice ? `${tpl.noun} T.Rodionova — от ${fmtRub(minPrice)}` : `${tpl.noun} T.Rodionova`;
       const materialTitle = materials.length ? `${tpl.noun} из ${materials.length > 1 ? `${materials[0]} и ${materials[1]}` : materials[0]} — T.Rodionova` : `${tpl.noun} — российский бренд T.Rodionova`;
       await addAds(cfg, group, [
-        { Title: priceTitle, Title2: "Примерка курьером", Text: `${tpl.features[0] ?? "Натуральные ткани, тираж до 60 вещей на модель"}. ${fitting}.`, Href: utmHref(base, `/catalog?category=${c.slug}`, utm, "&utm_term={keyword}") },
-        { Title: materialTitle, Title2: "Пошив в Португалии и Литве", Text: `Цена не меняется в течение сезона${minPrice ? `, ${tpl.noun.toLowerCase()} от ${fmtRub(minPrice)}` : ""}. Примерка курьером в Москве и СПб.`, Href: utmHref(base, `/catalog?category=${c.slug}`, utm, "&utm_term={keyword}") },
+        { Title: priceTitle, Title2: "Заказать онлайн", Text: `${tpl.features[0] ?? "Натуральные ткани, тираж до 60 вещей на модель"}. ${shipping}.`, Href: utmHref(base, `/catalog?category=${c.slug}`, utm, "&utm_term={keyword}") },
+        { Title: materialTitle, Title2: "Пошив в Португалии и Литве", Text: `Цена не меняется в течение сезона${minPrice ? `, ${tpl.noun.toLowerCase()} от ${fmtRub(minPrice)}` : ""}. Доставка по России.`, Href: utmHref(base, `/catalog?category=${c.slug}`, utm, "&utm_term={keyword}") },
       ], sitelinks ? { SitelinkSetId: sitelinks } : {}, out.warnings);
       return { id, weekly: budget.perCategory, utm, category: c.slug };
     });
@@ -305,8 +303,8 @@ export async function createStarterCampaigns(cfg: DirectConfig, input: StarterIn
       idOf(at.AddResults, "Аудитория группы");
       const image = await uploadLookImage(cfg, out.warnings);
       await addAds(cfg, group, [
-        { Title: "Вещь T.Rodionova, которую вы смотрели", Title2: "Примерка курьером", Text: `Натуральные ткани, тираж до 60 вещей на модель. ${fitting}.`, Href: utmHref(base, "/catalog", utm) },
-        { Title: "T.Rodionova: цена не меняется в сезоне", Title2: "Распродаж не бывает", Text: `Вернитесь к вещи, которую смотрели: шерсть из Бьеллы, шёлк из Комо. ${fitting}.`, Href: utmHref(base, "/catalog", utm) },
+        { Title: "Вещь T.Rodionova, которую вы смотрели", Title2: "Заказать онлайн", Text: `Натуральные ткани, тираж до 60 вещей на модель. ${shipping}.`, Href: utmHref(base, "/catalog", utm) },
+        { Title: "T.Rodionova: цена не меняется в сезоне", Title2: "Распродаж не бывает", Text: `Вернитесь к вещи, которую смотрели: шерсть из Бьеллы, шёлк из Комо. ${shipping}.`, Href: utmHref(base, "/catalog", utm) },
       ], { ...(sitelinks ? { SitelinkSetId: sitelinks } : {}), ...(image ? { AdImageHash: image } : {}) }, out.warnings);
       return { id, weekly: budget.retargeting, utm, category: null };
     });

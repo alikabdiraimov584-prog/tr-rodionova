@@ -31,7 +31,7 @@ export async function GET() {
   lines.push("<offers>");
   for (const p of products) {
     for (const v of p.variants) {
-      const available = p.isPreorder || v.stock - v.reserved > 0;
+      const available = v.stock - v.reserved > 0;
       lines.push(`<offer id="${esc(v.sku)}" group_id="${esc(p.sku)}" available="${available}">`);
       lines.push(`<name>${esc(`${p.name}, ${v.size}${v.color ? `, ${v.color}` : ""}`)}</name>`);
       lines.push(`<url>${esc(absolute(`/product/${p.slug}`))}</url>`);
@@ -48,7 +48,6 @@ export async function GET() {
       if (p.madeIn) lines.push(`<country_of_origin>${esc(p.madeIn)}</country_of_origin>`);
       // самовывоза без шоурума нет; sales_notes (до 50 знаков) показывается в карточке товара Яндекса
       lines.push("<store>false</store><pickup>false</pickup><delivery>true</delivery>");
-      lines.push("<sales_notes>Примерка курьером в Москве и Петербурге</sales_notes>");
       lines.push("</offer>");
     }
   }

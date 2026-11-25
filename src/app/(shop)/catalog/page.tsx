@@ -15,7 +15,7 @@ export async function generateMetadata({ searchParams }: PageProps<"/catalog">):
   // выдача поиска — не самостоятельная страница: не индексируется, ссылки по ней поисковик проходит
   if (typeof sp.q === "string") return { title: "Поиск", robots: { index: false, follow: true } };
   if (!slug && sp.new === "1") {
-    return { title: "Новинки", description: "Новые вещи T.Rodionova: жакеты, платья, трикотаж и брюки из шерсти, кашемира и шёлка. Доставка по России, примерка курьером.", alternates: { canonical: "/catalog?new=1" } };
+    return { title: "Новинки", description: "Новые вещи T.Rodionova: жакеты, платья, трикотаж и брюки из шерсти, кашемира и шёлка. Доставка по России.", alternates: { canonical: "/catalog?new=1" } };
   }
   if (!slug) return { title: "Каталог", description: "Женская одежда T.Rodionova: жакеты, платья, боди, брюки, трикотаж из шерсти, кашемира и шёлка. Доставка по России.", alternates: { canonical: "/catalog" } };
   const c = await db.category.findUnique({ where: { slug } });
@@ -24,7 +24,7 @@ export async function generateMetadata({ searchParams }: PageProps<"/catalog">):
   return {
     // бренд уже в заголовке — без второго «— T.Rodionova» из шаблона
     title: /T\.?\s?Rodionova/i.test(title) ? { absolute: title } : title,
-    description: c.seoDescription ?? `${c.name} T.Rodionova: премиальная женская одежда, сшито в Европе. Доставка по России, примерка курьером.`,
+    description: c.seoDescription ?? `${c.name} T.Rodionova: премиальная женская одежда, сшито в Европе. Доставка по России.`,
     alternates: { canonical: `/catalog?category=${c.slug}` },
   };
 }

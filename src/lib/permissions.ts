@@ -7,7 +7,6 @@ export const SECTIONS = {
   ads: ["MANAGER", "ADMIN"], // реклама: смотреть статистику и рекомендации
   adsEdit: ["ADMIN"], // реклама: создавать и запускать кампании, менять бюджеты — трата денег
   campaigns: ["MANAGER", "ADMIN"],
-  content: ["MANAGER", "ADMIN"], // лукбук, журнал
   giftcards: ["SUPPORT", "MANAGER", "ADMIN"],
   stylist: ["SUPPORT", "MANAGER", "ADMIN"],
   support: ["SUPPORT", "MANAGER", "ADMIN"],

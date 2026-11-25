@@ -143,22 +143,4 @@ jobs:
               for f in sorted(found)[:25]:
                   print("   ", f)
 
-          print("== Статьи журнала: находит ли поиск статью по точному заголовку")
-          s, _, feed = get(B + "/journal/feed.xml")
-          items = re.findall(r"<item>.*?<title>(.*?)</title>.*?<link>(.*?)</link>.*?<pubDate>(.*?)</pubDate>", feed, re.S)
-          items = [(re.sub(r"<!\[CDATA\[|\]\]>", "", t).strip(), l.strip(), d[5:16]) for t, l, d in items]
-          print(f"статей в RSS: {len(items)}")
-          live = [n for n in ("Bing", "DuckDuckGo", "Яндекс", "Google") if n not in blocked]
-          totals = {n: 0 for n in live}
-          for title, link, date in items:
-              slug = link.rstrip("/").split("/")[-1]
-              marks = []
-              for n in live:
-                  found = search(n, f'"{title}"')
-                  ok = found is not None and any(slug in u for u in found)
-                  totals[n] += ok
-                  marks.append(f"{n}: {'да' if ok else ('капча' if found is None else 'нет')}")
-                  time.sleep(2)
-              print(f"{date} | {' | '.join(marks)} | {title[:70]}")
-          print("итого найдено:", ", ".join(f"{n} {v} из {len(items)}" for n, v in totals.items()))
           PY

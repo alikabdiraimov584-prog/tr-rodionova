@@ -122,7 +122,7 @@ export async function notifyOrder(orderId: string, event: OrderEventKind) {
         const reason = ev?.message.replace(/^Заказ отменён:?\s*/, "").trim();
         const unpaid = !!reason && /не оплачен/.test(reason);
         const why = unpaid ? ": оплата не поступила за 24 часа, и резерв снят" : reason ? `: ${reason.charAt(0).toLowerCase()}${reason.slice(1).replace(/\.$/, "")}` : "";
-        text = `${hi}\n\nЗаказ ${n} отменён${why}.${unpaid ? ` Если вещи ещё нужны, оформите заказ заново: ${siteUrl()}/cart` : ""}${order.total > 0 && order.paidAt ? " Деньги вернутся на карту в течение 3–10 рабочих дней." : ""}\n\nЕсли отмена произошла по ошибке, ответьте на это письмо.`;
+        text = `${hi}\n\nЗаказ ${n} отменён${why}.${unpaid ? ` Если вещи ещё нужны, оформите заказ заново: ${siteUrl()}/cart` : ""}\n\nЕсли отмена произошла по ошибке, ответьте на это письмо.`;
         break;
       }
     }

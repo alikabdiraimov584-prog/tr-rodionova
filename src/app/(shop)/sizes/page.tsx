@@ -90,7 +90,7 @@ export default async function SizesPage() {
         </div>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href={user ? "/account/profile" : "/login?next=/account/profile"} className="btn-primary">Сохранить мерки в кабинете</Link>
-          <Link href={user ? "/account/support?topic=stylist" : "/login?next=/account/support?topic=stylist"} className="btn-ghost">Сомневаетесь — запишитесь на примерку</Link>
+          <Link href={user ? "/account/support?topic=stylist" : "/login?next=/account/support?topic=stylist"} className="btn-ghost">Помощь с выбором размера</Link>
         </div>
       </section>
     </div>

@@ -5,14 +5,13 @@ import Link from "next/link";
 import { checkoutAction, quoteAction, suggestAddressAction, type QuoteView } from "@/app/actions/shop";
 import { trackGoal } from "@/lib/metrika-client";
 import { formatMoney } from "@/lib/money";
-import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
+import { ACTIVE_DELIVERY, DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
 import type { DeliveryMethod, PaymentMethod } from "@/generated/prisma/enums";
 
 type Address = { id: string; label: string | null; text: string; isDefault: boolean };
 type Profile = { firstName: string; lastName: string | null; email: string; phone: string | null };
 
 const SLOTS = ["10:00–14:00", "14:00–18:00", "18:00–22:00"];
-const PRIMARY_DELIVERY: DeliveryMethod[] = ["COURIER", "CDEK"];
 const STEPS = ["Доставка", "Оплата", "Проверка"] as const;
 
 /**
@@ -22,17 +21,16 @@ const STEPS = ["Доставка", "Оплата", "Проверка"] as const;
  */
 const ONLINE: PaymentMethod[] = ["CARD", "SBP", "INSTALLMENT"];
 
-export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom, suggestions, online }: { profile: Profile | null; addresses: Address[]; initialQuote: QuoteView; guest: boolean; showroom: string | null; suggestions: boolean; online: boolean }) {
+export function CheckoutForm({ profile, addresses, initialQuote, guest, suggestions, online }: { profile: Profile | null; addresses: Address[]; initialQuote: QuoteView; guest: boolean; suggestions: boolean; online: boolean }) {
   // без подключённой кассы — только способы, которые работают: при получении и переводом по реквизитам
   const [state, action, pending] = useActionState(checkoutAction, undefined);
   const [step, setStep] = useState(0);
   // цель Метрики: открыто оформление заказа (один раз при входе на страницу)
   useEffect(() => { trackGoal("checkout"); }, []);
   const [stepError, setStepError] = useState<string | null>(null);
-  const [delivery, setDelivery] = useState<DeliveryMethod>("COURIER");
+  const [delivery, setDelivery] = useState<DeliveryMethod>("CDEK");
   // курьер Яндекс Доставки деньги не принимает — «при получении» для него не предлагается
-  const methods = (Object.keys(PAYMENT_METHOD) as PaymentMethod[]).filter((m) => (online || !ONLINE.includes(m)) && (m !== "CASH_ON_DELIVERY" || delivery !== "YANDEX"));
-  const [moreDelivery, setMoreDelivery] = useState(false);
+  const methods = (Object.keys(PAYMENT_METHOD) as PaymentMethod[]).filter((m) => (online || !ONLINE.includes(m)) && (m !== "CASH_ON_DELIVERY" || delivery === "CDEK"));
   const [payment, setPayment] = useState<PaymentMethod>(online ? "CARD" : "CASH_ON_DELIVERY");
   const [addressId, setAddressId] = useState(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? "");
   const [addressText, setAddressText] = useState("");
@@ -47,16 +45,13 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addressRef = useRef<HTMLTextAreaElement>(null);
 
-  const deliveryMethods = (Object.keys(DELIVERY_METHOD) as DeliveryMethod[]).filter((m) => m !== "PICKUP" || showroom);
-  const visibleDelivery = moreDelivery || !PRIMARY_DELIVERY.includes(delivery) ? deliveryMethods : deliveryMethods.filter((m) => PRIMARY_DELIVERY.includes(m));
   const needsAddress = delivery !== "PICKUP";
-  const hasSlot = delivery === "COURIER" || delivery === "YANDEX";
-  const canFit = delivery === "COURIER";
+  const hasSlot = delivery === "YANDEX";
 
   // курьер Яндекса деньги не берёт: при выборе этой доставки «при получении» заменяется на оплату на сайте или перевод
   function chooseDelivery(m: DeliveryMethod) {
     setDelivery(m);
-    if (m === "YANDEX" && payment === "CASH_ON_DELIVERY") setPayment(online ? "CARD" : "MANUAL");
+    if (m !== "CDEK" && payment === "CASH_ON_DELIVERY") setPayment(online ? "CARD" : "MANUAL");
   }
 
   useEffect(() => {
@@ -144,28 +139,16 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           <div>
             <h2 className="mb-4">Доставка</h2>
             <div className="grid gap-2">
-              {visibleDelivery.map((m) => (
+              {ACTIVE_DELIVERY.map((m) => (
                 <label key={m} className={`flex cursor-pointer items-start gap-3 border p-4 ${delivery === m ? "border-ink bg-panel" : "border-line"}`}>
                   <input type="radio" name="deliveryMethod" value={m} checked={delivery === m} onChange={() => chooseDelivery(m)} className="mt-1 h-4 w-4 shrink-0 accent-black" />
                   <span>
                     <span className="block text-sm">{DELIVERY_METHOD[m].label}</span>
-                    <span className="block text-xs text-muted">{m === "PICKUP" && showroom ? showroom : DELIVERY_METHOD[m].hint}</span>
+                    <span className="block text-xs text-muted">{DELIVERY_METHOD[m].hint}</span>
                   </span>
                 </label>
               ))}
-              {!moreDelivery && visibleDelivery.length < deliveryMethods.length && (
-                <button type="button" onClick={() => setMoreDelivery(true)} className="min-h-10 self-start text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted underline underline-offset-4">Другие способы</button>
-              )}
             </div>
-            {canFit && (
-              <label className="mt-4 flex cursor-pointer items-start gap-3 border border-line p-4 text-sm">
-                <input type="checkbox" name="fittingRequested" value="on" defaultChecked className="mt-1 h-4 w-4 shrink-0 accent-black" />
-                <span>
-                  <span className="block">Примерка перед покупкой</span>
-                  <span className="block text-xs text-muted">Курьер подождёт до 20 минут. Оплатите только то, что подошло: за остальное вернём деньги после возврата курьером.</span>
-                </span>
-              </label>
-            )}
             {hasSlot && (
               <div className="mt-4">
                 <span className="label">Удобный интервал</span>
@@ -195,7 +178,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
                 {(!addressId || addresses.length === 0) && (
                   <div className="relative">
                     <label className="block">
-                      <span className="label">{delivery === "CDEK" || delivery === "BOXBERRY" ? "Адрес или пункт выдачи" : "Адрес доставки"}</span>
+                      <span className="label">{delivery === "CDEK" ? "Адрес или пункт выдачи" : "Адрес доставки"}</span>
                       <textarea name="addressText" rows={2} ref={addressRef} defaultValue={addressText} onChange={(e) => onAddressInput(e.target.value)} autoComplete="street-address" className="input" placeholder="Город, улица, дом, квартира, индекс" />
                     </label>
                     {hints.length > 0 && (
@@ -251,7 +234,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           </details>
           <label className="block">
             <span className="label">Комментарий к заказу</span>
-            <textarea name="comment" rows={2} className="input" placeholder="Пожелания по примерке, код домофона" />
+            <textarea name="comment" rows={2} className="input" placeholder="Например, код домофона" />
           </label>
         </section>
 
@@ -260,7 +243,7 @@ export function CheckoutForm({ profile, addresses, initialQuote, guest, showroom
           <h2>Проверьте заказ</h2>
           <ul className="space-y-2 text-sm">
             {quote.lines.map((l) => (
-              <li key={l.variantId} className="flex justify-between gap-3"><span className="min-w-0">{l.productName}, {l.size}{l.color ? `, ${l.color}` : ""} × {l.quantity}{l.isPreorder ? " · предзаказ" : ""}</span><span className="shrink-0">{formatMoney(l.price * l.quantity)}</span></li>
+              <li key={l.variantId} className="flex justify-between gap-3"><span className="min-w-0">{l.productName}, {l.size}{l.color ? `, ${l.color}` : ""} × {l.quantity}</span><span className="shrink-0">{formatMoney(l.price * l.quantity)}</span></li>
             ))}
           </ul>
           <div className="border border-line bg-panel p-4 text-sm">

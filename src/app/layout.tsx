@@ -34,14 +34,13 @@ export async function generateMetadata(): Promise<Metadata> {
 const baseMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: "T.Rodionova — Premium womenswear", template: "%s — T.Rodionova" },
-  description: "Женская одежда из шерсти, кашемира и шёлка. Сшито в Европе. Доставка по России, примерка курьером.",
+  description: "Женская одежда из шерсти, кашемира и шёлка. Сшито в Европе. Доставка по России.",
   applicationName: "T.Rodionova",
   keywords: ["женская одежда премиум", "вечерние платья", "кашемир", "шёлк", "T.Rodionova", "жакет", "платье", "боди", "брюки палаццо"],
   // без url: иначе все страницы без своего openGraph выдавали бы в og:url адрес главной
   openGraph: { type: "website", siteName: "T.Rodionova", locale: "ru_RU", images: [{ url: "/images/brand/looks/look-01.jpg", width: 700, height: 1000, alt: "T.Rodionova — premium womenswear" }] },
   twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
-  alternates: { types: { "application/rss+xml": `${siteUrl}/journal/feed.xml` } },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

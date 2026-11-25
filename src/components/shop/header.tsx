@@ -58,7 +58,6 @@ export async function ShopFooter() {
     ["/sizes", "Размеры"],
     ["/care", "Уход"],
     ["/faq", "Вопросы и ответы"],
-    ["/journal", "Журнал"],
   ];
   const legal: [string, string][] = [
     ["/offer", "Оферта"],

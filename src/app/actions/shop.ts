@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createOrderPayment, ONLINE_PAYMENT_METHODS, onlinePaymentsAvailable, paymentsEnabled } from "@/lib/payments/provider";
+import { ACTIVE_DELIVERY } from "@/lib/labels";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentCustomer, getCurrentUser, requireUser } from "@/lib/auth";
@@ -38,7 +39,7 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
       const r = await addToGuestCart(token, variantId);
       if (!r.limit) await trackEvent("ADD_TO_CART", { productId: r.variant.productId });
       revalidatePath("/", "layout");
-      return { ok: true, code: r.limit ? `${variantId}|max` : variantId, message: addedMessage(r.quantity, r.limit, r.variant.product.isPreorder) };
+      return { ok: true, code: r.limit ? `${variantId}|max` : variantId, message: addedMessage(r.quantity, r.limit) };
     } catch (e) {
       return { error: errorMessage(e), code: variantId };
     }
@@ -48,7 +49,7 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
   const inCart = await db.cartItem.findUnique({ where: { userId_variantId: { userId: user.id, variantId } } });
   const have = inCart?.quantity ?? 0;
   if (have + 1 > cartLimit(variant)) {
-    return have > 0 ? { ok: true, code: `${variantId}|max`, message: addedMessage(have, true, variant.product.isPreorder) } : { error: "Этого размера больше нет в наличии", code: variantId };
+    return have > 0 ? { ok: true, code: `${variantId}|max`, message: addedMessage(have, true) } : { error: "Этого размера больше нет в наличии", code: variantId };
   }
   await db.cartItem.upsert({
     where: { userId_variantId: { userId: user.id, variantId } },
@@ -57,7 +58,7 @@ export async function addToCartAction(_: ActionState, formData: FormData): Promi
   });
   await trackEvent("ADD_TO_CART", { productId: variant.productId, userId: user.id });
   revalidatePath("/", "layout");
-  return { ok: true, code: variantId, message: addedMessage(have + 1, false, variant.product.isPreorder) };
+  return { ok: true, code: variantId, message: addedMessage(have + 1, false) };
 }
 
 export async function updateCartAction(formData: FormData) {
@@ -99,12 +100,11 @@ const CheckoutSchema = z.object({
   lastName: z.string().trim().optional(),
   email: z.string().trim().email("Неверный email"),
   phone: z.string().trim().min(10, "Введите телефон"),
-  deliveryMethod: z.enum(["COURIER", "CDEK", "BOXBERRY", "YANDEX", "PICKUP"]),
+  deliveryMethod: z.enum(ACTIVE_DELIVERY),
   paymentMethod: z.enum(["CARD", "SBP", "INSTALLMENT", "CASH_ON_DELIVERY", "MANUAL"]),
   addressId: z.string().optional(),
   addressText: z.string().trim().optional(),
   comment: z.string().trim().max(500).optional(),
-  fittingRequested: z.string().optional(),
   deliverySlot: z.string().trim().max(40).optional(),
   consent: z.string().optional(),
   offer: z.string().optional(),
@@ -150,7 +150,7 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   // курьер Яндекс Доставки деньги не принимает: наложенный платёж для этого способа закрыт и в форме, и здесь
-  if (d.deliveryMethod === "YANDEX" && d.paymentMethod === "CASH_ON_DELIVERY") {
+  if (d.deliveryMethod !== "CDEK" && d.paymentMethod === "CASH_ON_DELIVERY") {
     return { error: "Курьер Яндекс Доставки не принимает оплату при получении: выберите оплату на сайте или перевод по реквизитам" };
   }
   // форма, открытая до отключения кассы, не должна создать заказ, который нечем оплатить
@@ -179,8 +179,7 @@ export async function checkoutAction(_: ActionState, formData: FormData): Promis
       addressText: d.addressText || null,
       promoCode: d.promoCode || null,
       giftCode: d.giftCode || null,
-      fittingRequested: d.deliveryMethod === "COURIER" && d.fittingRequested === "on",
-      deliverySlot: d.deliveryMethod === "COURIER" || d.deliveryMethod === "YANDEX" ? d.deliverySlot || null : null,
+      deliverySlot: d.deliveryMethod === "YANDEX" ? d.deliverySlot || null : null,
     });
     orderId = order.id;
   } catch (e) {

@@ -41,7 +41,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/crm/an
       <PageTitle
         title="Аналитика сайта"
         actions={<>
-          <Link href={`/crm/analytics/journal?days=${days}`} className="btn-outline btn-sm">Аналитика журнала</Link>
           {[7, 30, 90].map((d) => <Link key={d} href={qs("/crm/analytics", { days: d, dim })} className={`btn btn-sm ${days === d ? "bg-ink text-ivory" : "border border-line"}`}>{d} дн.</Link>)}
         </>}
       >

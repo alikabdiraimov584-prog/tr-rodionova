@@ -29,7 +29,6 @@ export function ids() {
 
 type BrandLike = { name: string; phone: string; email: string; telegram?: string; description?: string; foundedYear?: string; founder?: string; city?: string; instagram?: string; vk?: string; pinterest?: string; youtube?: string; dzen?: string; yandexBusiness?: string; twoGis?: string; wikidata?: string; showroomGeo?: string };
 type SellerLike = { name?: string; inn?: string; address?: string; hours?: string; showroom?: string };
-type DeliveryLike = { freeFrom: number; courier: number; cdek: number };
 
 const SCHEMA = "https://schema.org/";
 
@@ -58,16 +57,13 @@ export function founderJsonLd(brand: BrandLike) {
 }
 
 /** Общие условия возврата: 14 дней, обратная доставка за счёт покупательницы. */
-export function returnPolicyJsonLd(hasStore = false) {
+export function returnPolicyJsonLd() {
   return {
     "@type": "MerchantReturnPolicy",
     applicableCountry: "RU",
     returnPolicyCountry: "RU",
     returnPolicyCategory: `${SCHEMA}MerchantReturnFiniteReturnWindow`,
     merchantReturnDays: 14,
-    returnMethod: [`${SCHEMA}ReturnByMail`, ...(hasStore ? [`${SCHEMA}ReturnInStore`] : [])],
-    returnFees: `${SCHEMA}ReturnFeesCustomerResponsibility`,
-    refundType: `${SCHEMA}FullRefund`,
     itemCondition: `${SCHEMA}NewCondition`,
     merchantReturnLink: absolute("/delivery#returns"),
   };
@@ -107,7 +103,7 @@ export function organizationJsonLd(brand: BrandLike, seller?: SellerLike) {
     contactPoint: [{ "@type": "ContactPoint", contactType: "customer service", ...(phone ? { telephone: phone } : {}), email: brand.email, availableLanguage: ["ru"], areaServed: "RU" }],
     sameAs,
     brand: { "@type": "Brand", "@id": ids().brand, name: brand.name, logo: logoJsonLd(), sameAs },
-    hasMerchantReturnPolicy: returnPolicyJsonLd(hasStore),
+    hasMerchantReturnPolicy: returnPolicyJsonLd(),
     ...(hasStore ? { location: { "@id": ids().store } } : {}),
   };
 }
@@ -186,23 +182,6 @@ export function storeJsonLd(brand: BrandLike, seller: SellerLike) {
   };
 }
 
-/**
- * Условия доставки и возврата для Offer: поисковики показывают их в карточке, ИИ-ответы цитируют.
- * price — цена предложения в копейках: от порога бесплатной доставки тариф 0, как в корзине и на карточке.
- */
-export function offerPoliciesJsonLd(delivery: DeliveryLike, hasStore = false, price?: number) {
-  const free = price !== undefined && delivery.freeFrom > 0 && price >= delivery.freeFrom;
-  const rub = (k: number) => (free ? 0 : k / 100).toFixed(2);
-  const time = (min: number, max: number) => ({ "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: min, maxValue: max, unitCode: "DAY" } });
-  return {
-    shippingDetails: [
-      { "@type": "OfferShippingDetails", shippingDestination: { "@type": "DefinedRegion", addressCountry: "RU" }, shippingRate: { "@type": "MonetaryAmount", value: rub(delivery.cdek), currency: "RUB" }, deliveryTime: time(2, 7) },
-      { "@type": "OfferShippingDetails", shippingDestination: { "@type": "DefinedRegion", addressCountry: "RU", addressRegion: ["Москва", "Санкт-Петербург"] }, shippingRate: { "@type": "MonetaryAmount", value: rub(delivery.courier), currency: "RUB" }, deliveryTime: time(1, 2) },
-    ],
-    hasMerchantReturnPolicy: returnPolicyJsonLd(hasStore),
-  };
-}
-
 type ProductLike = {
   slug: string;
   sku: string;
@@ -211,7 +190,6 @@ type ProductLike = {
   composition: string | null;
   madeIn: string | null;
   price: number;
-  isPreorder: boolean;
   isPreloved: boolean;
   condition: string | null;
   category?: { name: string } | null;
@@ -225,14 +203,14 @@ type ProductLike = {
  * у каждого варианта — своё предложение с ценой, наличием и остатком; отзывы покупательниц — как Review с автором и датой.
  * Без вариантов (например, вещь под предзаказ без сетки размеров) — обычный Product.
  */
-export function productJsonLd(p: ProductLike, delivery: DeliveryLike, opts: { hasStore?: boolean } = {}) {
+export function productJsonLd(p: ProductLike) {
   const url = absolute(`/product/${p.slug}`);
   const images = p.images.map((i) => absolute(i.url));
   const colors = [...new Set(p.variants.map((v) => v.color).filter((c): c is string => !!c))];
   const sizes = [...new Set(p.variants.map((v) => v.size))];
   const condition = p.isPreloved ? `${SCHEMA}UsedCondition` : `${SCHEMA}NewCondition`;
   const priceValidUntil = `${new Date().getFullYear()}-12-31`;
-  const availability = (free: number) => (p.isPreorder ? `${SCHEMA}PreOrder` : free > 0 ? `${SCHEMA}InStock` : `${SCHEMA}OutOfStock`);
+  const availability = (free: number) => (free > 0 ? `${SCHEMA}InStock` : `${SCHEMA}OutOfStock`);
   const offer = (price: number, free: number, offerUrl: string) => ({
     "@type": "Offer",
     url: offerUrl,
@@ -240,10 +218,10 @@ export function productJsonLd(p: ProductLike, delivery: DeliveryLike, opts: { ha
     price: (price / 100).toFixed(2),
     priceValidUntil,
     availability: availability(free),
-    ...(p.isPreorder ? {} : { inventoryLevel: { "@type": "QuantitativeValue", value: Math.max(0, free) } }),
+    inventoryLevel: { "@type": "QuantitativeValue", value: Math.max(0, free) },
     itemCondition: condition,
     seller: { "@id": ids().organization },
-    ...(p.isPreloved ? {} : offerPoliciesJsonLd(delivery, opts.hasStore, price)),
+    ...(p.isPreloved ? {} : { hasMerchantReturnPolicy: returnPolicyJsonLd() }),
   });
   const common = {
     brand: { "@id": ids().brand },
@@ -305,32 +283,6 @@ export function productJsonLd(p: ProductLike, delivery: DeliveryLike, opts: { ha
       };
     }),
     ...reviews,
-  };
-}
-
-type ArticleLike = { slug: string; title: string; excerpt: string | null; metaDescription: string | null; coverUrl: string | null; publishedAt: Date | null; updatedAt: Date; category: string | null; keywords: string[] };
-
-/** Статья журнала: автор — основательница (Person с @id), издатель — организация, упомянутые вещи — ссылками на их ProductGroup. */
-export function articleJsonLd(a: ArticleLike, brand: BrandLike, products: { slug: string; name: string }[]) {
-  const founder = founderJsonLd(brand);
-  return {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    "@id": `${absolute(`/journal/${a.slug}`)}#article`,
-    headline: a.title,
-    description: a.metaDescription ?? a.excerpt ?? undefined,
-    image: a.coverUrl ? [absolute(a.coverUrl)] : undefined,
-    datePublished: a.publishedAt?.toISOString(),
-    dateModified: a.updatedAt.toISOString(),
-    articleSection: a.category ?? undefined,
-    ...(a.category ? { about: [{ "@type": "Thing", name: a.category }] } : {}),
-    keywords: a.keywords.join(", ") || undefined,
-    inLanguage: "ru-RU",
-    mainEntityOfPage: absolute(`/journal/${a.slug}`),
-    isPartOf: { "@id": ids().website },
-    author: founder ?? { "@id": ids().organization },
-    publisher: { "@id": ids().organization },
-    ...(products.length ? { mentions: products.map((p) => ({ "@type": "Product", "@id": `${absolute(`/product/${p.slug}`)}#group`, name: p.name, url: absolute(`/product/${p.slug}`) })) } : {}),
   };
 }
 

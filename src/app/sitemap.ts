@@ -8,10 +8,8 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const now = new Date();
-  const [products, articles, looks, categories] = await Promise.all([
+  const [products, categories] = await Promise.all([
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, select: { slug: true, updatedAt: true } }),
-    db.article.findMany({ where: { publishedAt: { not: null, lte: now } }, select: { slug: true, updatedAt: true } }),
-    db.look.findMany({ where: { isPublished: true }, select: { slug: true, createdAt: true } }),
     // только категории, которые видны в меню: показанные и с вещами в продаже
     db.category.findMany({ where: { isActive: true, products: { some: { status: "ACTIVE" } } }, select: { slug: true } }),
   ]);
@@ -25,8 +23,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page("/", 1, "daily"),
     page("/catalog", 0.9, "daily"),
     page("/catalog?new=1", 0.8, "daily"),
-    page("/journal", 0.8, "daily"),
-    page("/lookbook", 0.7, "weekly"),
     page("/collections", 0.6, "weekly"),
     page("/about", 0.5, "monthly"),
     page("/faq", 0.6, "monthly"),
@@ -39,7 +35,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page("/seller", 0.3, "yearly"),
     ...categories.map((c) => page(`/catalog?category=${c.slug}`, 0.7, "weekly")),
     ...products.map((p) => page(`/product/${p.slug}`, 0.8, "weekly", p.updatedAt)),
-    ...articles.map((a) => page(`/journal/${a.slug}`, 0.7, "monthly", a.updatedAt)),
-    ...looks.map((l) => page(`/lookbook/${l.slug}`, 0.6, "monthly", l.createdAt)),
   ];
 }

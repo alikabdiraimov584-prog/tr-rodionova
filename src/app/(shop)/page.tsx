@@ -13,7 +13,7 @@ const HOME_SHOT = "/images/brand/TR-DR-101/tr-halter-04.jpg";
 // canonical: адреса с метками рекламы (?utm_…, ?yclid=…) поисковики склеивают с главной, а не считают копиями
 export const metadata: Metadata = {
   title: { absolute: "T.Rodionova — премиальная женская одежда из шерсти, кашемира и шёлка" },
-  alternates: { canonical: "/", types: { "application/rss+xml": "/journal/feed.xml" } },
+  alternates: { canonical: "/" },
 };
 
 async function CollectionGrid() {

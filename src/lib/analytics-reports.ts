@@ -1,6 +1,5 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { Prisma } from "@/generated/prisma/client";
 import type { TrafficChannel } from "@/generated/prisma/enums";
 
 const PAID_STATUSES = ["PAID", "CONFIRMED", "PACKING", "SHIPPED", "DELIVERED", "COMPLETED"] as const;
@@ -153,62 +152,4 @@ export async function firstTouch() {
 export async function trackingLinks(p: Period) {
   const links = await db.trackingLink.findMany({ orderBy: { createdAt: "desc" }, include: { sessions: { where: { startedAt: { gte: p.from, lt: p.to } }, select: { id: true, orders: { where: { status: { in: [...PAID_STATUSES] } }, select: { total: true } } } } } });
   return links.map((l) => ({ ...l, visits: l.sessions.length, orders: l.sessions.reduce((a, s) => a + s.orders.length, 0), revenue: l.sessions.reduce((a, s) => a + s.orders.reduce((x, o) => x + o.total, 0), 0) }));
-}
-
-type JournalReach = {
-  dimension: "total" | "day" | "article" | "category" | "channel";
-  key: string;
-  views: number;
-  visits: number;
-  readers: number;
-};
-
-export async function journalAnalytics(p: { from: Date | null; to: Date }) {
-  const [articles, reach, orders] = await Promise.all([
-    db.article.findMany({
-      where: { publishedAt: { lte: new Date() } },
-      select: { slug: true, title: true, category: true, publishedAt: true },
-      orderBy: [{ publishedAt: "desc" }, { slug: "asc" }],
-    }),
-    db.$queryRaw<JournalReach[]>`
-      WITH hits AS (
-        SELECT a.slug, COALESCE(NULLIF(a.category, ''), 'Без рубрики') AS category,
-          s.id AS visit, s."visitorId", s.channel::text AS channel,
-          to_char((e."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${ANALYTICS_TIME_ZONE}, 'YYYY-MM-DD') AS day
-        FROM "AnalyticsEvent" e
-        JOIN "Article" a ON rtrim(split_part(split_part(e.path, '?', 1), '#', 1), '/') = '/journal/' || a.slug
-        JOIN "VisitorSession" s ON s.id = e."sessionId"
-        WHERE e.type = 'PAGEVIEW' AND e.path LIKE '/journal/%'
-          AND e."createdAt" >= COALESCE(${p.from}::timestamp, '-infinity'::timestamp)
-          AND e."createdAt" < ${p.to} AND e."createdAt" >= a."publishedAt"
-      )
-      SELECT CASE
-          WHEN GROUPING(day) = 0 THEN 'day'
-          WHEN GROUPING(slug) = 0 THEN 'article'
-          WHEN GROUPING(category) = 0 THEN 'category'
-          WHEN GROUPING(channel) = 0 THEN 'channel'
-          ELSE 'total'
-        END AS dimension,
-        COALESCE(day, slug, category, channel, '') AS key,
-        count(*)::int AS views, count(DISTINCT visit)::int AS visits, count(DISTINCT "visitorId")::int AS readers
-      FROM hits
-      GROUP BY GROUPING SETS ((), (day), (slug), (category), (channel))
-    `,
-    db.$queryRaw<{ orders: number; revenue: bigint }[]>`
-      SELECT count(*)::int AS orders, COALESCE(sum(o.total), 0)::bigint AS revenue
-      FROM "Order" o
-      WHERE o."createdAt" >= COALESCE(${p.from}::timestamp, '-infinity'::timestamp)
-        AND o."createdAt" < ${p.to}
-        AND o.status IN (${Prisma.join(PAID_STATUSES.map((status) => Prisma.sql`${status}::"OrderStatus"`))})
-        AND EXISTS (
-          SELECT 1 FROM "AnalyticsEvent" e
-          JOIN "Article" a ON rtrim(split_part(split_part(e.path, '?', 1), '#', 1), '/') = '/journal/' || a.slug
-          WHERE e."sessionId" = o."sessionId" AND e.type = 'PAGEVIEW'
-            AND e.path LIKE '/journal/%'
-            AND e."createdAt" >= COALESCE(${p.from}::timestamp, '-infinity'::timestamp)
-            AND e."createdAt" >= a."publishedAt" AND e."createdAt" <= o."createdAt"
-        )
-    `,
-  ]);
-  return { articles, reach, orders: orders[0].orders, revenue: Number(orders[0].revenue) };
 }

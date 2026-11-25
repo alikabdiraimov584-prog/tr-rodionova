@@ -17,10 +17,9 @@ export const metadata: Metadata = {
  * Цитаты основательницы здесь не публикуются: их даёт только она сама в ответ на запрос.
  */
 export default async function PressPage() {
-  const [brand, seller, delivery, products] = await Promise.all([
+  const [brand, seller, products] = await Promise.all([
     getSetting("brand"),
     getSetting("seller"),
-    getSetting("delivery"),
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false }, orderBy: { createdAt: "desc" }, include: { images: { orderBy: { order: "asc" }, take: 1 }, category: true } }),
   ]);
   const rows: [string, string][] = [
@@ -30,15 +29,15 @@ export default async function PressPage() {
     ["Что делает", brand.description || "Премиальная женская одежда из шерсти, кашемира и шёлка"],
     ["Ткани", "Костюмная шерсть и пальтовые ткани из Бьеллы (Италия), кашемир из Монголии, шёлк из Комо, хлопковый поплин из Швейцарии"],
     ["Производство", "Пошив в Португалии и Литве; контроль качества в Москве, каждая вещь проверяется вручную"],
-    ["Тираж", "До 60 единиц на модель; допошив только под предзаказ"],
+    ["Тираж", "До 60 единиц на модель"],
     ["Цены", `Фиксированы на сезон, распродаж нет. Текущая коллекция: ${products.length ? `от ${formatMoney(Math.min(...products.map((p) => p.price)))} до ${formatMoney(Math.max(...products.map((p) => p.price)))}` : "см. каталог"}`],
-    ["Сервис", `Примерка курьером в Москве и Санкт-Петербурге, доставка по России; бесплатная доставка от ${formatMoney(delivery.freeFrom)}; возврат 14 дней`],
+    ["Сервис", "СДЭК, Яндекс Доставка и Яндекс Экспресс. Возврат через поддержку в течение 14 дней."],
     ...(seller.showroom ? [["Шоурум", `${seller.showroom}${seller.hours ? `, ${seller.hours}` : ""}`] as [string, string]] : []),
     ["Продавец", `${seller.name}${seller.inn ? `, ИНН ${seller.inn}` : ""}`],
     ["Сайт", absolute("/")],
   ];
   // имя основательницы не склоняется: оно приходит из настроек как есть
-  const boilerplate = `${brand.name} — ${(brand.description || "премиальная женская одежда из шерсти, кашемира и шёлка").replace(/\.$/, "")}. Марка основана в ${brand.foundedYear || "2019"} году${brand.founder ? `, основательница и дизайнер — ${brand.founder}` : ""}, город — ${brand.city || "Москва"}. Продаёт напрямую: сайт ${absolute("/").replace(/^https?:\/\//, "").replace(/\/$/, "")}, примерка курьером в Москве и Санкт-Петербурге${seller.showroom ? `, шоурум по адресу ${seller.showroom}` : ""}.`;
+  const boilerplate = `${brand.name} — ${(brand.description || "премиальная женская одежда из шерсти, кашемира и шёлка").replace(/\.$/, "")}. Марка основана в ${brand.foundedYear || "2019"} году${brand.founder ? `, основательница и дизайнер — ${brand.founder}` : ""}, город — ${brand.city || "Москва"}. Продаёт напрямую: сайт ${absolute("/").replace(/^https?:\/\//, "").replace(/\/$/, "")}${seller.showroom ? `, шоурум по адресу ${seller.showroom}` : ""}.`;
   // «Издание, дата — https://…» по строке; строка без ссылки показывается как есть
   const press = brand.pressLinks.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const m = l.match(/^(.*?)\s*[—–-]\s*(https?:\/\/\S+)$/); return m ? { title: m[1] || m[2], url: m[2] } : { title: l, url: "" }; });
   return (

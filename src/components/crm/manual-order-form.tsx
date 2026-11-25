@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { createManualOrderAction } from "@/app/actions/crm-orders";
 import { formatMoney } from "@/lib/money";
-import { DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
+import { ACTIVE_DELIVERY, DELIVERY_METHOD, PAYMENT_METHOD } from "@/lib/labels";
 
 type Customer = { id: string; label: string };
 type Variant = { id: string; label: string; price: number; available: number };
@@ -65,8 +65,8 @@ export function ManualOrderForm({ customers, variants, presetCustomer }: { custo
             </select>
           </label>
           <label><span className="label">Получение</span>
-            <select aria-label="Способ доставки" name="deliveryMethod" className="input" defaultValue="PICKUP">
-              {Object.entries(DELIVERY_METHOD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            <select aria-label="Способ доставки" name="deliveryMethod" className="input" defaultValue="CDEK">
+              {ACTIVE_DELIVERY.map((k) => <option key={k} value={k}>{DELIVERY_METHOD[k].label}</option>)}
             </select>
           </label>
           <label className="sm:col-span-2"><span className="label">Адрес (если доставка)</span><input name="addressText" className="input" /></label>

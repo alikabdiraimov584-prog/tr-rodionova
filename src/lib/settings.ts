@@ -4,9 +4,8 @@ import { db } from "@/lib/db";
 
 export type DeliverySettings = {
   freeFrom: number;
-  courier: number;
+  yandexStandard?: number;
   cdek: number;
-  boxberry: number;
   yandex: number;
 };
 export type BrandSettings = {
@@ -18,7 +17,7 @@ export type BrandSettings = {
   // сущность бренда для поисковиков и ИИ-ответов (schema.org Organization, llms.txt)
   description: string; // одно-два фактических предложения о бренде
   foundedYear: string; // год основания
-  founder: string; // основательница (Person в разметке и автор журнала)
+  founder: string; // основательница (Person в разметке)
   city: string; // город
   instagram: string;
   vk: string;
@@ -95,7 +94,7 @@ const defaults: { support: SupportSettings; delivery: DeliverySettings; brand: B
     slaMinutes: 15,
     reopenDays: 3,
   },
-  delivery: { freeFrom: 1_500_000, courier: 50_000, cdek: 35_000, boxberry: 30_000, yandex: 45_000 },
+  delivery: { freeFrom: 1_500_000, cdek: 35_000, yandex: 45_000 },
   brand: {
     name: "T.Rodionova",
     tagline: "Premium womenswear",

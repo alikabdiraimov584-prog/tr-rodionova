@@ -43,11 +43,14 @@ export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: Tone }
   PARTIALLY_REFUNDED: { label: "Частичный возврат", tone: "warning" },
 };
 
+export const ACTIVE_DELIVERY = ["CDEK", "YANDEX_STANDARD", "YANDEX"] as const;
+
 export const DELIVERY_METHOD: Record<DeliveryMethod, { label: string; hint: string }> = {
   COURIER: { label: "Курьер", hint: "Москва и Санкт-Петербург, 1–2 дня, примерка" },
   CDEK: { label: "СДЭК", hint: "До пункта выдачи или курьером, 2–7 дней" },
   BOXBERRY: { label: "Boxberry", hint: "До пункта выдачи, 2–7 дней" },
-  YANDEX: { label: "Яндекс Доставка", hint: "Курьером в день заказа по Москве" },
+  YANDEX_STANDARD: { label: "Яндекс Доставка", hint: "Доставка по адресу" },
+  YANDEX: { label: "Яндекс Экспресс", hint: "Курьером в день заказа по Москве" },
   PICKUP: { label: "Самовывоз", hint: "Из шоурума бренда" },
 };
 

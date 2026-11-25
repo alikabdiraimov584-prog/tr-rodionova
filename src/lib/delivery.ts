@@ -9,6 +9,7 @@ export function trackingUrl(method: DeliveryMethod, trackingNumber: string | nul
       return `https://www.cdek.ru/ru/tracking?order_id=${encodeURIComponent(n)}`;
     case "BOXBERRY":
       return `https://boxberry.ru/tracking-page?id=${encodeURIComponent(n)}`;
+    case "YANDEX_STANDARD":
     case "YANDEX":
       return `https://delivery.yandex.ru/tracking/${encodeURIComponent(n)}`;
     default:

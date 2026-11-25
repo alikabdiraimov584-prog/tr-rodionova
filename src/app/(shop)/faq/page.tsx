@@ -6,14 +6,14 @@ import { TextPage } from "@/components/shop/page-shell";
 
 export const metadata: Metadata = {
   title: "Вопросы и ответы",
-  description: "Доставка и примерка курьером, возврат 14 дней, выбор размера, уход за шерстью и шёлком: короткие ответы на вопросы покупательниц T.Rodionova.",
+  description: "Доставка, возврат 14 дней, выбор размера, уход за шерстью и шёлком: короткие ответы на вопросы покупательниц T.Rodionova.",
 };
 
 export default async function FaqPage() {
   const groups = await siteFaq();
   const all = groups.flatMap((g) => g.items);
   return (
-    <TextPage eyebrow="Покупателям" title="Вопросы и ответы" intro="Коротко о доставке, примерке, возврате, размерах, уходе. Если ответа нет, напишите в службу заботы: отвечаем в течение 15 минут в рабочее время." crumbs={[{ name: "Вопросы и ответы", path: "/faq" }]}>
+    <TextPage eyebrow="Покупателям" title="Вопросы и ответы" intro="Коротко о доставке, возврате, размерах, уходе. Если ответа нет, напишите в службу заботы: отвечаем в течение 15 минут в рабочее время." crumbs={[{ name: "Вопросы и ответы", path: "/faq" }]}>
       <JsonLd data={faqJsonLd(all.map(({ q, a }) => ({ q, a })))} />
       {groups.map((g) => (
         <section key={g.group} className="border-t border-line pt-5">

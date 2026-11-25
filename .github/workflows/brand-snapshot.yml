@@ -70,7 +70,7 @@ jobs:
           print("контакты и соцсети на главной:", links or "нет")
           print("\n== заглушки и пробелы в текстах")
           PAT = r"000-00-00|\[[А-ЯЁA-Z][^\]]{3,60}\]|lorem|TODO|example\.com|указывается после подключения|заглушк"
-          pages = ["/", "/about", "/seller", "/delivery", "/returns", "/offer", "/privacy", "/faq", "/press", "/showroom", "/sizes", "/care", "/gift", "/circle", "/lookbook", "/journal", "/collections", "/catalog", "/try-on", "/llms.txt", "/llms-full.txt"]
+          pages = ["/", "/about", "/seller", "/delivery", "/returns", "/offer", "/privacy", "/faq", "/press", "/showroom", "/sizes", "/care", "/gift", "/circle", "/collections", "/catalog", "/try-on", "/llms.txt", "/llms-full.txt"]
           for p in pages:
               s, h = get(p)
               tx = h if p.endswith(".txt") else text(h)
@@ -105,8 +105,5 @@ jobs:
           print("\n== карта сайта")
           s, sm = get("/sitemap.xml"); locs = re.findall(r"<loc>([^<]+)</loc>", sm)
           print(s, "адресов", len(locs), dict(Counter((l.replace(B, "").split("/")[1] or "/").split("?")[0] for l in locs)))
-          print("\n== журнал (feed.xml)")
-          s, f = get("/journal/feed.xml"); items = re.findall(r"<item>.*?<title>(.*?)</title>.*?<pubDate>(.*?)</pubDate>", f, re.S)
-          print(s, "статей", len(items)); [print("  ", d[:16], "·", re.sub(r"<!\[CDATA\[|\]\]>", "", t)[:80]) for t, d in items[:12]]
           print("\n== robots.txt"); print(get("/robots.txt")[1][:600])
           PY

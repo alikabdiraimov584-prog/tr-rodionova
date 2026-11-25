@@ -213,22 +213,6 @@ export const INTEGRATIONS: IntegrationDef[] = [
     },
   },
   {
-    key: "boxberry",
-    group: "delivery",
-    name: "Boxberry",
-    summary: "Пункты выдачи и курьерская доставка.",
-    effect: "Трек-ссылки Boxberry для заказов и проверка токена.",
-    fields: [{ key: "token", label: "API-токен", secret: true, hint: "Личный кабинет Boxberry → Интеграция" }],
-    guide: ["Получите токен в личном кабинете Boxberry.", "Нажмите «Проверить подключение»: запрос ListCities подтвердит токен."],
-    test: async (c) => {
-      if (!c.token) return { ok: false, error: "Укажите токен" };
-      const r = await json<unknown>(`https://api.boxberry.ru/json.php?token=${encodeURIComponent(c.token)}&method=ListCities&CountryCode=643`);
-      if (Array.isArray(r.body) && r.body.length > 0) return { ok: true, info: `Доступно городов: ${r.body.length}` };
-      const err = (r.body as { err?: string })?.err;
-      return { ok: false, error: err ?? `Boxberry ответил HTTP ${r.status}` };
-    },
-  },
-  {
     key: "yandex_delivery",
     group: "delivery",
     name: "Яндекс Доставка",

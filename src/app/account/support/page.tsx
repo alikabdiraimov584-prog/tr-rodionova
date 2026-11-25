@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Служба заботы" };
 const PRESETS: Record<string, (order?: string) => string> = {
   return: (o) => `Хочу оформить возврат по заказу №${o ?? ""}. Позиции и причина: `,
   delete: () => "Прошу удалить мой аккаунт и персональные данные.",
-  stylist: () => "Хочу записаться на консультацию стилиста / примерку дома.",
+  stylist: () => "Хочу записаться на консультацию стилиста.",
 };
 
 export default async function AccountSupport({ searchParams }: PageProps<"/account/support">) {

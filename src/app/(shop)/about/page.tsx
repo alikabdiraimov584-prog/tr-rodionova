@@ -4,7 +4,7 @@ import { getSetting } from "@/lib/settings";
 import { TextPage, Section } from "@/components/shop/page-shell";
 import { JsonLd, absolute, founderJsonLd, ids } from "@/lib/seo";
 import { BRAND_FACTS } from "@/lib/brand-facts";
-import { brandHeroImage } from "@/lib/looks";
+import { brandHeroImage } from "@/lib/brand-image";
 
 export const metadata: Metadata = {
   title: "О бренде",
@@ -32,7 +32,7 @@ export default async function About() {
       </div>
       <Section id="founder" title="Основательница">
         <p>{brand.founder || "Татьяна Родионова"} начинала дизайнером в ателье индивидуального пошива. В {brand.foundedYear || "2019"} году она основала марку и перенесла в неё порядок ателье: каждая модель дважды проходит примерку на живой модели, прежде чем уйти в пошив.</p>
-        <p className="text-muted-dark">Основательница и дизайнер {brand.name}; автор статей журнала о тканях, уходе и посадке.</p>
+        <p className="text-muted-dark">Основательница и дизайнер {brand.name}.</p>
       </Section>
       <Section id="facts" title="Коротко">
         <ul className="list-disc space-y-1.5 pl-5">
@@ -43,7 +43,7 @@ export default async function About() {
         <ul className="list-disc space-y-1.5 pl-5">
           <li>Основа — натуральные волокна: шерсть, кашемир, шёлк, хлопок. Вискоза, эластан, полиамид или полиэстер — только там, где они нужны вещи для посадки, тянучести или формы; точный состав в карточке каждой вещи.</li>
           <li>Две примерки на живой модели до запуска в пошив. Ни одна модель не уходит в производство по эскизу.</li>
-          <li>Тираж до 60 единиц на модель. Допошив только под предзаказ.</li>
+          <li>Тираж до 60 единиц на модель.</li>
           <li>Цена не меняется в течение сезона. Распродаж не бывает: вещь стоит столько, сколько стоит.</li>
         </ul>
       </Section>
@@ -54,7 +54,7 @@ export default async function About() {
         <p>Пошив в Португалии и Литве на фабриках, с которыми работаем с первого сезона. Контроль качества в Москве: каждая вещь проверяется вручную до того, как попадёт в упаковку.</p>
       </Section>
       <Section id="service" title="Сервис">
-        <p>Примерка курьером в Москве и Петербурге.</p>
+        <p>Доставка через СДЭК, Яндекс Доставку и Яндекс Экспресс.</p>
       </Section>
     </TextPage>
   );

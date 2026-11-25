@@ -14,8 +14,7 @@ export async function warmImages(base = `http://127.0.0.1:${process.env.PORT ?? 
     select: { url: true },
     distinct: ["url"],
   });
-  const looks = await db.look.findMany({ where: { coverUrl: { not: null } }, select: { coverUrl: true } });
-  const urls = [...new Set([...images.map((i) => i.url), ...looks.map((l) => l.coverUrl!).filter((u) => u.startsWith("/"))])];
+  const urls = images.map((image) => image.url);
   const started = Date.now();
   let ok = 0;
   let failed = 0;

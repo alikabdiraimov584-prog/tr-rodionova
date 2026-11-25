@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { ConsentType } from "@/generated/prisma/enums";
 
 /** Редакция юридических документов (docs/legal/*.md). Меняйте при обновлении текста. */
-export const LEGAL_VERSION = "2026-11-revision-2";
+export const LEGAL_VERSION = "2026-11-revision-3";
 
 export async function recordConsent(tx: Prisma.TransactionClient, userId: string, type: ConsentType, granted: boolean) {
   const h = await headers();

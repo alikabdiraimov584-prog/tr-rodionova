@@ -38,7 +38,6 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
     { title: "Товар", items: [
       { href: "/crm/products", label: "Товары", section: "products" },
       { href: "/crm/stock", label: "Склад", badge: lowStock, section: "stock" },
-      { href: "/crm/content", label: "Лукбук и журнал", section: "content" },
       { href: "/crm/promos", label: "Промокоды", section: "promos" },
     ] },
     { title: "Управление", items: [
@@ -48,7 +47,7 @@ export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
       { href: "/crm/staff", label: "Сотрудники", section: "staff" },
       { href: "/crm/integrations", label: "Интеграции", section: "integrations" },
       { href: "/crm/settings", label: "Настройки", section: "settings" },
-      { href: "/crm/audit", label: "Журнал", section: "audit" },
+      { href: "/crm/audit", label: "История действий", section: "audit" },
     ] },
   ];
   const visible = groups.map((g) => ({ ...g, items: g.items.filter((i) => can(user.role, i.section)) })).filter((g) => g.items.length);

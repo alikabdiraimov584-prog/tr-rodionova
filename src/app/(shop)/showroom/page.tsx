@@ -14,8 +14,8 @@ export default async function Showroom() {
     <TextPage
       crumbs={[{ name: "Шоурум и контакты", path: "/showroom" }]}
       eyebrow="Шоурум"
-      title={hasShowroom ? seller.showroom : "Примерка там, где удобно вам"}
-      intro={hasShowroom ? `${seller.hours}. Вся коллекция в наличии, примерочные с дневным светом, стилист по записи.` : "Шоурум пока не открыт: мы продаём онлайн и привозим вещи на примерку курьером. Оплачиваете только то, что оставили."}
+      title={hasShowroom ? seller.showroom : "Контакты"}
+      intro={hasShowroom ? `${seller.hours}. Вся коллекция в наличии, примерочные с дневным светом, стилист по записи.` : "Сейчас заказы принимаются онлайн."}
       aside={
         <div className="border border-line bg-panel p-5">
           <div className="eyebrow">Связь</div>
@@ -27,9 +27,6 @@ export default async function Showroom() {
       }
     >
       {store && <JsonLd data={store} />}
-      <Section id="home-fitting" title="Примерка дома">
-        <p>Для Москвы и Санкт-Петербурга привезём до 6 вещей на примерку с курьером: до 20 минут на примерку, оплата на месте только за то, что подошло. Выбирается при оформлении заказа.</p>
-      </Section>
       <Section id="stylist" title="Запись к стилисту">
         <p>Час с персональным стилистом онлайн: подбор капсулы под ваш гардероб и события сезона.</p>
       </Section>

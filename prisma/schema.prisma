@@ -343,6 +343,7 @@ enum DeliveryMethod {
   CDEK
   BOXBERRY
   YANDEX
+  YANDEX_STANDARD
   PICKUP
 }
 
