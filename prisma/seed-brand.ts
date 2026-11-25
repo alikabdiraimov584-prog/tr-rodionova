@@ -83,16 +83,16 @@ export async function seedBrand(db: PrismaClient) {
       featured: true,
     },
     {
-      slug: "plate-tr-halter",
+      slug: "amore",
       care: "Сухая чистка; съёмный шарф отстёгивать перед чисткой. Хранить на мягких плечиках, корсаж не складывать.",
       sku: "TR-DR-101",
-      name: "Платье TR Halter",
+      name: "Платье Amore",
       category: "dresses",
       price: 46_900,
-      material: "шёлк",
+      material: "Смесовая ткань",
       sizeChart: "dress",
-      composition: "100% шёлковый креп",
-      description: "Платье мини с воротником-халтер и съёмным шарфом, спадающим по спине. Открытая спина, потайная молния с монограммой TR. Шёлковый креп из Комо с матовой поверхностью: держит силуэт и не просвечивает.",
+      composition: "47% вискозы, 50% полиэстера, 3% эластана",
+      description: "Платье мини с воротником-халтер и съёмным шарфом, спадающим по спине. Открытая спина, потайная молния с монограммой TR.",
       sizes: ["XS", "S", "M", "L"],
       colors: [["Айвори", "#F8F5EE"]],
       image: "dress",
@@ -117,7 +117,7 @@ export async function seedBrand(db: PrismaClient) {
     },
   ];
   for (const it of items) {
-    const existing = await db.product.findUnique({ where: { slug: it.slug }, select: { id: true } });
+    const existing = await db.product.findFirst({ where: { OR: [{ sku: it.sku }, { slug: it.slug }] }, select: { id: true } });
     if (existing) continue;
     const product = await db.product.create({
       data: {
