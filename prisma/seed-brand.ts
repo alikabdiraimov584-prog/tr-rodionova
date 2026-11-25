@@ -84,7 +84,7 @@ export async function seedBrand(db: PrismaClient) {
     },
     {
       slug: "amore",
-      care: "Сухая чистка; съёмный шарф отстёгивать перед чисткой. Хранить на мягких плечиках, корсаж не складывать.",
+      care: "Деликатная стирка при 30 °C. Химчистка.",
       sku: "TR-DR-101",
       name: "Платье Amore",
       category: "dresses",
@@ -92,7 +92,7 @@ export async function seedBrand(db: PrismaClient) {
       material: "Смесовая ткань",
       sizeChart: "dress",
       composition: "47% вискозы, 50% полиэстера, 3% эластана",
-      description: "Платье мини с воротником-халтер и съёмным шарфом, спадающим по спине. Открытая спина, потайная молния с монограммой TR.",
+      description: "Платье мини с несъёмным воротником-халтер и открытой спиной. Потайная молния.",
       sizes: ["XS", "S", "M", "L"],
       colors: [["Айвори", "#F8F5EE"]],
       image: "dress",

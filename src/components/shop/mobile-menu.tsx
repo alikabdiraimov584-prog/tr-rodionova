@@ -80,7 +80,7 @@ function MenuDrawer({ categories, account, cartCount }: MenuProps) {
               <Link href="/about" className={big}>О бренде</Link>
               <div className="mt-8 border-t border-line pt-4">
                 <Link href="/collections" className={small}>Все коллекции</Link>
-                <Link href="/showroom" className={small}>Шоурум и контакты</Link>
+                <Link href="/showroom" className={small}>Контакты</Link>
                 <Link href="/delivery" className={small}>Доставка и возврат</Link>
                 <Link href="/sizes" className={small}>Размеры</Link>
                 <Link href="/faq" className={small}>Вопросы и ответы</Link>

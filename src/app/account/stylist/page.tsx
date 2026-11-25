@@ -17,12 +17,12 @@ export default async function StylistPage() {
   });
   return (
     <div className="space-y-10">
-      <PageTitle title="Мой стилист" actions={<Link href="/account/support?topic=stylist" className="btn-outline btn-sm">Записаться к стилисту</Link>}>
+      <PageTitle title="Мой стилист">
         Персональные подборки от стилиста T.Rodionova: вещи под ваш гардероб, повод и размер.
       </PageTitle>
       {selections.length === 0 ? (
-        <Empty title="Подборок пока нет" action={<Link href="/account/support?topic=stylist" className="btn-primary">Записаться к стилисту</Link>}>
-          Расскажите стилисту о поводе и предпочтениях — и мы соберём для вас подборку. Укажите мерки в <Link href="/account/profile" className="underline">профиле</Link>, чтобы размер был точным.
+        <Empty title="Подборок пока нет">
+          Здесь появятся подборки, которые отправит команда T.Rodionova.
         </Empty>
       ) : (
         <div className="divide-y divide-line border-y border-line">

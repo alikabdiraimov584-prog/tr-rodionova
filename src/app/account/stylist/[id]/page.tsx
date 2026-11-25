@@ -33,7 +33,7 @@ export default async function SelectionView({ params }: PageProps<"/account/styl
   }));
   return (
     <div className="space-y-10">
-      <PageTitle eyebrow={`${s.stylist?.firstName ? `Стилист ${s.stylist.firstName} · ` : ""}${formatDate(s.sentAt ?? s.createdAt)}`} title={s.title} actions={<Link href="/account/support?topic=stylist" className="btn-outline btn-sm">Записаться к стилисту</Link>}>
+      <PageTitle eyebrow={`${s.stylist?.firstName ? `Стилист ${s.stylist.firstName} · ` : ""}${formatDate(s.sentAt ?? s.createdAt)}`} title={s.title}>
         <Link href="/account/stylist" className="underline">← Все подборки</Link>
       </PageTitle>
       {s.note && (
@@ -43,7 +43,7 @@ export default async function SelectionView({ params }: PageProps<"/account/styl
         </div>
       )}
       {items.length === 0 ? (
-        <p className="text-sm text-muted">Вещи из этой подборки уже разобрали. Напишите стилисту — соберём новую.</p>
+        <p className="text-sm text-muted">Вещи из этой подборки уже разобрали.</p>
       ) : (
         <>
           <div className="divide-y divide-line border-y border-line">

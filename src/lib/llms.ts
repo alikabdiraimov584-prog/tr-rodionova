@@ -45,7 +45,7 @@ export async function llmsText(full: boolean) {
   out.push(`- [Доставка и возврат](${absolute("/delivery")}): службы доставки и оформление возврата`);
   out.push(`- [Размеры и мерки](${absolute("/sizes")}): таблицы размеров и как снять мерки`);
   out.push(`- [Уход за изделиями](${absolute("/care")}): шерсть, кашемир, шёлк`);
-  out.push(`- [Шоурум и контакты](${absolute("/showroom")})`);
+  out.push(`- [Контакты](${absolute("/showroom")})`);
   out.push(`- [Пресс-кит](${absolute("/press")}): проверяемые факты о бренде, основательница, фото, контакт для СМИ`);
   out.push(`- [Публичная оферта](${absolute("/offer")}), [Политика обработки персональных данных](${absolute("/privacy")})`);
   out.push("");

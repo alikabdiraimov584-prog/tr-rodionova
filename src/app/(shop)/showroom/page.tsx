@@ -4,33 +4,34 @@ import { getSetting } from "@/lib/settings";
 import { TextPage, Section } from "@/components/shop/page-shell";
 import { JsonLd, publicPhone, storeJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Шоурум и контакты" };
+export const metadata: Metadata = { title: "Контакты" };
 
 export default async function Showroom() {
-  const [b, seller] = await Promise.all([getSetting("brand"), getSetting("seller")]);
-  const hasShowroom = !!seller.showroom;
-  const store = storeJsonLd(b, seller);
+  const [brand, seller] = await Promise.all([getSetting("brand"), getSetting("seller")]);
+  const phone = publicPhone(brand.phone);
+  const store = storeJsonLd(brand, seller);
   return (
     <TextPage
-      crumbs={[{ name: "Шоурум и контакты", path: "/showroom" }]}
-      eyebrow="Шоурум"
-      title={hasShowroom ? seller.showroom : "Контакты"}
-      intro={hasShowroom ? `${seller.hours}. Вся коллекция в наличии, примерочные с дневным светом, стилист по записи.` : "Сейчас заказы принимаются онлайн."}
-      aside={
-        <div className="border border-line bg-panel p-5">
-          <div className="eyebrow">Связь</div>
-          <p className="mt-2">{publicPhone(b.phone) && <>{publicPhone(b.phone)}<br /></>}{b.email}{b.telegram && <><br /><a href={b.telegram} className="underline">Telegram</a></>}</p>
-          <div className="eyebrow mt-5">Служба заботы</div>
-          <p className="mt-2">{seller.hours}, ответ в течение 15 минут. <Link href="/account/support" className="underline">Написать в кабинете</Link></p>
-          <p className="mt-5 text-xs text-muted"><Link href="/seller" className="underline">Информация о продавце</Link></p>
-        </div>
-      }
+      crumbs={[{ name: "Контакты", path: "/showroom" }]}
+      title="Контакты"
+      intro={seller.showroom ? undefined : "Сейчас заказы принимаются онлайн."}
     >
       {store && <JsonLd data={store} />}
-      <Section id="stylist" title="Запись к стилисту">
-        <p>Час с персональным стилистом онлайн: подбор капсулы под ваш гардероб и события сезона.</p>
-      </Section>
-      {hasShowroom && (
+      <div className="space-y-5">
+        <ul className="space-y-1">
+          {phone && <li>{phone}</li>}
+          <li><a href={`mailto:${brand.email}`} className="underline">{brand.email}</a></li>
+          {brand.telegram && <li><a href={brand.telegram} className="underline">Telegram</a></li>}
+          <li><a href="https://www.instagram.com/t.rodionova_womenswear/" className="underline">Instagram</a></li>
+        </ul>
+        <div>
+          <div className="eyebrow">Служба заботы</div>
+          <p className="mt-2">{seller.hours}, ответ в течение 15 минут.</p>
+          <Link href="/account/support" className="underline">Написать в кабинете</Link>
+        </div>
+        <Link href="/seller" className="text-xs text-muted underline">Информация о продавце</Link>
+      </div>
+      {seller.showroom && (
         <Section id="map" title="Как добраться">
           <p>{seller.showroom}. Часы работы: {seller.hours}.</p>
         </Section>
