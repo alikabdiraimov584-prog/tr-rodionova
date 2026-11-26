@@ -10,8 +10,9 @@ import { RowGrid, SANS, PLAIN_HEADING } from "@/components/shop/row-grid";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { MobileBuyBar } from "@/components/shop/mobile-buy-bar";
 import { isRealPhoto, photoFirst } from "@/lib/photos";
-import { chartForProduct, recommendSize } from "@/lib/sizes";
+import { recommendSize } from "@/lib/sizes";
 import { toggleWishlistAction } from "@/app/actions/shop";
+import { SizeTable } from "@/components/shop/size-table";
 import { SizeAdvisor } from "@/components/shop/size-advisor";
 import { JsonLd, breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { MetrikaGoal } from "@/components/metrika-goal";
@@ -58,8 +59,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     db.product.findMany({ where: { status: "ACTIVE", isPreloved: false, categoryId: p.categoryId, id: { not: p.id } }, include: { images: { orderBy: { order: "asc" } }, variants: { where: { archivedAt: null } } }, take: 4 }),
   ]);
   const relatedReal = photoFirst(related).filter((r) => isRealPhoto(r.images[0]?.url));
-  const chart = chartForProduct(p);
-  const advice = chart && user ? recommendSize(chart, user) : null;
+  const advice = user ? recommendSize(user) : null;
   const rating = p.reviews.length ? p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length : null;
   const specs: [string, string | null | undefined][] = [
     ["Состав", p.composition],
@@ -105,7 +105,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           </h1>
           <div className="mt-5 hidden md:block">{price}</div>
           {rating && <a href="#reviews" className="mt-1 inline-block text-[#6f6f6f] underline-offset-4 hover:underline">★ {rating.toFixed(1)} · {p.reviews.length} {p.reviews.length === 1 ? "отзыв" : p.reviews.length < 5 ? "отзыва" : "отзывов"}</a>}
-          <div className="mt-8"><SizeAdvisor product={p} user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
+          <div className="mt-8"><SizeAdvisor user={user} sizes={[...new Set(p.variants.map((v) => v.size))]} /></div>
           <div className="mt-2">
             <AddToCart slug={p.slug} loggedIn={!!user} defaultSize={wantedSize ?? (advice?.fit === "точно" ? advice.size : null)} defaultColor={wantedColor} variants={p.variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, available: v.stock - v.reserved }))}>
               <form action={toggleWishlistAction}>
@@ -124,9 +124,9 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                 {specs.filter(([k, v]) => v && k !== "Артикул").map(([k, v]) => <div key={k} className="grid grid-cols-[110px_1fr] gap-3"><dt className="text-[#6f6f6f]">{k}</dt><dd>{v}</dd></div>)}
               </dl>
             </details>
-            <details className="group">
+            <details id="product-size-chart" className="group scroll-mt-20">
               <summary className="acc-line">Размер и посадка<span aria-hidden className="acc-mark">+</span></summary>
-              <p className="pb-5">Размеры и мерки — в <Link href="/sizes" className="underline underline-offset-4">таблице размеров</Link>.</p>
+              <div className="pb-5"><SizeTable /></div>
             </details>
             <details className="group">
               <summary className="acc-line">Доставка и возврат<span aria-hidden className="acc-mark">+</span></summary>

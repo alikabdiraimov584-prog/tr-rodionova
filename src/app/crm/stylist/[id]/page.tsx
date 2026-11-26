@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { formatDate, formatMoney } from "@/lib/money";
 import { SELECTION_STATUS } from "@/lib/labels";
-import { SIZE_CHARTS, SIZE_CHART_KEYS, recommendSize } from "@/lib/sizes";
+import { recommendSize } from "@/lib/sizes";
 import { Badge, Eyebrow, PageTitle } from "@/components/ui";
 import { ConfirmButton, SubmitButton } from "@/components/form";
 import { AddItemForm, SelectionForm } from "@/components/crm/stylist-forms";
@@ -24,10 +24,7 @@ function CustomerCard({ c }: { c: { id: string; firstName: string; lastName: str
         <div className="mt-3 text-xs text-muted">
           Мерки: {[c.bust && `грудь ${c.bust}`, c.waist && `талия ${c.waist}`, c.hips && `бёдра ${c.hips}`, c.height && `рост ${c.height}`].filter(Boolean).join(", ")} см
           <div className="mt-1">
-            {SIZE_CHART_KEYS.map((k) => {
-              const a = recommendSize(SIZE_CHARTS[k], c);
-              return a ? <span key={k} className="mr-3">{SIZE_CHARTS[k].title.toLowerCase()}: <span className="text-ink">{a.size}</span></span> : null;
-            })}
+            {recommendSize(c)?.note}
           </div>
         </div>
       ) : (

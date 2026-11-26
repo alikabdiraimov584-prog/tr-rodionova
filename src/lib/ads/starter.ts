@@ -163,7 +163,7 @@ async function addSitelinks(cfg: DirectConfig, base: string, warnings: string[])
       SitelinksSets: [{ Sitelinks: [
         { Title: "Каталог", Href: `${base}/catalog?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Боди, брюки, юбки, жакеты и платья" },
         { Title: "Доставка", Href: `${base}/delivery?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "СДЭК и Яндекс Доставка" },
-        { Title: "Размеры и мерки", Href: `${base}/sizes?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Таблица размеров XS–L и подсказки по посадке" },
+        { Title: "Размеры и мерки", Href: `${base}/sizes?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Таблица размеров XXS–M и подсказки по посадке" },
         { Title: "О бренде", Href: `${base}/about?utm_source=yandex&utm_medium=cpc&utm_campaign=sitelink`, Description: "Ткани из Италии, пошив в Португалии и Литве" },
       ] }],
     });

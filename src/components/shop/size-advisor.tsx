@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { chartForProduct, recommendSize } from "@/lib/sizes";
+import { recommendSize } from "@/lib/sizes";
 
-type AdvisorProduct = { slug: string; sizeChart?: string | null; category?: { slug: string } | null };
+import { SizeTableLink } from "./size-table-link";
 type AdvisorUser = { height: number | null; bust: number | null; waist: number | null; hips: number | null } | null | undefined;
 
 const ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
@@ -17,13 +17,12 @@ function nearest(size: string, sizes: string[]) {
  * Размерный советник на странице товара (серверный компонент).
  * С мерками — «Ваш размер: M» и пояснение, без мерок — ссылка на профиль.
  */
-export function SizeAdvisor({ product, user, sizes }: { product: AdvisorProduct; user: AdvisorUser; sizes: string[] }) {
-  const chart = chartForProduct(product);
+export function SizeAdvisor({ user, sizes }: { user: AdvisorUser; sizes: string[] }) {
   // вещь одного размера — подсказывать нечего
-  if (!chart || sizes.every((s) => !ORDER.includes(s))) return null;
+  if (sizes.every((s) => !ORDER.includes(s))) return null;
   // гостье подсказка «войдите и укажите мерки» в момент выбора размера только мешает: рядом есть «Таблица размеров»
   if (!user) return null;
-  const advice = recommendSize(chart, user);
+  const advice = recommendSize(user);
   if (!advice) {
     return (
       <p className="text-[0.78rem] text-muted">
@@ -47,9 +46,9 @@ export function SizeAdvisor({ product, user, sizes }: { product: AdvisorProduct;
         </div>
         <span className={`text-[0.62rem] font-semibold uppercase tracking-[0.2em] ${tone}`}>{fit}</span>
       </div>
-      <p className="mt-1 text-xs text-muted">{missing ? `${advice.size} в этой модели нет${near ? `: ближайший — ${near}, сверьтесь с таблицей или закажите примерку` : ""}.` : advice.note}</p>
+      <p className="mt-1 text-xs text-muted">{missing ? `${advice.size} в этой модели нет${near ? `: ближайший — ${near}, сверьтесь с таблицей` : ""}.` : advice.note}</p>
       <p className="mt-2 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">
-        По меркам из <Link href="/account/profile" className="underline underline-offset-4 hover:text-ink">профиля</Link> · <Link href="/sizes" className="hover:text-ink">таблица {chart.title.toLowerCase()}</Link>
+        По меркам из <Link href="/account/profile" className="underline underline-offset-4 hover:text-ink">профиля</Link> · <SizeTableLink className="hover:text-ink" />
       </p>
     </div>
   );
