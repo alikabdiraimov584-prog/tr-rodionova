@@ -93,7 +93,7 @@ export async function seedBrand(db: PrismaClient) {
       sizeChart: "dress",
       composition: "47% вискозы, 50% полиэстера, 3% эластана",
       description: "Amore — мини-платье цвета айвори с линией открытых плеч и спины. Длинные полотна высокого воротника-халтера струятся вдоль спины и развеваются при ходьбе. Воротник несъёмный, застёжка на потайную молнию.",
-      sizes: ["XS", "S", "M", "L"],
+      sizes: ["XS", "S", "M", "L", "XXS"],
       colors: [["Айвори", "#F8F5EE"]],
       image: "dress",
       featured: true,
@@ -142,8 +142,13 @@ export async function seedBrand(db: PrismaClient) {
       for (const [color, hex] of it.colors)
         for (const size of it.sizes) {
           i++;
-          const v = await db.productVariant.create({ data: { productId: product.id, sku: `${it.sku}-${String(i).padStart(2, "0")}`, size, color, colorHex: hex, stock: 3 } });
-          await db.stockMovement.create({ data: { variantId: v.id, type: "RECEIPT", quantity: 3, unitCost: null, reason: "Первый приход" } });
+          const newAmoreSize = it.sku === "TR-DR-101" && size === "XXS";
+          const suffix = newAmoreSize ? "00" : String(i).padStart(2, "0");
+          const stock = newAmoreSize ? 0 : 3;
+          const v = await db.productVariant.create({ data: { productId: product.id, sku: `${it.sku}-${suffix}`, size, color, colorHex: hex, stock } });
+          if (stock > 0) {
+            await db.stockMovement.create({ data: { variantId: v.id, type: "RECEIPT", quantity: stock, unitCost: null, reason: "Первый приход" } });
+          }
         }
     }
   }
