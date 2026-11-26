@@ -95,6 +95,25 @@ export function DeleteVariantForm({ id, label }: { id: string; label: string }) 
   );
 }
 
+export function VariantStockForm({ id, sku, stock, reserved }: { id: string; sku: string; stock: number; reserved: number }) {
+  const [state, action, pending] = useActionState(stockOperationAction, undefined);
+  return (
+    <form action={action} className="space-y-1">
+      <input type="hidden" name="variantId" value={id} />
+      <input type="hidden" name="op" value="adjust" />
+      <input type="hidden" name="expectedStock" value={stock} />
+      <input type="hidden" name="reason" value="Корректировка из карточки товара" />
+      <div className="flex items-center justify-end gap-2">
+        <input key={stock} name="qty" aria-label={`Остаток ${sku}, шт.`} type="number" defaultValue={stock} min={reserved} max={2147483647} step={1} required className="min-h-9 w-20 border border-line px-2 text-right text-xs" />
+        <button type="submit" disabled={pending} className="min-h-9 px-2 text-xs underline disabled:opacity-50">
+          {pending ? "Сохраняем…" : "Сохранить"}
+        </button>
+      </div>
+      <div role={state?.error ? "alert" : "status"}><Msg s={state} /></div>
+    </form>
+  );
+}
+
 export function StockOperationForm({ variants, preset }: { variants: { id: string; label: string }[]; preset?: string }) {
   const [state, action, pending] = useActionState(stockOperationAction, undefined);
   const [op, setOp] = useState("receipt");

@@ -169,11 +169,14 @@ export async function stockOperationAction(_: ActionState, formData: FormData): 
   const me = await requireSection("stock");
   const variantId = String(formData.get("variantId") ?? "");
   const op = String(formData.get("op"));
-  const qty = Math.trunc(Number(formData.get("qty")));
+  const rawQty = String(formData.get("qty") ?? "").trim();
+  const qty = Number(rawQty);
+  const expected = formData.get("expectedStock");
+  const expectedStock = expected === null ? undefined : Number(expected);
   const reason = String(formData.get("reason") ?? "").trim();
   if (!variantId) return { error: "Выберите позицию" };
-  if (!Number.isFinite(qty) || qty < 0) return { error: "Неверное количество" };
-  let notified = 0;
+  if (!rawQty || !Number.isInteger(qty) || qty < 0 || qty > 2147483647) return { error: "Введите целое количество от 0" };
+  if (expectedStock !== undefined && (!Number.isInteger(expectedStock) || expectedStock < 0)) return { error: "Обновите карточку товара" };
   try {
     await db.$transaction(async (tx) => {
       if (op === "receipt") {
@@ -188,17 +191,28 @@ export async function stockOperationAction(_: ActionState, formData: FormData): 
         if (!reason) throw new Error("Укажите причину списания");
         await writeOffStock(tx, variantId, qty, { reason, createdBy: me.id });
       } else if (op === "adjust") {
-        await adjustStock(tx, variantId, qty, { reason: reason || "Инвентаризация", createdBy: me.id });
+        await adjustStock(tx, variantId, qty, { reason: reason || "Инвентаризация", createdBy: me.id, expectedStock });
       } else throw new Error("Неизвестная операция");
       await audit(me.id, `stock.${op}`, "ProductVariant", variantId, { qty, reason }, tx);
     });
-    if (op === "receipt" || op === "adjust") notified = await notifyWaitlist(variantId);
   } catch (e) {
+    if (op === "adjust") revalidatePath("/crm", "layout");
     return { error: errorMessage(e) };
   }
   revalidatePath("/crm/stock");
   revalidatePath("/crm", "layout");
-  return { ok: true, message: notified ? `Готово. Уведомлено из листа ожидания: ${notified}` : "Готово" };
+  revalidatePath("/product/[slug]", "page");
+  revalidatePath("/catalog");
+  let notified = 0;
+  if (op === "receipt" || op === "adjust") {
+    try {
+      notified = await notifyWaitlist(variantId);
+    } catch (error) {
+      console.error("Waitlist notification failed after stock update", error);
+      return { ok: true, message: "Остаток сохранён. Часть уведомлений могла не отправиться." };
+    }
+  }
+  return { ok: true, message: notified ? `Готово. Уведомлено из листа ожидания: ${notified}` : "Остаток сохранён" };
 }
 
 // ───────────── Категории и SEO-тексты ─────────────

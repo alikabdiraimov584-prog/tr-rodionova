@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireSection } from "@/lib/auth";
 import { formatMoney } from "@/lib/money";
 import { Eyebrow, PageTitle } from "@/components/ui";
-import { DeleteVariantForm, ProductForm, VariantForm } from "@/components/crm/catalog-forms";
+import { DeleteVariantForm, ProductForm, VariantForm, VariantStockForm } from "@/components/crm/catalog-forms";
 import { SubmitButton } from "@/components/form";
 import { updateVariantAction } from "@/app/actions/crm-catalog";
 import { ImageUpload } from "@/components/crm/image-upload";
@@ -57,7 +57,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
                 <td className="text-muted">{v.sku}</td>
                 <td>{v.size}</td>
                 <td><span className="mr-2 inline-block h-3 w-3 rounded-full border border-line align-middle" style={{ background: v.colorHex ?? undefined }} />{v.color}</td>
-                <td className="text-right">{v.stock}</td>
+                <td className="text-right"><VariantStockForm id={v.id} sku={v.sku} stock={v.stock} reserved={v.reserved} /></td>
                 <td className="text-right text-muted">{v.reserved}</td>
                 <td className="text-right">{v._count.alerts || "—"}</td>
                 <td>
@@ -75,7 +75,7 @@ export default async function ProductEdit({ params }: PageProps<"/crm/products/[
           </tbody>
         </table>
         <div className="border-t border-line p-5"><VariantForm productId={p.id} /></div>
-        <p className="px-5 pb-5 text-xs text-muted">Остатки меняются только через <Link href={`/crm/stock?q=${p.sku}`} className="underline">склад</Link> — так каждое движение остаётся в журнале.</p>
+        <p className="px-5 pb-5 text-xs text-muted">В поле «Остаток» укажите фактическое количество, включая резерв. Изменения видны в разделе <Link href={`/crm/stock?q=${p.sku}`} className="underline">«Склад»</Link>.</p>
       </div>
     </div>
   );

@@ -73,12 +73,19 @@ export async function adjustStock(
   tx: Tx,
   variantId: string,
   actual: number,
-  opts: { reason?: string; createdBy?: string | null },
+  opts: { reason?: string; createdBy?: string | null; expectedStock?: number },
 ) {
-  const v = await tx.productVariant.findUniqueOrThrow({ where: { id: variantId } });
-  const diff = actual - v.stock;
+  const [variant] = await tx.$queryRaw<{ stock: number; reserved: number }[]>`
+    SELECT "stock", "reserved" FROM "ProductVariant"
+    WHERE "id" = ${variantId} AND "archivedAt" IS NULL
+    FOR UPDATE`;
+  if (!variant) throw new Error("Вариант не найден или удалён");
+  if (opts.expectedStock !== undefined && variant.stock !== opts.expectedStock && variant.stock !== actual) {
+    throw new Error("Остаток уже изменился. Проверьте актуальное количество и повторите.");
+  }
+  const diff = actual - variant.stock;
   if (diff === 0) return 0;
-  if (actual < v.reserved) throw new Error("Фактический остаток меньше резерва по заказам");
+  if (actual < variant.reserved) throw new Error("Фактический остаток меньше резерва по заказам");
   await tx.productVariant.update({ where: { id: variantId }, data: { stock: actual } });
   await tx.stockMovement.create({
     data: { variantId, type: "ADJUSTMENT", quantity: diff, reason: opts.reason ?? "Инвентаризация", createdBy: opts.createdBy },
