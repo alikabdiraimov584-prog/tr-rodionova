@@ -94,7 +94,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             </div>
           ))}
         </section>
-        <div id="buy" className="min-w-0 scroll-mt-20 px-5 pt-6 md:sticky md:top-16 md:self-start md:pl-0 md:pr-10 md:pt-8 lg:max-w-[520px]">
+        <div id="buy" className="min-w-0 scroll-mt-20 px-5 pt-6 md:sticky md:top-16 md:self-start md:has-[#product-size-chart[open]]:static md:pl-0 md:pr-10 md:pt-8 lg:max-w-[520px]">
           <nav aria-label="Навигация" className="hidden gap-2 text-[#6f6f6f] md:flex">
             <Link href="/#collection" className="hover:text-ink">Коллекция</Link>
             {category && <><span aria-hidden>·</span><span>{category.name}</span></>}
