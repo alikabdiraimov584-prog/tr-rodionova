@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import { SizeTableLink } from "./size-table-link";
+import { SizeTableButton } from "./size-table-button";
 import { addToCartAction } from "@/app/actions/shop";
 import { subscribeStockAction } from "@/app/actions/waitlist";
 import { trackGoal } from "@/lib/metrika-client";
@@ -75,7 +75,7 @@ export function AddToCart({ slug, variants, defaultSize, defaultColor, children 
               </button>
             ))}
           </div>
-          <SizeTableLink className="shrink-0 py-2 underline underline-offset-4 hover:opacity-60" />
+          <SizeTableButton className="shrink-0 py-2 underline underline-offset-4 hover:opacity-60" />
         </div>
         {selected && selected.available > 0 && selected.available <= 2 && <div className="mt-1 text-[#6f6f6f]">Осталось {selected.available} шт.</div>}
       </div>

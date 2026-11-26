@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { recommendSize } from "@/lib/sizes";
 
-import { SizeTableLink } from "./size-table-link";
+import { SizeTableButton } from "./size-table-button";
 type AdvisorUser = { height: number | null; bust: number | null; waist: number | null; hips: number | null } | null | undefined;
 
 const ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
@@ -48,7 +48,7 @@ export function SizeAdvisor({ user, sizes }: { user: AdvisorUser; sizes: string[
       </div>
       <p className="mt-1 text-xs text-muted">{missing ? `${advice.size} в этой модели нет${near ? `: ближайший — ${near}, сверьтесь с таблицей` : ""}.` : advice.note}</p>
       <p className="mt-2 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-muted">
-        По меркам из <Link href="/account/profile" className="underline underline-offset-4 hover:text-ink">профиля</Link> · <SizeTableLink className="hover:text-ink" />
+        По меркам из <Link href="/account/profile" className="underline underline-offset-4 hover:text-ink">профиля</Link> · <SizeTableButton className="hover:text-ink" />
       </p>
     </div>
   );
