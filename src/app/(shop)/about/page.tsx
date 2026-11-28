@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { getSetting } from "@/lib/settings";
-import { TextPage, Section } from "@/components/shop/page-shell";
+import { TextPage } from "@/components/shop/page-shell";
 import { JsonLd, absolute, founderJsonLd, ids } from "@/lib/seo";
-import { BRAND_FACTS } from "@/lib/brand-facts";
 import { brandHeroImage } from "@/lib/brand-image";
 
 export const metadata: Metadata = {
   title: "О бренде",
-  description: "T.Rodionova: премиальная женская одежда из шерсти, кашемира и шёлка. Основана в 2019 году Татьяной Родионовой; ткани из Бьеллы, Комо и Монголии, пошив в Португалии и Литве, тираж до 60 единиц.",
+  description: "T.Rodionova — российский бренд женской одежды, основанный Татьяной Родионовой. Производство в Москве.",
 };
 
 export default async function About() {
@@ -18,7 +17,7 @@ export default async function About() {
     <TextPage
       eyebrow="О бренде"
       title={brand.name}
-      intro={`${brand.name} — марка женской одежды из шерсти, кашемира и шёлка. Мы шьём небольшими партиями в Европе и продаём напрямую: без универмагов, без сезонных распродаж, без вещей «на один раз».`}
+      intro={`${brand.name} — российский бренд женской одежды. Мы шьём в Москве.`}
       crumbs={[{ name: "О бренде", path: "/about" }]}
     >
       <JsonLd
@@ -27,35 +26,15 @@ export default async function About() {
           ...(founder ? [{ "@context": "https://schema.org", "@type": "ProfilePage", "@id": absolute("/about#profile"), name: founder.name, url: absolute("/about#founder"), inLanguage: "ru-RU", isPartOf: { "@id": ids().website }, mainEntity: founder }] : []),
         ]}
       />
+      <div className="space-y-4">
+        <p id="founder" className="scroll-mt-24">Основательница бренда — Татьяна Родионова.</p>
+        <p>Миссия бренда — вдохновлять девушек проявлять себя в вечерних и повседневных образах.</p>
+        <p>Мы используем только премиальные ткани, чтобы обеспечить качество каждого изделия. Они нежно обнимают тело.</p>
+        <p>Тонкая грань женственности и сексуальности.</p>
+      </div>
       <div className="relative aspect-[16/9] bg-sand">
         {hero ? <Image src={hero} alt={`${brand.name}: съёмка коллекции`} fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover object-top" /> : <Image src="/images/placeholder/hero.svg" alt="" fill unoptimized className="object-cover" />}
       </div>
-      <Section id="founder" title="Основательница">
-        <p>{brand.founder || "Татьяна Родионова"} начинала дизайнером в ателье индивидуального пошива. В {brand.foundedYear || "2019"} году она основала марку и перенесла в неё порядок ателье: каждая модель дважды проходит примерку на живой модели, прежде чем уйти в пошив.</p>
-        <p className="text-muted-dark">Основательница и дизайнер {brand.name}.</p>
-      </Section>
-      <Section id="facts" title="Коротко">
-        <ul className="list-disc space-y-1.5 pl-5">
-          {BRAND_FACTS.map((f) => <li key={f}>{f}</li>)}
-        </ul>
-      </Section>
-      <Section id="rules" title="Правила">
-        <ul className="list-disc space-y-1.5 pl-5">
-          <li>Основа — натуральные волокна: шерсть, кашемир, шёлк, хлопок. Вискоза, эластан, полиамид или полиэстер — только там, где они нужны вещи для посадки, тянучести или формы; точный состав в карточке каждой вещи.</li>
-          <li>Две примерки на живой модели до запуска в пошив. Ни одна модель не уходит в производство по эскизу.</li>
-          <li>Тираж до 60 единиц на модель.</li>
-          <li>Цена не меняется в течение сезона. Распродаж не бывает: вещь стоит столько, сколько стоит.</li>
-        </ul>
-      </Section>
-      <Section id="fabrics" title="Ткани">
-        <p>Костюмная шерсть и пальтовые ткани с фабрик Бьеллы (Италия), кашемир 12 gauge из Монголии, шёлк из Комо, хлопковый поплин из Швейцарии. Фабрику и состав мы указываем в паспорте каждой вещи.</p>
-      </Section>
-      <Section id="production" title="Производство">
-        <p>Пошив в Португалии и Литве на фабриках, с которыми работаем с первого сезона. Контроль качества в Москве: каждая вещь проверяется вручную до того, как попадёт в упаковку.</p>
-      </Section>
-      <Section id="service" title="Сервис">
-        <p>Доставка через СДЭК, Яндекс Доставку и Яндекс Экспресс.</p>
-      </Section>
     </TextPage>
   );
 }
