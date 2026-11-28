@@ -121,7 +121,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             <details className="group">
               <summary className="acc-line">Состав и уход<span aria-hidden className="acc-mark">+</span></summary>
               <dl className="space-y-1.5 pb-5">
-                {specs.filter(([k, v]) => v && k !== "Артикул").map(([k, v]) => <div key={k} className="grid grid-cols-[110px_1fr] gap-3"><dt className="text-[#6f6f6f]">{k}</dt><dd>{v}</dd></div>)}
+                {specs.filter(([k, v]) => v && k !== "Артикул").map(([k, v]) => <div key={k} className="grid grid-cols-[110px_1fr] gap-3"><dt className="text-[#6f6f6f]">{k}</dt><dd className={k === "Уход" ? "whitespace-pre-line" : undefined}>{v}</dd></div>)}
               </dl>
             </details>
             <details id="product-size-chart" className="group scroll-mt-20">

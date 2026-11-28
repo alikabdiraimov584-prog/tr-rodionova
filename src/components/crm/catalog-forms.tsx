@@ -49,7 +49,7 @@ export function ProductForm({ p, categories, collections }: { p?: P; categories:
       <label className="md:col-span-2"><span className="label">Описание</span><textarea name="description" defaultValue={p?.description ?? ""} rows={3} className="input" /></label>
       <label><span className="label">Состав</span><input name="composition" defaultValue={p?.composition ?? ""} className="input" /></label>
       <div className="grid grid-cols-2 gap-3">
-        <label><span className="label">Уход</span><input name="care" defaultValue={p?.care ?? ""} className="input" /></label>
+        <label><span className="label">Уход</span><textarea name="care" rows={2} defaultValue={p?.care ?? ""} className="input" /></label>
         <label><span className="label">Производство</span><input name="madeIn" defaultValue={p?.madeIn ?? "Europe"} className="input" /></label>
       </div>
       {/* у существующей вещи фото ведутся в блоке «Фотографии» (загрузка, порядок, удаление): поле со ссылками

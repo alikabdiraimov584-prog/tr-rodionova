@@ -84,7 +84,7 @@ export async function seedBrand(db: PrismaClient) {
     },
     {
       slug: "amore",
-      care: "Деликатная стирка при 30 °C. Химчистка.",
+      care: "Деликатная стирка при температуре не выше 30 °C.\nХимчистка.",
       sku: "TR-DR-101",
       name: "Платье Amore",
       category: "dresses",
